@@ -1,0 +1,10 @@
+base_dir: .
+rust_root: native/mdk_bridge
+rust_input: crate::api
+rust_output: native/mdk_bridge/src/frb_generated.rs
+dart_output: lib/services/mdk
+dart_entrypoint_class_name: MdkBridgeApi
+c_output: ios/Runner/frb_generated.h
+duplicated_c_output:
+  - macos/Runner/frb_generated.h
+web: false

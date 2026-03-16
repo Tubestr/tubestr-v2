@@ -1,0 +1,26 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/onboarding/presentation/onboarding_page.dart';
+import '../../features/player/presentation/player_page.dart';
+
+final appRouterProvider = Provider<GoRouter>((ref) {
+  return GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const AppBootstrapPage(),
+      ),
+      GoRoute(
+        path: '/player/:videoId',
+        pageBuilder: (context, state) => MaterialPage(
+          fullscreenDialog: true,
+          child: PlayerPage(
+            videoId: state.pathParameters['videoId'] ?? '',
+          ),
+        ),
+      ),
+    ],
+  );
+});
