@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/models/remote_share_identity.dart';
 import '../../domain/models/remote_share_projection.dart';
 
 part 'app_database.g.dart';
@@ -82,6 +83,7 @@ class LocalVideos extends Table {
 }
 
 class RemoteAssets extends Table {
+  TextColumn get remoteShareId => text()();
   TextColumn get videoId => text()();
   TextColumn get blobHash => text().nullable()();
   TextColumn get thumbHash => text().nullable()();
@@ -92,12 +94,13 @@ class RemoteAssets extends Table {
   TextColumn get localThumbPath => text().nullable()();
 
   @override
-  Set<Column<Object>> get primaryKey => {videoId};
+  Set<Column<Object>> get primaryKey => {remoteShareId};
 }
 
 class ShareRecords extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get videoId => text().references(RemoteAssets, #videoId)();
+  TextColumn get remoteShareId =>
+      text().references(RemoteAssets, #remoteShareId)();
+  TextColumn get videoId => text()();
   TextColumn get mlsGroupId => text()();
   TextColumn get senderParentKey => text()();
   TextColumn get childProfileId => text()();
@@ -105,6 +108,9 @@ class ShareRecords extends Table {
   TextColumn get status => text().withDefault(const Constant('available'))();
   DateTimeColumn get receivedAt => dateTime()();
   TextColumn get downloadError => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {remoteShareId};
 }
 
 class Likes extends Table {
@@ -175,7 +181,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   Stream<List<Profile>> watchProfiles() {
     return (select(
@@ -195,6 +201,13 @@ class AppDatabase extends _$AppDatabase {
     return query.watch();
   }
 
+  Stream<List<LocalVideo>> watchPendingApprovalVideos() {
+    return (select(localVideos)
+          ..where((tbl) => tbl.approvalStatus.isNotValue('approved'))
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
+        .watch();
+  }
+
   Stream<List<ShareRecord>> watchShareRecords() {
     return (select(
       shareRecords,
@@ -205,7 +218,7 @@ class AppDatabase extends _$AppDatabase {
     final query = select(shareRecords).join([
       innerJoin(
         remoteAssets,
-        remoteAssets.videoId.equalsExp(shareRecords.videoId),
+        remoteAssets.remoteShareId.equalsExp(shareRecords.remoteShareId),
       ),
     ])..orderBy([OrderingTerm.desc(shareRecords.receivedAt)]);
 
@@ -216,17 +229,17 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Stream<RemoteShareProjection?> watchRemoteShareProjectionByVideoId(
-    String videoId,
+  Stream<RemoteShareProjection?> watchRemoteShareProjectionByRemoteShareId(
+    String remoteShareId,
   ) {
     final query =
         select(shareRecords).join([
             innerJoin(
               remoteAssets,
-              remoteAssets.videoId.equalsExp(shareRecords.videoId),
+              remoteAssets.remoteShareId.equalsExp(shareRecords.remoteShareId),
             ),
           ])
-          ..where(shareRecords.videoId.equals(videoId))
+          ..where(shareRecords.remoteShareId.equals(remoteShareId))
           ..limit(1);
 
     return query.watchSingleOrNull().map(
@@ -241,7 +254,7 @@ class AppDatabase extends _$AppDatabase {
         select(shareRecords).join([
             innerJoin(
               remoteAssets,
-              remoteAssets.videoId.equalsExp(shareRecords.videoId),
+              remoteAssets.remoteShareId.equalsExp(shareRecords.remoteShareId),
             ),
           ])
           ..where(shareRecords.mlsGroupId.equals(mlsGroupId))
@@ -258,18 +271,16 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Stream<List<ModerationAuditLog>> watchModerationAuditLogs() {
-    return (select(moderationAuditLogs)
-          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-        .watch();
+    return (select(
+      moderationAuditLogs,
+    )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).watch();
   }
 
   Stream<int> watchLikeCountForVideo(String videoId) {
     final query = selectOnly(likes)
       ..addColumns([likes.id.count()])
       ..where(likes.videoId.equals(videoId));
-    return query.watchSingle().map(
-      (row) => row.read(likes.id.count()) ?? 0,
-    );
+    return query.watchSingle().map((row) => row.read(likes.id.count()) ?? 0);
   }
 
   Stream<bool> watchLikeForVideoByParentAndChild({
@@ -481,6 +492,11 @@ class AppDatabase extends _$AppDatabase {
     required String title,
     double durationSeconds = 0,
     List<String> tags = const <String>[],
+    String approvalStatus = 'approved',
+    DateTime? approvedAt,
+    String? approvedByParentKey,
+    String? scanResults,
+    DateTime? scanCompletedAt,
   }) {
     return into(localVideos).insert(
       LocalVideosCompanion.insert(
@@ -493,6 +509,51 @@ class AppDatabase extends _$AppDatabase {
         createdAt: DateTime.now(),
         tags: Value(tags),
         cvLabels: const Value(<String>[]),
+        approvalStatus: Value(approvalStatus),
+        approvedAt: Value(approvedAt),
+        approvedByParentKey: Value(approvedByParentKey),
+        scanResults: Value(scanResults),
+        scanCompletedAt: Value(scanCompletedAt),
+      ),
+    );
+  }
+
+  Future<LocalVideo?> getLocalVideoById(String videoId) {
+    return (select(
+      localVideos,
+    )..where((tbl) => tbl.id.equals(videoId))).getSingleOrNull();
+  }
+
+  Future<void> updateLocalVideoModeration({
+    required String videoId,
+    String? approvalStatus,
+    DateTime? approvedAt,
+    String? approvedByParentKey,
+    String? scanResults,
+    DateTime? scanCompletedAt,
+    bool clearApproval = false,
+  }) {
+    return (update(localVideos)..where((tbl) => tbl.id.equals(videoId))).write(
+      LocalVideosCompanion(
+        approvalStatus: approvalStatus == null
+            ? const Value.absent()
+            : Value(approvalStatus),
+        approvedAt: clearApproval
+            ? const Value(null)
+            : approvedAt == null
+            ? const Value.absent()
+            : Value(approvedAt),
+        approvedByParentKey: clearApproval
+            ? const Value(null)
+            : approvedByParentKey == null
+            ? const Value.absent()
+            : Value(approvedByParentKey),
+        scanResults: scanResults == null
+            ? const Value.absent()
+            : Value(scanResults),
+        scanCompletedAt: scanCompletedAt == null
+            ? const Value.absent()
+            : Value(scanCompletedAt),
       ),
     );
   }
@@ -501,9 +562,7 @@ class AppDatabase extends _$AppDatabase {
     required String videoId,
     required bool liked,
   }) {
-    return (update(
-      localVideos,
-    )..where((tbl) => tbl.id.equals(videoId))).write(
+    return (update(localVideos)..where((tbl) => tbl.id.equals(videoId))).write(
       LocalVideosCompanion(liked: Value(liked)),
     );
   }
@@ -521,7 +580,7 @@ class AppDatabase extends _$AppDatabase {
     return query.getSingleOrNull();
   }
 
-  Future<void> upsertRemoteShareProjection({
+  Future<String> upsertRemoteShareProjection({
     required String videoId,
     required String mlsGroupId,
     required String senderParentKey,
@@ -539,9 +598,15 @@ class AppDatabase extends _$AppDatabase {
     String? downloadError,
   }) async {
     final received = receivedAt ?? DateTime.now();
+    final remoteShareId = buildRemoteShareId(
+      senderParentKey: senderParentKey,
+      mlsGroupId: mlsGroupId,
+      videoId: videoId,
+    );
 
     await into(remoteAssets).insertOnConflictUpdate(
       RemoteAssetsCompanion(
+        remoteShareId: Value(remoteShareId),
         videoId: Value(videoId),
         blobHash: Value(blobHash),
         thumbHash: Value(thumbHash),
@@ -554,17 +619,14 @@ class AppDatabase extends _$AppDatabase {
     );
 
     final existing =
-        await (select(shareRecords)..where(
-              (tbl) =>
-                  tbl.videoId.equals(videoId) &
-                  tbl.mlsGroupId.equals(mlsGroupId) &
-                  tbl.senderParentKey.equals(senderParentKey),
-            ))
+        await (select(shareRecords)
+              ..where((tbl) => tbl.remoteShareId.equals(remoteShareId)))
             .getSingleOrNull();
 
     if (existing == null) {
       await into(shareRecords).insert(
         ShareRecordsCompanion.insert(
+          remoteShareId: remoteShareId,
           videoId: videoId,
           mlsGroupId: mlsGroupId,
           senderParentKey: senderParentKey,
@@ -575,12 +637,12 @@ class AppDatabase extends _$AppDatabase {
           downloadError: Value(downloadError),
         ),
       );
-      return;
+      return remoteShareId;
     }
 
     await (update(
       shareRecords,
-    )..where((tbl) => tbl.id.equals(existing.id))).write(
+    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
       ShareRecordsCompanion(
         childDisplayName: Value(childDisplayName),
         status: Value(status),
@@ -588,43 +650,48 @@ class AppDatabase extends _$AppDatabase {
         downloadError: Value(downloadError),
       ),
     );
+    return remoteShareId;
   }
 
-  Future<RemoteAsset?> getRemoteAssetByVideoId(String videoId) {
-    return (select(
-      remoteAssets,
-    )..where((tbl) => tbl.videoId.equals(videoId))).getSingleOrNull();
+  Future<RemoteAsset?> getRemoteAssetByRemoteShareId(String remoteShareId) {
+    return (select(remoteAssets)
+          ..where((tbl) => tbl.remoteShareId.equals(remoteShareId)))
+        .getSingleOrNull();
   }
 
-  Future<RemoteShareProjection?> getRemoteShareProjectionByVideoId(
-    String videoId,
+  Future<RemoteShareProjection?> getRemoteShareProjectionByRemoteShareId(
+    String remoteShareId,
   ) {
-    return watchRemoteShareProjectionByVideoId(videoId).first;
+    return watchRemoteShareProjectionByRemoteShareId(remoteShareId).first;
   }
 
   Future<void> updateRemoteAssetCache({
-    required String videoId,
+    required String remoteShareId,
     String? localMediaPath,
     String? localThumbPath,
   }) {
     return (update(
       remoteAssets,
-    )..where((tbl) => tbl.videoId.equals(videoId))).write(
+    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
       RemoteAssetsCompanion(
-        localMediaPath: Value(localMediaPath),
-        localThumbPath: Value(localThumbPath),
+        localMediaPath: localMediaPath == null
+            ? const Value.absent()
+            : Value(localMediaPath),
+        localThumbPath: localThumbPath == null
+            ? const Value.absent()
+            : Value(localThumbPath),
       ),
     );
   }
 
   Future<void> updateRemoteShareStatus({
-    required String videoId,
+    required String remoteShareId,
     required String status,
     String? downloadError,
   }) {
     return (update(
       shareRecords,
-    )..where((tbl) => tbl.videoId.equals(videoId))).write(
+    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
       ShareRecordsCompanion(
         status: Value(status),
         downloadError: Value(downloadError),
@@ -632,12 +699,10 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<void> purgeRemoteAssetCache({
-    required String videoId,
-  }) {
+  Future<void> purgeRemoteAssetCache({required String remoteShareId}) {
     return (update(
       remoteAssets,
-    )..where((tbl) => tbl.videoId.equals(videoId))).write(
+    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
       const RemoteAssetsCompanion(
         localMediaPath: Value(null),
         localThumbPath: Value(null),
@@ -646,12 +711,12 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> markRemoteShareDeleted({
-    required String videoId,
+    required String remoteShareId,
     String? reason,
   }) {
     return (update(
       shareRecords,
-    )..where((tbl) => tbl.videoId.equals(videoId))).write(
+    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
       ShareRecordsCompanion(
         status: const Value('deleted'),
         downloadError: Value(reason),
@@ -765,6 +830,7 @@ class AppDatabase extends _$AppDatabase {
     final asset = row.readTable(remoteAssets);
 
     return RemoteShareProjection(
+      remoteShareId: share.remoteShareId,
       videoId: share.videoId,
       mlsGroupId: share.mlsGroupId,
       senderParentKey: share.senderParentKey,

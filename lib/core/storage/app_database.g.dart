@@ -2109,6 +2109,17 @@ class $RemoteAssetsTable extends RemoteAssets
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $RemoteAssetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _remoteShareIdMeta = const VerificationMeta(
+    'remoteShareId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteShareId = GeneratedColumn<String>(
+    'remote_share_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _videoIdMeta = const VerificationMeta(
     'videoId',
   );
@@ -2195,6 +2206,7 @@ class $RemoteAssetsTable extends RemoteAssets
   );
   @override
   List<GeneratedColumn> get $columns => [
+    remoteShareId,
     videoId,
     blobHash,
     thumbHash,
@@ -2216,6 +2228,17 @@ class $RemoteAssetsTable extends RemoteAssets
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('remote_share_id')) {
+      context.handle(
+        _remoteShareIdMeta,
+        remoteShareId.isAcceptableOrUnknown(
+          data['remote_share_id']!,
+          _remoteShareIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteShareIdMeta);
+    }
     if (data.containsKey('video_id')) {
       context.handle(
         _videoIdMeta,
@@ -2279,11 +2302,15 @@ class $RemoteAssetsTable extends RemoteAssets
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {videoId};
+  Set<GeneratedColumn> get $primaryKey => {remoteShareId};
   @override
   RemoteAsset map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return RemoteAsset(
+      remoteShareId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_share_id'],
+      )!,
       videoId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}video_id'],
@@ -2326,6 +2353,7 @@ class $RemoteAssetsTable extends RemoteAssets
 }
 
 class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
+  final String remoteShareId;
   final String videoId;
   final String? blobHash;
   final String? thumbHash;
@@ -2335,6 +2363,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   final String? localMediaPath;
   final String? localThumbPath;
   const RemoteAsset({
+    required this.remoteShareId,
     required this.videoId,
     this.blobHash,
     this.thumbHash,
@@ -2347,6 +2376,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['remote_share_id'] = Variable<String>(remoteShareId);
     map['video_id'] = Variable<String>(videoId);
     if (!nullToAbsent || blobHash != null) {
       map['blob_hash'] = Variable<String>(blobHash);
@@ -2374,6 +2404,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
 
   RemoteAssetsCompanion toCompanion(bool nullToAbsent) {
     return RemoteAssetsCompanion(
+      remoteShareId: Value(remoteShareId),
       videoId: Value(videoId),
       blobHash: blobHash == null && nullToAbsent
           ? const Value.absent()
@@ -2403,6 +2434,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return RemoteAsset(
+      remoteShareId: serializer.fromJson<String>(json['remoteShareId']),
       videoId: serializer.fromJson<String>(json['videoId']),
       blobHash: serializer.fromJson<String?>(json['blobHash']),
       thumbHash: serializer.fromJson<String?>(json['thumbHash']),
@@ -2417,6 +2449,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'remoteShareId': serializer.toJson<String>(remoteShareId),
       'videoId': serializer.toJson<String>(videoId),
       'blobHash': serializer.toJson<String?>(blobHash),
       'thumbHash': serializer.toJson<String?>(thumbHash),
@@ -2429,6 +2462,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   }
 
   RemoteAsset copyWith({
+    String? remoteShareId,
     String? videoId,
     Value<String?> blobHash = const Value.absent(),
     Value<String?> thumbHash = const Value.absent(),
@@ -2438,6 +2472,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
     Value<String?> localMediaPath = const Value.absent(),
     Value<String?> localThumbPath = const Value.absent(),
   }) => RemoteAsset(
+    remoteShareId: remoteShareId ?? this.remoteShareId,
     videoId: videoId ?? this.videoId,
     blobHash: blobHash.present ? blobHash.value : this.blobHash,
     thumbHash: thumbHash.present ? thumbHash.value : this.thumbHash,
@@ -2453,6 +2488,9 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   );
   RemoteAsset copyWithCompanion(RemoteAssetsCompanion data) {
     return RemoteAsset(
+      remoteShareId: data.remoteShareId.present
+          ? data.remoteShareId.value
+          : this.remoteShareId,
       videoId: data.videoId.present ? data.videoId.value : this.videoId,
       blobHash: data.blobHash.present ? data.blobHash.value : this.blobHash,
       thumbHash: data.thumbHash.present ? data.thumbHash.value : this.thumbHash,
@@ -2473,6 +2511,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   @override
   String toString() {
     return (StringBuffer('RemoteAsset(')
+          ..write('remoteShareId: $remoteShareId, ')
           ..write('videoId: $videoId, ')
           ..write('blobHash: $blobHash, ')
           ..write('thumbHash: $thumbHash, ')
@@ -2487,6 +2526,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
 
   @override
   int get hashCode => Object.hash(
+    remoteShareId,
     videoId,
     blobHash,
     thumbHash,
@@ -2500,6 +2540,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is RemoteAsset &&
+          other.remoteShareId == this.remoteShareId &&
           other.videoId == this.videoId &&
           other.blobHash == this.blobHash &&
           other.thumbHash == this.thumbHash &&
@@ -2511,6 +2552,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
 }
 
 class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
+  final Value<String> remoteShareId;
   final Value<String> videoId;
   final Value<String?> blobHash;
   final Value<String?> thumbHash;
@@ -2521,6 +2563,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
   final Value<String?> localThumbPath;
   final Value<int> rowid;
   const RemoteAssetsCompanion({
+    this.remoteShareId = const Value.absent(),
     this.videoId = const Value.absent(),
     this.blobHash = const Value.absent(),
     this.thumbHash = const Value.absent(),
@@ -2532,6 +2575,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     this.rowid = const Value.absent(),
   });
   RemoteAssetsCompanion.insert({
+    required String remoteShareId,
     required String videoId,
     this.blobHash = const Value.absent(),
     this.thumbHash = const Value.absent(),
@@ -2541,8 +2585,10 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     this.localMediaPath = const Value.absent(),
     this.localThumbPath = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : videoId = Value(videoId);
+  }) : remoteShareId = Value(remoteShareId),
+       videoId = Value(videoId);
   static Insertable<RemoteAsset> custom({
+    Expression<String>? remoteShareId,
     Expression<String>? videoId,
     Expression<String>? blobHash,
     Expression<String>? thumbHash,
@@ -2554,6 +2600,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (remoteShareId != null) 'remote_share_id': remoteShareId,
       if (videoId != null) 'video_id': videoId,
       if (blobHash != null) 'blob_hash': blobHash,
       if (thumbHash != null) 'thumb_hash': thumbHash,
@@ -2567,6 +2614,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
   }
 
   RemoteAssetsCompanion copyWith({
+    Value<String>? remoteShareId,
     Value<String>? videoId,
     Value<String?>? blobHash,
     Value<String?>? thumbHash,
@@ -2578,6 +2626,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     Value<int>? rowid,
   }) {
     return RemoteAssetsCompanion(
+      remoteShareId: remoteShareId ?? this.remoteShareId,
       videoId: videoId ?? this.videoId,
       blobHash: blobHash ?? this.blobHash,
       thumbHash: thumbHash ?? this.thumbHash,
@@ -2593,6 +2642,9 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (remoteShareId.present) {
+      map['remote_share_id'] = Variable<String>(remoteShareId.value);
+    }
     if (videoId.present) {
       map['video_id'] = Variable<String>(videoId.value);
     }
@@ -2626,6 +2678,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
   @override
   String toString() {
     return (StringBuffer('RemoteAssetsCompanion(')
+          ..write('remoteShareId: $remoteShareId, ')
           ..write('videoId: $videoId, ')
           ..write('blobHash: $blobHash, ')
           ..write('thumbHash: $thumbHash, ')
@@ -2646,17 +2699,18 @@ class $ShareRecordsTable extends ShareRecords
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $ShareRecordsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  static const VerificationMeta _remoteShareIdMeta = const VerificationMeta(
+    'remoteShareId',
+  );
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
+  late final GeneratedColumn<String> remoteShareId = GeneratedColumn<String>(
+    'remote_share_id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
+      'REFERENCES remote_assets (remote_share_id)',
     ),
   );
   static const VerificationMeta _videoIdMeta = const VerificationMeta(
@@ -2669,9 +2723,6 @@ class $ShareRecordsTable extends ShareRecords
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES remote_assets (video_id)',
-    ),
   );
   static const VerificationMeta _mlsGroupIdMeta = const VerificationMeta(
     'mlsGroupId',
@@ -2751,7 +2802,7 @@ class $ShareRecordsTable extends ShareRecords
   );
   @override
   List<GeneratedColumn> get $columns => [
-    id,
+    remoteShareId,
     videoId,
     mlsGroupId,
     senderParentKey,
@@ -2773,8 +2824,16 @@ class $ShareRecordsTable extends ShareRecords
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    if (data.containsKey('remote_share_id')) {
+      context.handle(
+        _remoteShareIdMeta,
+        remoteShareId.isAcceptableOrUnknown(
+          data['remote_share_id']!,
+          _remoteShareIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteShareIdMeta);
     }
     if (data.containsKey('video_id')) {
       context.handle(
@@ -2853,14 +2912,14 @@ class $ShareRecordsTable extends ShareRecords
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => {remoteShareId};
   @override
   ShareRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ShareRecord(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
+      remoteShareId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_share_id'],
       )!,
       videoId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -2904,7 +2963,7 @@ class $ShareRecordsTable extends ShareRecords
 }
 
 class ShareRecord extends DataClass implements Insertable<ShareRecord> {
-  final int id;
+  final String remoteShareId;
   final String videoId;
   final String mlsGroupId;
   final String senderParentKey;
@@ -2914,7 +2973,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   final DateTime receivedAt;
   final String? downloadError;
   const ShareRecord({
-    required this.id,
+    required this.remoteShareId,
     required this.videoId,
     required this.mlsGroupId,
     required this.senderParentKey,
@@ -2927,7 +2986,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['remote_share_id'] = Variable<String>(remoteShareId);
     map['video_id'] = Variable<String>(videoId);
     map['mls_group_id'] = Variable<String>(mlsGroupId);
     map['sender_parent_key'] = Variable<String>(senderParentKey);
@@ -2945,7 +3004,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
 
   ShareRecordsCompanion toCompanion(bool nullToAbsent) {
     return ShareRecordsCompanion(
-      id: Value(id),
+      remoteShareId: Value(remoteShareId),
       videoId: Value(videoId),
       mlsGroupId: Value(mlsGroupId),
       senderParentKey: Value(senderParentKey),
@@ -2967,7 +3026,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ShareRecord(
-      id: serializer.fromJson<int>(json['id']),
+      remoteShareId: serializer.fromJson<String>(json['remoteShareId']),
       videoId: serializer.fromJson<String>(json['videoId']),
       mlsGroupId: serializer.fromJson<String>(json['mlsGroupId']),
       senderParentKey: serializer.fromJson<String>(json['senderParentKey']),
@@ -2982,7 +3041,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'remoteShareId': serializer.toJson<String>(remoteShareId),
       'videoId': serializer.toJson<String>(videoId),
       'mlsGroupId': serializer.toJson<String>(mlsGroupId),
       'senderParentKey': serializer.toJson<String>(senderParentKey),
@@ -2995,7 +3054,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   }
 
   ShareRecord copyWith({
-    int? id,
+    String? remoteShareId,
     String? videoId,
     String? mlsGroupId,
     String? senderParentKey,
@@ -3005,7 +3064,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
     DateTime? receivedAt,
     Value<String?> downloadError = const Value.absent(),
   }) => ShareRecord(
-    id: id ?? this.id,
+    remoteShareId: remoteShareId ?? this.remoteShareId,
     videoId: videoId ?? this.videoId,
     mlsGroupId: mlsGroupId ?? this.mlsGroupId,
     senderParentKey: senderParentKey ?? this.senderParentKey,
@@ -3021,7 +3080,9 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   );
   ShareRecord copyWithCompanion(ShareRecordsCompanion data) {
     return ShareRecord(
-      id: data.id.present ? data.id.value : this.id,
+      remoteShareId: data.remoteShareId.present
+          ? data.remoteShareId.value
+          : this.remoteShareId,
       videoId: data.videoId.present ? data.videoId.value : this.videoId,
       mlsGroupId: data.mlsGroupId.present
           ? data.mlsGroupId.value
@@ -3048,7 +3109,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   @override
   String toString() {
     return (StringBuffer('ShareRecord(')
-          ..write('id: $id, ')
+          ..write('remoteShareId: $remoteShareId, ')
           ..write('videoId: $videoId, ')
           ..write('mlsGroupId: $mlsGroupId, ')
           ..write('senderParentKey: $senderParentKey, ')
@@ -3063,7 +3124,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
 
   @override
   int get hashCode => Object.hash(
-    id,
+    remoteShareId,
     videoId,
     mlsGroupId,
     senderParentKey,
@@ -3077,7 +3138,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ShareRecord &&
-          other.id == this.id &&
+          other.remoteShareId == this.remoteShareId &&
           other.videoId == this.videoId &&
           other.mlsGroupId == this.mlsGroupId &&
           other.senderParentKey == this.senderParentKey &&
@@ -3089,7 +3150,7 @@ class ShareRecord extends DataClass implements Insertable<ShareRecord> {
 }
 
 class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
-  final Value<int> id;
+  final Value<String> remoteShareId;
   final Value<String> videoId;
   final Value<String> mlsGroupId;
   final Value<String> senderParentKey;
@@ -3098,8 +3159,9 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
   final Value<String> status;
   final Value<DateTime> receivedAt;
   final Value<String?> downloadError;
+  final Value<int> rowid;
   const ShareRecordsCompanion({
-    this.id = const Value.absent(),
+    this.remoteShareId = const Value.absent(),
     this.videoId = const Value.absent(),
     this.mlsGroupId = const Value.absent(),
     this.senderParentKey = const Value.absent(),
@@ -3108,9 +3170,10 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
     this.status = const Value.absent(),
     this.receivedAt = const Value.absent(),
     this.downloadError = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   ShareRecordsCompanion.insert({
-    this.id = const Value.absent(),
+    required String remoteShareId,
     required String videoId,
     required String mlsGroupId,
     required String senderParentKey,
@@ -3119,13 +3182,15 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
     this.status = const Value.absent(),
     required DateTime receivedAt,
     this.downloadError = const Value.absent(),
-  }) : videoId = Value(videoId),
+    this.rowid = const Value.absent(),
+  }) : remoteShareId = Value(remoteShareId),
+       videoId = Value(videoId),
        mlsGroupId = Value(mlsGroupId),
        senderParentKey = Value(senderParentKey),
        childProfileId = Value(childProfileId),
        receivedAt = Value(receivedAt);
   static Insertable<ShareRecord> custom({
-    Expression<int>? id,
+    Expression<String>? remoteShareId,
     Expression<String>? videoId,
     Expression<String>? mlsGroupId,
     Expression<String>? senderParentKey,
@@ -3134,9 +3199,10 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
     Expression<String>? status,
     Expression<DateTime>? receivedAt,
     Expression<String>? downloadError,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      if (id != null) 'id': id,
+      if (remoteShareId != null) 'remote_share_id': remoteShareId,
       if (videoId != null) 'video_id': videoId,
       if (mlsGroupId != null) 'mls_group_id': mlsGroupId,
       if (senderParentKey != null) 'sender_parent_key': senderParentKey,
@@ -3145,11 +3211,12 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
       if (status != null) 'status': status,
       if (receivedAt != null) 'received_at': receivedAt,
       if (downloadError != null) 'download_error': downloadError,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   ShareRecordsCompanion copyWith({
-    Value<int>? id,
+    Value<String>? remoteShareId,
     Value<String>? videoId,
     Value<String>? mlsGroupId,
     Value<String>? senderParentKey,
@@ -3158,9 +3225,10 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
     Value<String>? status,
     Value<DateTime>? receivedAt,
     Value<String?>? downloadError,
+    Value<int>? rowid,
   }) {
     return ShareRecordsCompanion(
-      id: id ?? this.id,
+      remoteShareId: remoteShareId ?? this.remoteShareId,
       videoId: videoId ?? this.videoId,
       mlsGroupId: mlsGroupId ?? this.mlsGroupId,
       senderParentKey: senderParentKey ?? this.senderParentKey,
@@ -3169,14 +3237,15 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
       status: status ?? this.status,
       receivedAt: receivedAt ?? this.receivedAt,
       downloadError: downloadError ?? this.downloadError,
+      rowid: rowid ?? this.rowid,
     );
   }
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
+    if (remoteShareId.present) {
+      map['remote_share_id'] = Variable<String>(remoteShareId.value);
     }
     if (videoId.present) {
       map['video_id'] = Variable<String>(videoId.value);
@@ -3202,13 +3271,16 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
     if (downloadError.present) {
       map['download_error'] = Variable<String>(downloadError.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
   @override
   String toString() {
     return (StringBuffer('ShareRecordsCompanion(')
-          ..write('id: $id, ')
+          ..write('remoteShareId: $remoteShareId, ')
           ..write('videoId: $videoId, ')
           ..write('mlsGroupId: $mlsGroupId, ')
           ..write('senderParentKey: $senderParentKey, ')
@@ -3216,7 +3288,8 @@ class ShareRecordsCompanion extends UpdateCompanion<ShareRecord> {
           ..write('childDisplayName: $childDisplayName, ')
           ..write('status: $status, ')
           ..write('receivedAt: $receivedAt, ')
-          ..write('downloadError: $downloadError')
+          ..write('downloadError: $downloadError, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -6724,6 +6797,7 @@ typedef $$LocalVideosTableProcessedTableManager =
     >;
 typedef $$RemoteAssetsTableCreateCompanionBuilder =
     RemoteAssetsCompanion Function({
+      required String remoteShareId,
       required String videoId,
       Value<String?> blobHash,
       Value<String?> thumbHash,
@@ -6736,6 +6810,7 @@ typedef $$RemoteAssetsTableCreateCompanionBuilder =
     });
 typedef $$RemoteAssetsTableUpdateCompanionBuilder =
     RemoteAssetsCompanion Function({
+      Value<String> remoteShareId,
       Value<String> videoId,
       Value<String?> blobHash,
       Value<String?> thumbHash,
@@ -6755,15 +6830,17 @@ final class $$RemoteAssetsTableReferences
   _shareRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.shareRecords,
     aliasName: $_aliasNameGenerator(
-      db.remoteAssets.videoId,
-      db.shareRecords.videoId,
+      db.remoteAssets.remoteShareId,
+      db.shareRecords.remoteShareId,
     ),
   );
 
   $$ShareRecordsTableProcessedTableManager get shareRecordsRefs {
     final manager = $$ShareRecordsTableTableManager($_db, $_db.shareRecords)
         .filter(
-          (f) => f.videoId.videoId.sqlEquals($_itemColumn<String>('video_id')!),
+          (f) => f.remoteShareId.remoteShareId.sqlEquals(
+            $_itemColumn<String>('remote_share_id')!,
+          ),
         );
 
     final cache = $_typedResult.readTableOrNull(_shareRecordsRefsTable($_db));
@@ -6782,6 +6859,11 @@ class $$RemoteAssetsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get remoteShareId => $composableBuilder(
+    column: $table.remoteShareId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get videoId => $composableBuilder(
     column: $table.videoId,
     builder: (column) => ColumnFilters(column),
@@ -6827,9 +6909,9 @@ class $$RemoteAssetsTableFilterComposer
   ) {
     final $$ShareRecordsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.videoId,
+      getCurrentColumn: (t) => t.remoteShareId,
       referencedTable: $db.shareRecords,
-      getReferencedColumn: (t) => t.videoId,
+      getReferencedColumn: (t) => t.remoteShareId,
       builder:
           (
             joinBuilder, {
@@ -6857,6 +6939,11 @@ class $$RemoteAssetsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get remoteShareId => $composableBuilder(
+    column: $table.remoteShareId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get videoId => $composableBuilder(
     column: $table.videoId,
     builder: (column) => ColumnOrderings(column),
@@ -6907,6 +6994,11 @@ class $$RemoteAssetsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get remoteShareId => $composableBuilder(
+    column: $table.remoteShareId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get videoId =>
       $composableBuilder(column: $table.videoId, builder: (column) => column);
 
@@ -6942,9 +7034,9 @@ class $$RemoteAssetsTableAnnotationComposer
   ) {
     final $$ShareRecordsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.videoId,
+      getCurrentColumn: (t) => t.remoteShareId,
       referencedTable: $db.shareRecords,
-      getReferencedColumn: (t) => t.videoId,
+      getReferencedColumn: (t) => t.remoteShareId,
       builder:
           (
             joinBuilder, {
@@ -6991,6 +7083,7 @@ class $$RemoteAssetsTableTableManager
               $$RemoteAssetsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> remoteShareId = const Value.absent(),
                 Value<String> videoId = const Value.absent(),
                 Value<String?> blobHash = const Value.absent(),
                 Value<String?> thumbHash = const Value.absent(),
@@ -7001,6 +7094,7 @@ class $$RemoteAssetsTableTableManager
                 Value<String?> localThumbPath = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RemoteAssetsCompanion(
+                remoteShareId: remoteShareId,
                 videoId: videoId,
                 blobHash: blobHash,
                 thumbHash: thumbHash,
@@ -7013,6 +7107,7 @@ class $$RemoteAssetsTableTableManager
               ),
           createCompanionCallback:
               ({
+                required String remoteShareId,
                 required String videoId,
                 Value<String?> blobHash = const Value.absent(),
                 Value<String?> thumbHash = const Value.absent(),
@@ -7023,6 +7118,7 @@ class $$RemoteAssetsTableTableManager
                 Value<String?> localThumbPath = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RemoteAssetsCompanion.insert(
+                remoteShareId: remoteShareId,
                 videoId: videoId,
                 blobHash: blobHash,
                 thumbHash: thumbHash,
@@ -7065,7 +7161,7 @@ class $$RemoteAssetsTableTableManager
                           ).shareRecordsRefs,
                       referencedItemsForCurrentItem: (item, referencedItems) =>
                           referencedItems.where(
-                            (e) => e.videoId == item.videoId,
+                            (e) => e.remoteShareId == item.remoteShareId,
                           ),
                       typedResults: items,
                     ),
@@ -7093,7 +7189,7 @@ typedef $$RemoteAssetsTableProcessedTableManager =
     >;
 typedef $$ShareRecordsTableCreateCompanionBuilder =
     ShareRecordsCompanion Function({
-      Value<int> id,
+      required String remoteShareId,
       required String videoId,
       required String mlsGroupId,
       required String senderParentKey,
@@ -7102,10 +7198,11 @@ typedef $$ShareRecordsTableCreateCompanionBuilder =
       Value<String> status,
       required DateTime receivedAt,
       Value<String?> downloadError,
+      Value<int> rowid,
     });
 typedef $$ShareRecordsTableUpdateCompanionBuilder =
     ShareRecordsCompanion Function({
-      Value<int> id,
+      Value<String> remoteShareId,
       Value<String> videoId,
       Value<String> mlsGroupId,
       Value<String> senderParentKey,
@@ -7114,25 +7211,29 @@ typedef $$ShareRecordsTableUpdateCompanionBuilder =
       Value<String> status,
       Value<DateTime> receivedAt,
       Value<String?> downloadError,
+      Value<int> rowid,
     });
 
 final class $$ShareRecordsTableReferences
     extends BaseReferences<_$AppDatabase, $ShareRecordsTable, ShareRecord> {
   $$ShareRecordsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $RemoteAssetsTable _videoIdTable(_$AppDatabase db) =>
+  static $RemoteAssetsTable _remoteShareIdTable(_$AppDatabase db) =>
       db.remoteAssets.createAlias(
-        $_aliasNameGenerator(db.shareRecords.videoId, db.remoteAssets.videoId),
+        $_aliasNameGenerator(
+          db.shareRecords.remoteShareId,
+          db.remoteAssets.remoteShareId,
+        ),
       );
 
-  $$RemoteAssetsTableProcessedTableManager get videoId {
-    final $_column = $_itemColumn<String>('video_id')!;
+  $$RemoteAssetsTableProcessedTableManager get remoteShareId {
+    final $_column = $_itemColumn<String>('remote_share_id')!;
 
     final manager = $$RemoteAssetsTableTableManager(
       $_db,
       $_db.remoteAssets,
-    ).filter((f) => f.videoId.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_videoIdTable($_db));
+    ).filter((f) => f.remoteShareId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_remoteShareIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -7149,8 +7250,8 @@ class $$ShareRecordsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
+  ColumnFilters<String> get videoId => $composableBuilder(
+    column: $table.videoId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7189,12 +7290,12 @@ class $$ShareRecordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  $$RemoteAssetsTableFilterComposer get videoId {
+  $$RemoteAssetsTableFilterComposer get remoteShareId {
     final $$RemoteAssetsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.videoId,
+      getCurrentColumn: (t) => t.remoteShareId,
       referencedTable: $db.remoteAssets,
-      getReferencedColumn: (t) => t.videoId,
+      getReferencedColumn: (t) => t.remoteShareId,
       builder:
           (
             joinBuilder, {
@@ -7222,8 +7323,8 @@ class $$ShareRecordsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
+  ColumnOrderings<String> get videoId => $composableBuilder(
+    column: $table.videoId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7262,12 +7363,12 @@ class $$ShareRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  $$RemoteAssetsTableOrderingComposer get videoId {
+  $$RemoteAssetsTableOrderingComposer get remoteShareId {
     final $$RemoteAssetsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.videoId,
+      getCurrentColumn: (t) => t.remoteShareId,
       referencedTable: $db.remoteAssets,
-      getReferencedColumn: (t) => t.videoId,
+      getReferencedColumn: (t) => t.remoteShareId,
       builder:
           (
             joinBuilder, {
@@ -7295,8 +7396,8 @@ class $$ShareRecordsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get videoId =>
+      $composableBuilder(column: $table.videoId, builder: (column) => column);
 
   GeneratedColumn<String> get mlsGroupId => $composableBuilder(
     column: $table.mlsGroupId,
@@ -7331,12 +7432,12 @@ class $$ShareRecordsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  $$RemoteAssetsTableAnnotationComposer get videoId {
+  $$RemoteAssetsTableAnnotationComposer get remoteShareId {
     final $$RemoteAssetsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.videoId,
+      getCurrentColumn: (t) => t.remoteShareId,
       referencedTable: $db.remoteAssets,
-      getReferencedColumn: (t) => t.videoId,
+      getReferencedColumn: (t) => t.remoteShareId,
       builder:
           (
             joinBuilder, {
@@ -7368,7 +7469,7 @@ class $$ShareRecordsTableTableManager
           $$ShareRecordsTableUpdateCompanionBuilder,
           (ShareRecord, $$ShareRecordsTableReferences),
           ShareRecord,
-          PrefetchHooks Function({bool videoId})
+          PrefetchHooks Function({bool remoteShareId})
         > {
   $$ShareRecordsTableTableManager(_$AppDatabase db, $ShareRecordsTable table)
     : super(
@@ -7383,7 +7484,7 @@ class $$ShareRecordsTableTableManager
               $$ShareRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                Value<String> remoteShareId = const Value.absent(),
                 Value<String> videoId = const Value.absent(),
                 Value<String> mlsGroupId = const Value.absent(),
                 Value<String> senderParentKey = const Value.absent(),
@@ -7392,8 +7493,9 @@ class $$ShareRecordsTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<DateTime> receivedAt = const Value.absent(),
                 Value<String?> downloadError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => ShareRecordsCompanion(
-                id: id,
+                remoteShareId: remoteShareId,
                 videoId: videoId,
                 mlsGroupId: mlsGroupId,
                 senderParentKey: senderParentKey,
@@ -7402,10 +7504,11 @@ class $$ShareRecordsTableTableManager
                 status: status,
                 receivedAt: receivedAt,
                 downloadError: downloadError,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                required String remoteShareId,
                 required String videoId,
                 required String mlsGroupId,
                 required String senderParentKey,
@@ -7414,8 +7517,9 @@ class $$ShareRecordsTableTableManager
                 Value<String> status = const Value.absent(),
                 required DateTime receivedAt,
                 Value<String?> downloadError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => ShareRecordsCompanion.insert(
-                id: id,
+                remoteShareId: remoteShareId,
                 videoId: videoId,
                 mlsGroupId: mlsGroupId,
                 senderParentKey: senderParentKey,
@@ -7424,6 +7528,7 @@ class $$ShareRecordsTableTableManager
                 status: status,
                 receivedAt: receivedAt,
                 downloadError: downloadError,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -7433,7 +7538,7 @@ class $$ShareRecordsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({videoId = false}) {
+          prefetchHooksCallback: ({remoteShareId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -7453,16 +7558,16 @@ class $$ShareRecordsTableTableManager
                       dynamic
                     >
                   >(state) {
-                    if (videoId) {
+                    if (remoteShareId) {
                       state =
                           state.withJoin(
                                 currentTable: table,
-                                currentColumn: table.videoId,
+                                currentColumn: table.remoteShareId,
                                 referencedTable: $$ShareRecordsTableReferences
-                                    ._videoIdTable(db),
+                                    ._remoteShareIdTable(db),
                                 referencedColumn: $$ShareRecordsTableReferences
-                                    ._videoIdTable(db)
-                                    .videoId,
+                                    ._remoteShareIdTable(db)
+                                    .remoteShareId,
                               )
                               as T;
                     }
@@ -7490,7 +7595,7 @@ typedef $$ShareRecordsTableProcessedTableManager =
       $$ShareRecordsTableUpdateCompanionBuilder,
       (ShareRecord, $$ShareRecordsTableReferences),
       ShareRecord,
-      PrefetchHooks Function({bool videoId})
+      PrefetchHooks Function({bool remoteShareId})
     >;
 typedef $$LikesTableCreateCompanionBuilder =
     LikesCompanion Function({

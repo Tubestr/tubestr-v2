@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,9 +19,11 @@ import '../../../shared_ui/reporting/feeling_report_sheet.dart';
 
 /// Full-screen video player matching v1 PlayerView design.
 class PlayerPage extends ConsumerStatefulWidget {
-  const PlayerPage({super.key, required this.videoId});
+  const PlayerPage({super.key, this.videoId, this.remoteShareId})
+    : assert(videoId != null || remoteShareId != null);
 
-  final String videoId;
+  final String? videoId;
+  final String? remoteShareId;
 
   @override
   ConsumerState<PlayerPage> createState() => _PlayerPageState();
@@ -33,6 +36,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   bool _isDownloadingRemote = false;
   bool _isSharingLocal = false;
   bool _isSendingLike = false;
+  int? _videoWidth;
+  int? _videoHeight;
 
   // Controls visibility
   bool _showControls = true;
@@ -48,7 +53,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _player = Player();
-    _videoController = VideoController(_player);
+    _videoController = VideoController(
+      _player,
+      configuration: VideoControllerConfiguration(
+        enableHardwareAcceleration: !(Platform.isAndroid && !kReleaseMode),
+      ),
+    );
     _player.stream.playing.listen((v) {
       if (mounted) setState(() => _playing = v);
     });
@@ -57,6 +67,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     });
     _player.stream.duration.listen((v) {
       if (mounted) setState(() => _duration = v);
+    });
+    _player.stream.width.listen((v) {
+      if (mounted) setState(() => _videoWidth = v);
+    });
+    _player.stream.height.listen((v) {
+      if (mounted) setState(() => _videoHeight = v);
     });
     _resetHideTimer();
   }
@@ -119,15 +135,26 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     return '$m:$s';
   }
 
+  double _resolvedAspectRatio() {
+    final width = _videoWidth;
+    final height = _videoHeight;
+    if (width != null && height != null && width > 0 && height > 0) {
+      return width / height;
+    }
+    return 9 / 16;
+  }
+
   @override
   Widget build(BuildContext context) {
     final videos =
         ref.watch(videosForSelectedProfileProvider).valueOrNull ?? const [];
-    final remoteShare = ref
-        .watch(remoteShareByVideoIdProvider(widget.videoId))
-        .valueOrNull;
+    final remoteShare = widget.remoteShareId == null
+        ? null
+        : ref.watch(remoteShareByIdProvider(widget.remoteShareId!)).valueOrNull;
     final profiles = ref.watch(profilesProvider).valueOrNull ?? const [];
-    final video = videos.firstWhereOrNull((v) => v.id == widget.videoId);
+    final video = widget.videoId == null
+        ? null
+        : videos.firstWhereOrNull((v) => v.id == widget.videoId);
     final palette = ref.watch(activeThemeProvider).palette;
     final identity = ref.watch(parentIdentityProvider).valueOrNull;
     final selectedProfileId = ref.watch(selectedProfileIdProvider);
@@ -150,18 +177,29 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         ? File(remoteThumbPath)
         : null;
     final hasRemoteThumb = remoteThumbFile?.existsSync() == true;
+    final senderProfile = remoteShare == null
+        ? null
+        : ref
+              .watch(resolvedParentProfileProvider(remoteShare.senderParentKey))
+              .valueOrNull;
     final title = video?.title ?? remoteMessage?.meta.title ?? 'Video';
     final subtitle = video != null
         ? video.tags.join(' · ')
         : remoteShare == null
         ? ''
-        : '${remoteShare.displayName} · ${remoteShare.status}';
-    final remoteLikeCount =
-        ref.watch(videoLikeCountProvider(widget.videoId)).valueOrNull ?? 0;
-    final remoteLikedByViewer =
-        ref.watch(remoteLikeForSelectedViewerProvider(widget.videoId))
-            .valueOrNull ??
-        false;
+        : '${senderProfile?.displayName ?? remoteShare.displayName} · ${remoteShare.displayName} · ${remoteShare.status}';
+    final remoteLikeCount = remoteShare == null
+        ? 0
+        : ref.watch(videoLikeCountProvider(remoteShare.videoId)).valueOrNull ??
+              0;
+    final remoteLikedByViewer = remoteShare == null
+        ? false
+        : ref
+                  .watch(
+                    remoteLikeForSelectedViewerProvider(remoteShare.videoId),
+                  )
+                  .valueOrNull ??
+              false;
     final isLiked = video?.liked ?? remoteLikedByViewer;
 
     final scrubValue = _duration.inMilliseconds > 0
@@ -197,7 +235,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             // Video player
             Center(
               child: AspectRatio(
-                aspectRatio: 16 / 9,
+                aspectRatio: _resolvedAspectRatio(),
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
@@ -352,8 +390,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       const SizedBox(width: 8),
                       _CircleBtn(
                         icon: Icons.flag_outlined,
-                        onTap:
-                            identity == null || selectedProfileId == null
+                        onTap: identity == null || selectedProfileId == null
                             ? null
                             : () async {
                                 final targetVideoId =
@@ -374,37 +411,55 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                       ),
                                       child: FeelingReportSheet(
                                         onSubmit: (submission) async {
-                                          final result = await ref
-                                              .read(reportCoordinatorProvider)
-                                              .submitReport(
-                                                identity: identity,
-                                                videoId: targetVideoId,
-                                                subjectChildId:
-                                                    selectedProfileId,
-                                                blobHash: remoteShare?.blobHash,
-                                                reporterChildId:
-                                                    selectedProfileId,
-                                                reason: submission.reason,
-                                                note: submission.note,
-                                                level: submission.level,
-                                                recipientType:
-                                                    submission.recipientType,
-                                              );
-                                          ref.invalidate(reportsProvider);
-                                          if (!context.mounted) {
-                                            return;
-                                          }
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                result.status == 'delivered'
-                                                    ? 'Report delivered'
-                                                    : 'Report saved (${result.status})',
+                                          final messenger =
+                                              ScaffoldMessenger.of(context);
+                                          try {
+                                            final result = await ref
+                                                .read(reportCoordinatorProvider)
+                                                .submitReport(
+                                                  identity: identity,
+                                                  videoId: targetVideoId,
+                                                  subjectChildId:
+                                                      selectedProfileId,
+                                                  blobHash:
+                                                      remoteShare?.blobHash,
+                                                  reporterChildId:
+                                                      selectedProfileId,
+                                                  reason: submission.reason,
+                                                  note: submission.note,
+                                                  level: submission.level,
+                                                  recipientType:
+                                                      submission.recipientType,
+                                                );
+                                            ref.invalidate(reportsProvider);
+                                            ref.invalidate(
+                                              offlineActionsProvider,
+                                            );
+                                            if (!context.mounted) {
+                                              return;
+                                            }
+                                            await HapticFeedback.mediumImpact();
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  result.status == 'delivered'
+                                                      ? 'Report delivered'
+                                                      : 'Report saved (${result.status})',
+                                                ),
                                               ),
-                                            ),
-                                          );
+                                            );
+                                          } catch (error) {
+                                            ref.invalidate(reportsProvider);
+                                            ref.invalidate(
+                                              offlineActionsProvider,
+                                            );
+                                            if (!context.mounted) {
+                                              return;
+                                            }
+                                            messenger.showSnackBar(
+                                              SnackBar(content: Text('$error')),
+                                            );
+                                          }
                                         },
                                       ),
                                     );
@@ -501,6 +556,19 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                           childProfileId: selectedProfileId,
                                           mlsGroupIdHex: remoteShare.mlsGroupId,
                                         );
+                                    ref.invalidate(offlineActionsProvider);
+                                    await HapticFeedback.selectionClick();
+                                  } catch (error) {
+                                    ref.invalidate(offlineActionsProvider);
+                                    if (!mounted) {
+                                      return;
+                                    }
+                                    final messenger = ScaffoldMessenger.of(
+                                      this.context,
+                                    );
+                                    messenger.showSnackBar(
+                                      SnackBar(content: Text('$error')),
+                                    );
                                   } finally {
                                     if (mounted) {
                                       setState(() => _isSendingLike = false);
@@ -653,15 +721,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   Future<void> _downloadRemoteShare(RemoteShareProjection remoteShare) async {
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isDownloadingRemote = true);
     try {
       await ref.read(remoteMediaServiceProvider).downloadVideo(remoteShare);
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Shared video downloaded')));
+      await HapticFeedback.lightImpact();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Shared video downloaded')),
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -688,43 +758,35 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isSharingLocal = true);
     try {
-      final primaryGroupId = await ref
-          .read(appDatabaseProvider)
-          .getPrimaryGroupIdForProfile(localVideo.profileId);
-      final fallbackGroup =
-          (await ref.read(mdkServiceProvider).getGroupSummaries()).firstOrNull;
-      final targetGroupId = primaryGroupId ?? fallbackGroup?.mlsGroupIdHex;
-      if (targetGroupId == null || targetGroupId.isEmpty) {
-        throw StateError(
-          'Create or join a family connection in Parent Zone first.',
-        );
-      }
-
-      final event = await ref
+      final dispatchResult = await ref
           .read(videoShareCoordinatorProvider)
-          .createUploadedShareMessage(
+          .shareLocalVideoToEligibleGroups(
             identity: identity,
-            localVideo: localVideo,
+            videoId: localVideo.id,
+            profileId: localVideo.profileId,
             childDisplayName: childDisplayName,
-            mlsGroupIdHex: targetGroupId,
           );
-      final relays = await ref.read(nostrServiceProvider).loadRelayList();
-      await ref
-          .read(videoShareCoordinatorProvider)
-          .publishSignedGroupMessage(
-            identity: identity,
-            signedEventJson: event.wrapperEventJson,
-            relays: relays,
-          );
+      ref.invalidate(offlineActionsProvider);
+      ref.invalidate(shareHistoryProvider);
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Shared "${localVideo.title}" with your family'),
-        ),
-      );
+      await HapticFeedback.mediumImpact();
+      final message = switch ((
+        dispatchResult.sharedGroupCount,
+        dispatchResult.queuedGroupCount,
+      )) {
+        (0, final queued) when queued > 0 =>
+          'Queued "${localVideo.title}" for $queued family space${queued == 1 ? '' : 's'}',
+        (final shared, 0) when shared > 0 =>
+          'Shared "${localVideo.title}" with $shared family space${shared == 1 ? '' : 's'}',
+        (final shared, final queued) =>
+          'Shared to $shared family space${shared == 1 ? '' : 's'}, queued $queued more',
+      };
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
+      ref.invalidate(offlineActionsProvider);
+      ref.invalidate(shareHistoryProvider);
       if (!mounted) {
         return;
       }

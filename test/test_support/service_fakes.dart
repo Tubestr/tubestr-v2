@@ -1,12 +1,34 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/blossom/blossom_client.dart';
+import 'package:mytube/services/identity/identity_service.dart';
 import 'package:mytube/services/mdk/mdk_service.dart';
 import 'package:mytube/services/nostr/nostr_service.dart';
 import 'package:ndk/entities.dart';
 import 'package:ndk/ndk.dart';
+
+MdkGroupSummary fakeGroupSummary({
+  required String mlsGroupIdHex,
+  required String nostrGroupIdHex,
+  required String name,
+  required String description,
+  required int memberCount,
+  List<String> adminPubkeysHex = const ['parent-pubkey'],
+}) {
+  return MdkGroupSummary(
+    mlsGroupIdHex: mlsGroupIdHex,
+    nostrGroupIdHex: nostrGroupIdHex,
+    name: name,
+    description: description,
+    memberCount: memberCount,
+    adminPubkeysHex: adminPubkeysHex,
+  );
+}
 
 class FakeBlossomClient extends BlossomClient {
   FakeBlossomClient({this.unavailableServer = 'https://snapshot.example'})
@@ -16,6 +38,9 @@ class FakeBlossomClient extends BlossomClient {
   final List<List<String>> attempts = [];
   final List<String> reportedServers = [];
   final List<String> reportedEventJsons = [];
+  final List<String> uploadServers = [];
+  final List<String?> uploadAuthHeaders = [];
+  final Set<String> failingUploadServers = <String>{};
 
   @override
   Future<List<int>> downloadBlob({
@@ -30,6 +55,25 @@ class FakeBlossomClient extends BlossomClient {
   }
 
   @override
+  Future<UploadedBlob> uploadEncryptedBlob({
+    required String server,
+    required List<int> bytes,
+    required String mimeType,
+    BlossomUploadAuth? auth,
+  }) async {
+    if (failingUploadServers.contains(server)) {
+      throw StateError('upload failed for $server');
+    }
+    uploadServers.add(server);
+    uploadAuthHeaders.add(auth?.authorizationHeaderValue);
+    return UploadedBlob(
+      hash: sha256.convert(bytes).toString(),
+      length: bytes.length,
+      server: server,
+    );
+  }
+
+  @override
   Future<void> reportBlob({
     required String server,
     required String eventJson,
@@ -37,6 +81,16 @@ class FakeBlossomClient extends BlossomClient {
     reportedServers.add(server);
     reportedEventJsons.add(eventJson);
   }
+}
+
+class FakeIdentityService extends IdentityService {
+  FakeIdentityService({required this.identity, required super.database})
+    : super(secureStorage: const FlutterSecureStorage());
+
+  final ParentIdentity? identity;
+
+  @override
+  Future<ParentIdentity?> loadIdentity() async => identity;
 }
 
 class FakeMdkService extends MdkService {
@@ -55,8 +109,12 @@ class FakeMdkService extends MdkService {
   String? lastAcceptedWelcomeEventId;
   int? lastCreatedMessageKind;
   String? lastCreatedMessageGroupId;
+  final List<String> createdMessageGroupIds = [];
   String? lastCreatedMessageContent;
+  int? lastCreatedMessageCreatedAt;
   List<String>? lastRemovedMemberPubkeys;
+  String? lastCreateGroupName;
+  String? lastCreateGroupDescription;
 
   @override
   Future<void> ensureInitialized() async {}
@@ -77,7 +135,20 @@ class FakeMdkService extends MdkService {
     required List<String> relays,
     List<String> memberKeyPackageEventJsons = const [],
   }) async {
-    return createGroupResult!;
+    lastCreateGroupName = name;
+    lastCreateGroupDescription = description;
+    final result = createGroupResult!;
+    return MdkCreateGroupResult(
+      group: MdkGroupSummary(
+        mlsGroupIdHex: result.group.mlsGroupIdHex,
+        nostrGroupIdHex: result.group.nostrGroupIdHex,
+        name: name,
+        description: description,
+        memberCount: result.group.memberCount,
+        adminPubkeysHex: result.group.adminPubkeysHex,
+      ),
+      welcomeRumorJsons: result.welcomeRumorJsons,
+    );
   }
 
   @override
@@ -88,8 +159,17 @@ class FakeMdkService extends MdkService {
     required List<String> relays,
     List<String> memberKeyPackageEventJsons = const [],
   }) async {
-    return createGroupSummaryResult ??
-        createGroupResult!.group;
+    lastCreateGroupName = name;
+    lastCreateGroupDescription = description;
+    final result = createGroupSummaryResult ?? createGroupResult!.group;
+    return MdkGroupSummary(
+      mlsGroupIdHex: result.mlsGroupIdHex,
+      nostrGroupIdHex: result.nostrGroupIdHex,
+      name: name,
+      description: description,
+      memberCount: result.memberCount,
+      adminPubkeysHex: result.adminPubkeysHex,
+    );
   }
 
   @override
@@ -130,9 +210,7 @@ class FakeMdkService extends MdkService {
   }
 
   @override
-  Future<List<String>> getGroupMembers({
-    required String mlsGroupIdHex,
-  }) async {
+  Future<List<String>> getGroupMembers({required String mlsGroupIdHex}) async {
     return groupMembersResult;
   }
 
@@ -161,7 +239,9 @@ class FakeMdkService extends MdkService {
   }) async {
     lastCreatedMessageKind = kind;
     lastCreatedMessageGroupId = mlsGroupIdHex;
+    createdMessageGroupIds.add(mlsGroupIdHex);
     lastCreatedMessageContent = content;
+    lastCreatedMessageCreatedAt = createdAt;
     return createdMessageResult ??
         MdkCreatedMessage(
           wrapperEventJson: '{"id":"wrapped"}',
@@ -187,6 +267,28 @@ class FakeMdkService extends MdkService {
   }
 
   @override
+  Future<MdkEncryptedMedia> encryptMedia({
+    required String mlsGroupIdHex,
+    required List<int> bytes,
+    required String mimeType,
+    required String filename,
+  }) async {
+    final encryptedBytes = List<int>.from(utf8.encode('ciphertext-$filename'));
+    return MdkEncryptedMedia(
+      encryptedBytes: encryptedBytes,
+      encryptedHashHex: sha256.convert(encryptedBytes).toString(),
+      originalHashHex: sha256.convert(bytes).toString(),
+      mimeType: mimeType,
+      filename: filename,
+      originalSize: bytes.length,
+      encryptedSize: encryptedBytes.length,
+      nonceHex: 'nonce-$filename',
+      schemeVersion: 'mip04-v2',
+      epoch: 1,
+    );
+  }
+
+  @override
   Future<MdkProcessedMessage> processMessageEvent({
     required String eventJson,
   }) async {
@@ -198,16 +300,23 @@ class FakeNostrService implements NostrService {
   String? lastPublishedEventJson;
   String? lastGiftWrapRumorJson;
   String? lastGiftWrapRecipient;
+  String? lastPublishedDisplayName;
   final List<String> publishedEventJsons = [];
+  int? lastCreatedSignedEventKind;
+  String? lastCreatedSignedEventContent;
+  List<List<String>>? lastCreatedSignedEventTags;
   List<Nip01Event> queryEventsResult = const [];
   NdkResponse? subscribeResult;
   List<String> relayList = const ['wss://relay.example'];
   List<String> blossomServers = const ['https://blossom.example'];
   List<String> fetchedBlossomServers = const ['https://blossom.example'];
   String? unwrapGiftWrapRumorJsonResult;
+  bool throwOnPublishSignedEvent = false;
+  bool throwOnPublishParentProfile = false;
   final Map<String, Filter> subscriptionFilters = {};
   final Map<String, StreamController<Nip01Event>> subscriptionControllers = {};
   final List<String> unsubscribedSubscriptionIds = [];
+  Filter? lastQueryFilter;
 
   @override
   Future<void> connect() async {}
@@ -232,6 +341,11 @@ class FakeNostrService implements NostrService {
     required String content,
     int? createdAt,
   }) async {
+    lastCreatedSignedEventKind = kind;
+    lastCreatedSignedEventContent = content;
+    lastCreatedSignedEventTags = tags
+        .map((tag) => List<String>.from(tag))
+        .toList(growable: false);
     return '{"kind":$kind,"content":"$content"}';
   }
 
@@ -273,7 +387,12 @@ class FakeNostrService implements NostrService {
   Future<void> publishParentProfile({
     required ParentIdentity identity,
     required String displayName,
-  }) async {}
+  }) async {
+    if (throwOnPublishParentProfile) {
+      throw StateError('relay unavailable');
+    }
+    lastPublishedDisplayName = displayName;
+  }
 
   @override
   Future<String> publishSignedEventJson({
@@ -281,6 +400,9 @@ class FakeNostrService implements NostrService {
     required String eventJson,
     List<String>? relays,
   }) async {
+    if (throwOnPublishSignedEvent) {
+      throw StateError('relay unavailable');
+    }
     lastPublishedEventJson = eventJson;
     publishedEventJsons.add(eventJson);
     return 'event-id';
@@ -292,7 +414,22 @@ class FakeNostrService implements NostrService {
     List<String>? relays,
     Duration? timeout,
   }) async {
-    return queryEventsResult;
+    lastQueryFilter = filter;
+    return queryEventsResult
+        .where((event) {
+          if (filter.ids != null && !filter.ids!.contains(event.id)) {
+            return false;
+          }
+          if (filter.authors != null &&
+              !filter.authors!.contains(event.pubKey)) {
+            return false;
+          }
+          if (filter.kinds != null && !filter.kinds!.contains(event.kind)) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
   }
 
   @override

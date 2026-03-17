@@ -9,8 +9,10 @@ import '../../core/constants.dart';
 import '../../core/storage/app_database.dart';
 import '../../domain/marmot/message_models.dart';
 import '../../domain/models/parent_identity.dart';
+import '../../domain/models/remote_share_identity.dart';
 import '../../domain/models/remote_share_projection.dart';
 import '../identity/identity_service.dart';
+import '../identity/parent_profile_service.dart';
 import '../mdk/mdk_service.dart';
 import '../media/remote_media_service.dart';
 import '../nostr/nostr_service.dart';
@@ -29,11 +31,13 @@ class SyncCoordinator {
     NostrService? nostrService,
     IdentityService? identityService,
     RemoteMediaService? remoteMediaService,
+    ParentProfileService? parentProfileService,
   }) : _database = database,
        _mdkService = mdkService,
        _nostrService = nostrService,
        _identityService = identityService,
-       _remoteMediaService = remoteMediaService;
+       _remoteMediaService = remoteMediaService,
+       _parentProfileService = parentProfileService;
 
   static const _subscriptionId = 'mytube.family.sync';
   static const _lookback = Duration(days: 14);
@@ -43,6 +47,7 @@ class SyncCoordinator {
   final NostrService? _nostrService;
   final IdentityService? _identityService;
   final RemoteMediaService? _remoteMediaService;
+  final ParentProfileService? _parentProfileService;
   final StreamController<int> _revisionController =
       StreamController<int>.broadcast();
 
@@ -186,7 +191,12 @@ class SyncCoordinator {
     switch (processed.kind) {
       case MarmotKinds.videoShare:
         final message = VideoShareMessage.decode(processed.content);
-        await _database.upsertRemoteShareProjection(
+        final localIdentity = await _identityService?.loadIdentity();
+        await _parentProfileService?.primeKnownProfiles(
+          publicKeysHex: <String>[message.by],
+          localIdentity: localIdentity,
+        );
+        final remoteShareId = await _database.upsertRemoteShareProjection(
           videoId: message.videoId,
           mlsGroupId: processed.mlsGroupIdHex,
           senderParentKey: message.by,
@@ -197,9 +207,12 @@ class SyncCoordinator {
           epoch: message.media.epoch,
           mime: message.blob.mime,
           metadataJson: jsonEncode(message.toJson()),
+          receivedAt: DateTime.fromMillisecondsSinceEpoch(
+            processed.createdAt * 1000,
+          ),
         );
         final projection = await _database
-            .watchRemoteShareProjectionByVideoId(message.videoId)
+            .watchRemoteShareProjectionByRemoteShareId(remoteShareId)
             .first;
         if (projection != null && _remoteMediaService != null) {
           unawaited(_remoteMediaService.prefetchThumbnail(projection));
@@ -227,6 +240,10 @@ class SyncCoordinator {
           jsonDecode(processed.content) as Map<String, dynamic>,
         );
         final localIdentity = await _identityService?.loadIdentity();
+        await _parentProfileService?.primeKnownProfiles(
+          publicKeysHex: <String>[message.by],
+          localIdentity: localIdentity,
+        );
         final isOutbound = localIdentity?.publicKeyHex == message.by;
         await _database.upsertReportRecord(
           reportId: message.reportId,
@@ -253,13 +270,17 @@ class SyncCoordinator {
         final message = VideoLifecycleMessage.fromJson(
           jsonDecode(processed.content) as Map<String, dynamic>,
         );
-        final existingProjection = await _database.getRemoteShareProjectionByVideoId(
-          message.videoId,
-        );
-        await _deleteCachedRemoteFiles(existingProjection);
-        await _database.purgeRemoteAssetCache(videoId: message.videoId);
-        await _database.markRemoteShareDeleted(
+        final remoteShareId = buildRemoteShareId(
+          senderParentKey: message.by,
+          mlsGroupId: processed.mlsGroupIdHex,
           videoId: message.videoId,
+        );
+        final existingProjection = await _database
+            .getRemoteShareProjectionByRemoteShareId(remoteShareId);
+        await _deleteCachedRemoteFiles(existingProjection);
+        await _database.purgeRemoteAssetCache(remoteShareId: remoteShareId);
+        await _database.markRemoteShareDeleted(
+          remoteShareId: remoteShareId,
           reason: message.reason ?? message.type,
         );
         return SyncProjectionResult(
@@ -276,7 +297,9 @@ class SyncCoordinator {
     }
   }
 
-  Future<void> _deleteCachedRemoteFiles(RemoteShareProjection? projection) async {
+  Future<void> _deleteCachedRemoteFiles(
+    RemoteShareProjection? projection,
+  ) async {
     if (projection == null) {
       return;
     }

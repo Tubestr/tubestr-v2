@@ -377,9 +377,7 @@ class MdkService {
     );
   }
 
-  Future<List<String>> getGroupMembers({
-    required String mlsGroupIdHex,
-  }) async {
+  Future<List<String>> getGroupMembers({required String mlsGroupIdHex}) async {
     await ensureInitialized();
     return bridge_api.getGroupMembers(mlsGroupIdHex: mlsGroupIdHex);
   }

@@ -102,8 +102,9 @@ class NdkNostrService implements NostrService {
 
   @override
   Future<List<String>> loadBlossomServerList() async {
-    final raw =
-        await _database.getSetting(AppConstants.blossomServerListSettingKey);
+    final raw = await _database.getSetting(
+      AppConstants.blossomServerListSettingKey,
+    );
     if (raw == null || raw.isEmpty) {
       return AppConstants.defaultBlossomServers;
     }
@@ -145,6 +146,8 @@ class NdkNostrService implements NostrService {
     required String displayName,
   }) async {
     _ensureLoggedIn(identity);
+    final relays = await loadRelayList();
+    await connect();
 
     final metadata = Metadata(
       pubKey: identity.publicKeyHex,
@@ -153,7 +156,7 @@ class NdkNostrService implements NostrService {
       about: 'Parent account for MyTube',
     );
 
-    await _ndk.metadata.broadcastMetadata(metadata);
+    await _ndk.metadata.broadcastMetadata(metadata, specificRelays: relays);
   }
 
   @override
@@ -249,8 +252,9 @@ class NdkNostrService implements NostrService {
   }) async {
     _ensureLoggedIn(identity);
     final publishRelays = relays ?? await loadRelayList();
-    final activeServers =
-        _normalizeUrls(servers ?? await loadBlossomServerList());
+    final activeServers = _normalizeUrls(
+      servers ?? await loadBlossomServerList(),
+    );
     if (activeServers.isEmpty) {
       throw const FormatException('At least one Blossom server is required');
     }

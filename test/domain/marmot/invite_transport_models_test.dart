@@ -6,6 +6,7 @@ void main() {
     const packet = GroupInvitePacket(
       publicKeyHex: 'pubkey-123',
       createdAt: 1710460800,
+      inviterDisplayName: 'Lee',
     );
 
     final encoded = packet.encode();
@@ -14,6 +15,7 @@ void main() {
     expect(encoded, startsWith('nook://family-invite'));
     expect(decoded.publicKeyHex, 'pubkey-123');
     expect(decoded.createdAt, 1710460800);
+    expect(decoded.inviterDisplayName, 'Lee');
     expect(decoded.toJson()['v'], 1);
   });
 }

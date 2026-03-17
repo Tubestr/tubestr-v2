@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/constants.dart';
 import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
+import 'package:mytube/domain/models/remote_share_identity.dart';
 import 'package:mytube/services/identity/identity_service.dart';
 import 'package:mytube/services/mdk/mdk_service.dart';
 import 'package:mytube/services/sync/sync_coordinator.dart';
@@ -80,7 +81,12 @@ void main() {
         ),
       );
 
-      final asset = await database.getRemoteAssetByVideoId('video-1');
+      final remoteShareId = buildRemoteShareId(
+        senderParentKey: 'sender-pubkey',
+        mlsGroupId: 'abcd1234',
+        videoId: 'video-1',
+      );
+      final asset = await database.getRemoteAssetByRemoteShareId(remoteShareId);
       final shares = await database.watchShareRecords().first;
 
       expect(result.projected, isTrue);
@@ -92,6 +98,10 @@ void main() {
       expect(shares.single.videoId, 'video-1');
       expect(shares.single.mlsGroupId, 'abcd1234');
       expect(shares.single.childDisplayName, 'Emma');
+      expect(
+        shares.single.receivedAt,
+        DateTime.fromMillisecondsSinceEpoch(1710460800 * 1000),
+      );
     },
   );
 
@@ -211,7 +221,13 @@ void main() {
       ),
     );
 
-    final projection = await database.getRemoteShareProjectionByVideoId('video-1');
+    final projection = await database.getRemoteShareProjectionByRemoteShareId(
+      buildRemoteShareId(
+        senderParentKey: 'sender-pubkey',
+        mlsGroupId: 'abcd1234',
+        videoId: 'video-1',
+      ),
+    );
 
     expect(result.projected, isTrue);
     expect(result.reason, 'projected:video_delete');
@@ -340,9 +356,13 @@ void main() {
 
       await revisionFuture;
 
-      final projection = await database
-          .watchRemoteShareProjectionByVideoId('video-relay')
-          .first;
+      final projection = await database.getRemoteShareProjectionByRemoteShareId(
+        buildRemoteShareId(
+          senderParentKey: 'sender-pubkey',
+          mlsGroupId: 'mls-group-1',
+          videoId: 'video-relay',
+        ),
+      );
       expect(projection, isNotNull);
       expect(projection!.status, 'available');
       expect(projection.shareMessage?.meta.title, 'Relay Song');

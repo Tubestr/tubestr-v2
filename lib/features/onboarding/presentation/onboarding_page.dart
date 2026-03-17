@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/parent_identity.dart';
+import '../../../shared_ui/components/confetti_view.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
 import '../../../shared_ui/components/nook_decorations.dart';
 import '../../app_shell/presentation/app_shell.dart';
@@ -52,9 +53,7 @@ class _LoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -65,9 +64,7 @@ class _ErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(child: Text('Something went wrong: $error')),
-    );
+    return Scaffold(body: Center(child: Text('Something went wrong: $error')));
   }
 }
 
@@ -89,8 +86,10 @@ class OnboardingPage extends ConsumerStatefulWidget {
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   _Step _step = _Step.intro;
   final _nameController = TextEditingController();
+  final _displayNameController = TextEditingController();
   ThemeDescriptor _childTheme = ThemeDescriptor.campfire;
   bool _busy = false;
+  bool _showCelebration = false;
   int _introPage = 0;
   final _introController = PageController();
 
@@ -105,6 +104,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _displayNameController.dispose();
     _introController.dispose();
     super.dispose();
   }
@@ -113,8 +113,22 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   Future<void> _createIdentity() async {
     setState(() => _busy = true);
-    await ref.read(identityServiceProvider).createParentIdentity();
+    final identity = await ref
+        .read(identityServiceProvider)
+        .createParentIdentity();
+    final displayName = _displayNameController.text.trim();
+    if (displayName.isNotEmpty) {
+      try {
+        await ref
+            .read(parentProfileServiceProvider)
+            .publishLocalProfile(identity: identity, displayName: displayName);
+      } catch (_) {
+        // Non-blocking by product decision; queued retry handles offline cases.
+      }
+    }
     ref.invalidate(parentIdentityProvider);
+    ref.invalidate(parentDisplayNameProvider);
+    ref.invalidate(offlineActionsProvider);
     if (!mounted) return;
     setState(() => _busy = false);
     _nextStep(_Step.childProfiles);
@@ -124,21 +138,29 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
     setState(() => _busy = true);
-    await ref.read(identityServiceProvider).createChildProfile(
-          name: name,
-          theme: _childTheme,
-        );
+    await ref
+        .read(identityServiceProvider)
+        .createChildProfile(name: name, theme: _childTheme);
     _nameController.clear();
     if (!mounted) return;
     setState(() => _busy = false);
   }
 
   void _finish() {
-    _nextStep(_Step.complete);
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _showCelebration = true;
+      _step = _Step.complete;
+    });
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (mounted) {
         ref.invalidate(parentIdentityProvider);
         ref.invalidate(profilesProvider);
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 1600), () {
+      if (mounted) {
+        setState(() => _showCelebration = false);
       }
     });
   }
@@ -154,56 +176,69 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       body: Stack(
         children: [
           Positioned.fill(child: NookAppBackground(palette: palette)),
+          Positioned.fill(
+            child: ConfettiView(
+              play: _showCelebration,
+              colors: [
+                palette.accent,
+                palette.accentSecondary,
+                palette.success,
+                palette.warning,
+                palette.panel,
+              ],
+            ),
+          ),
           SafeArea(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 350),
               child: switch (_step) {
                 _Step.intro => _IntroSlides(
-                    key: const ValueKey('intro'),
-                    controller: _introController,
-                    page: _introPage,
-                    palette: palette,
-                    onPageChanged: (p) => setState(() => _introPage = p),
-                    onNext: () {
-                      if (_introPage < 3) {
-                        _introController.nextPage(
-                          duration: const Duration(milliseconds: 350),
-                          curve: Curves.easeInOut,
-                        );
-                      } else {
-                        _nextStep(_Step.roleSelect);
-                      }
-                    },
-                    onSkip: () => _nextStep(_Step.roleSelect),
-                  ),
+                  key: const ValueKey('intro'),
+                  controller: _introController,
+                  page: _introPage,
+                  palette: palette,
+                  onPageChanged: (p) => setState(() => _introPage = p),
+                  onNext: () {
+                    if (_introPage < 3) {
+                      _introController.nextPage(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeInOut,
+                      );
+                    } else {
+                      _nextStep(_Step.roleSelect);
+                    }
+                  },
+                  onSkip: () => _nextStep(_Step.roleSelect),
+                ),
                 _Step.roleSelect => _RoleSelect(
-                    key: const ValueKey('role'),
-                    palette: palette,
-                    onNewParent: () => _nextStep(_Step.parentKey),
-                    onRestore: null, // not yet implemented
-                  ),
+                  key: const ValueKey('role'),
+                  palette: palette,
+                  onNewParent: () => _nextStep(_Step.parentKey),
+                  onRestore: null, // not yet implemented
+                ),
                 _Step.parentKey => _ParentKeyStep(
-                    key: const ValueKey('parentKey'),
-                    identity: identity,
-                    palette: palette,
-                    busy: _busy,
-                    onGenerate: _createIdentity,
-                  ),
+                  key: const ValueKey('parentKey'),
+                  identity: identity,
+                  displayNameController: _displayNameController,
+                  palette: palette,
+                  busy: _busy,
+                  onGenerate: _createIdentity,
+                ),
                 _Step.childProfiles => _ChildProfilesStep(
-                    key: const ValueKey('childProfiles'),
-                    palette: palette,
-                    profiles: profiles,
-                    nameController: _nameController,
-                    theme: _childTheme,
-                    busy: _busy,
-                    onThemeChanged: (t) => setState(() => _childTheme = t),
-                    onAdd: _addChild,
-                    onFinish: profiles.isNotEmpty ? _finish : null,
-                  ),
+                  key: const ValueKey('childProfiles'),
+                  palette: palette,
+                  profiles: profiles,
+                  nameController: _nameController,
+                  theme: _childTheme,
+                  busy: _busy,
+                  onThemeChanged: (t) => setState(() => _childTheme = t),
+                  onAdd: _addChild,
+                  onFinish: profiles.isNotEmpty ? _finish : null,
+                ),
                 _Step.complete => _CompleteStep(
-                    key: const ValueKey('complete'),
-                    palette: palette,
-                  ),
+                  key: const ValueKey('complete'),
+                  palette: palette,
+                ),
               },
             ),
           ),
@@ -236,10 +271,26 @@ class _IntroSlides extends StatelessWidget {
   final VoidCallback onSkip;
 
   static const _slides = [
-    (icon: Icons.auto_awesome, title: 'Curated For Kids', sub: 'A safe, joyful space for your family\u2019s videos'),
-    (icon: Icons.videocam_rounded, title: 'Create Magical Moments', sub: 'Record, edit, and share with the people you trust'),
-    (icon: Icons.shield_rounded, title: 'Stay In Control', sub: 'Parent tools for moderation, connections, and privacy'),
-    (icon: Icons.people_rounded, title: 'Private By Design', sub: 'No algorithms, no ads\u2014just family'),
+    (
+      icon: Icons.auto_awesome,
+      title: 'Curated For Kids',
+      sub: 'A safe, joyful space for your family\u2019s videos',
+    ),
+    (
+      icon: Icons.videocam_rounded,
+      title: 'Create Magical Moments',
+      sub: 'Record, edit, and share with the people you trust',
+    ),
+    (
+      icon: Icons.shield_rounded,
+      title: 'Stay In Control',
+      sub: 'Parent tools for moderation, connections, and privacy',
+    ),
+    (
+      icon: Icons.people_rounded,
+      title: 'Private By Design',
+      sub: 'No algorithms, no ads\u2014just family',
+    ),
   ];
 
   @override
@@ -256,7 +307,10 @@ class _IntroSlides extends StatelessWidget {
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
                 foregroundColor: Colors.white,
                 shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
               ),
               onPressed: onSkip,
               child: const Text('Skip'),
@@ -397,16 +451,16 @@ class _RoleSelect extends StatelessWidget {
         children: [
           Text(
             'Welcome to Nook',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'How would you like to get started?',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: palette.mutedInk,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
           ),
           const SizedBox(height: 40),
           SizedBox(
@@ -442,12 +496,14 @@ class _ParentKeyStep extends StatelessWidget {
   const _ParentKeyStep({
     super.key,
     required this.identity,
+    required this.displayNameController,
     required this.palette,
     required this.busy,
     required this.onGenerate,
   });
 
   final ParentIdentity? identity;
+  final TextEditingController displayNameController;
   final KidPalette palette;
   final bool busy;
   final VoidCallback onGenerate;
@@ -471,17 +527,25 @@ class _ParentKeyStep extends StatelessWidget {
           const SizedBox(height: 24),
           Text(
             'Parent Identity',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'We\u2019ll generate a secure cryptographic key that identifies you as the parent.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: palette.mutedInk,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: displayNameController,
+            decoration: const InputDecoration(
+              labelText: 'Parent display name',
+              hintText: 'Lee & Emma',
+            ),
           ),
           const SizedBox(height: 32),
           if (identity != null) ...[
@@ -491,17 +555,27 @@ class _ParentKeyStep extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.check_circle_rounded, color: palette.success, size: 20),
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: palette.success,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
-                      Text('Key Ready', style: TextStyle(color: palette.success, fontWeight: FontWeight.w700)),
+                      Text(
+                        'Key Ready',
+                        style: TextStyle(
+                          color: palette.success,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   SelectableText(
                     identity!.npub,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
@@ -577,16 +651,16 @@ class _ChildProfilesStep extends StatelessWidget {
           const SizedBox(height: 40),
           Text(
             'Child Profiles',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Add at least one child profile to get started.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: palette.mutedInk,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
           ),
           const SizedBox(height: 24),
 
@@ -596,7 +670,10 @@ class _ChildProfilesStep extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: FrostCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -604,7 +681,9 @@ class _ChildProfilesStep extends StatelessWidget {
                         height: 10,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: ThemeDescriptorX.fromStorage(profile.theme).palette.accent,
+                          color: ThemeDescriptorX.fromStorage(
+                            profile.theme,
+                          ).palette.accent,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -616,8 +695,8 @@ class _ChildProfilesStep extends StatelessWidget {
                       Text(
                         ThemeDescriptorX.fromStorage(profile.theme).label,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: palette.mutedInk,
-                            ),
+                          color: palette.mutedInk,
+                        ),
                       ),
                     ],
                   ),
@@ -631,8 +710,10 @@ class _ChildProfilesStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Add Child Profile',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Add Child Profile',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
@@ -643,15 +724,17 @@ class _ChildProfilesStep extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text('Theme',
-                    style: Theme.of(context).textTheme.labelMedium),
+                Text('Theme', style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 8),
                 SegmentedButton<ThemeDescriptor>(
                   segments: [
                     for (final t in ThemeDescriptor.values)
                       ButtonSegment(
                         value: t,
-                        label: Text(t.label, style: const TextStyle(fontSize: 12)),
+                        label: Text(
+                          t.label,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ),
                   ],
                   selected: {theme},
@@ -707,16 +790,16 @@ class _CompleteStep extends StatelessWidget {
           const SizedBox(height: 24),
           Text(
             'All Set!',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Your family\u2019s Nook is ready.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: palette.mutedInk,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
           ),
         ],
       ),

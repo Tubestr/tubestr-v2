@@ -2,6 +2,7 @@ import '../marmot/message_models.dart';
 
 class RemoteShareProjection {
   const RemoteShareProjection({
+    required this.remoteShareId,
     required this.videoId,
     required this.mlsGroupId,
     required this.senderParentKey,
@@ -19,6 +20,7 @@ class RemoteShareProjection {
     required this.localThumbPath,
   });
 
+  final String remoteShareId;
   final String videoId;
   final String mlsGroupId;
   final String senderParentKey;

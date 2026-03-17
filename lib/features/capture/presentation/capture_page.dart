@@ -79,7 +79,11 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   Future<void> _initCamera(CameraDescription desc) async {
     if (_isRecording) return;
     await _controller?.dispose();
-    final ctrl = CameraController(desc, ResolutionPreset.high, enableAudio: true);
+    final ctrl = CameraController(
+      desc,
+      ResolutionPreset.high,
+      enableAudio: true,
+    );
     try {
       await ctrl.initialize();
     } catch (e) {
@@ -149,7 +153,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     final selectedId = ref.read(selectedProfileIdProvider);
     final activeProfile =
         profiles.firstWhereOrNull((pr) => pr.id == selectedId) ??
-            profiles.firstOrNull;
+        profiles.firstOrNull;
 
     if (activeProfile == null) {
       setState(() {
@@ -164,12 +168,13 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       final recording = await ctrl.stopVideoRecording();
       final savedPath = await _persistRecording(recording);
       final videoId = _uuid.v4();
-      final thumbPath =
-          await ref.read(thumbnailServiceProvider).createVideoThumbnail(
-                videoPath: savedPath,
-              );
+      final thumbPath = await ref
+          .read(thumbnailServiceProvider)
+          .createVideoThumbnail(videoPath: savedPath);
       final ts = DateTime.now();
-      await ref.read(appDatabaseProvider).saveLocalVideo(
+      await ref
+          .read(appDatabaseProvider)
+          .saveLocalVideo(
             videoId: videoId,
             profileId: activeProfile.id,
             filePath: savedPath,
@@ -177,7 +182,11 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
             title:
                 'Clip ${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}',
             tags: const ['captured'],
+            approvalStatus: 'pending',
           );
+      await ref
+          .read(videoApprovalServiceProvider)
+          .scanAndClassifyVideo(videoId: videoId);
 
       if (!mounted) return;
       setState(() {
@@ -202,8 +211,9 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     final root = await getApplicationDocumentsDirectory();
     final folder = Directory(p.join(root.path, 'videos'));
     await folder.create(recursive: true);
-    final ext =
-        p.extension(recording.path).isEmpty ? '.mp4' : p.extension(recording.path);
+    final ext = p.extension(recording.path).isEmpty
+        ? '.mp4'
+        : p.extension(recording.path);
     final dest = p.join(folder.path, '${_uuid.v4()}$ext');
     final src = File(recording.path);
     await src.copy(dest);
@@ -262,7 +272,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
             children: [
               // Zoom badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(16),
@@ -280,7 +293,9 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
               const Spacer(),
               // Torch toggle
               _CaptureCircleBtn(
-                icon: isTorch ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                icon: isTorch
+                    ? Icons.flash_on_rounded
+                    : Icons.flash_off_rounded,
                 onTap: _toggleTorch,
               ),
               const SizedBox(width: 12),
@@ -304,7 +319,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
               if (_isRecording)
                 Container(
                   margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
@@ -350,8 +368,9 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                     curve: Curves.easeInOut,
                     decoration: BoxDecoration(
                       color: Colors.red,
-                      borderRadius:
-                          BorderRadius.circular(_isRecording ? 8 : 30),
+                      borderRadius: BorderRadius.circular(
+                        _isRecording ? 8 : 30,
+                      ),
                     ),
                   ),
                 ),
@@ -383,8 +402,11 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle_rounded,
-                      color: palette.success, size: 20),
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: palette.success,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Video Saved!',

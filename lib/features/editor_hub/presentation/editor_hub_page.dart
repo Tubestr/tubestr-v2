@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
+import '../../editor/presentation/editor_detail_page.dart';
 
 /// Editor tab content — gallery of videos available for editing.
 class EditorHubContent extends ConsumerWidget {
@@ -25,10 +27,7 @@ class EditorHubContent extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
             child: Row(
-              children: [
-                const Spacer(),
-                const ProfileSwitcherButton(),
-              ],
+              children: [const Spacer(), const ProfileSwitcherButton()],
             ),
           ),
 
@@ -48,7 +47,7 @@ class EditorHubContent extends ConsumerWidget {
 class _Body extends StatelessWidget {
   const _Body({required this.items, required this.palette});
 
-  final List<dynamic> items;
+  final List<LocalVideo> items;
   final KidPalette palette;
 
   @override
@@ -67,7 +66,11 @@ class _Body extends StatelessWidget {
                   color: palette.accent.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.auto_awesome, color: palette.accent, size: 28),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: palette.accent,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -76,7 +79,8 @@ class _Body extends StatelessWidget {
                   children: [
                     Text(
                       'Edit Studio',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             color: palette.accent,
                             fontWeight: FontWeight.w800,
                           ),
@@ -84,9 +88,9 @@ class _Body extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Choose a video to remix and edit',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: palette.mutedInk,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
                     ),
                   ],
                 ),
@@ -96,7 +100,10 @@ class _Body extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        if (items.isEmpty) _EmptyState(palette: palette) else _VideoGrid(items: items, palette: palette),
+        if (items.isEmpty)
+          _EmptyState(palette: palette)
+        else
+          _VideoGrid(items: items, palette: palette),
       ],
     );
   }
@@ -138,22 +145,26 @@ class _EmptyState extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(Icons.video_camera_back_rounded, size: 32, color: palette.accent),
+              Icon(
+                Icons.video_camera_back_rounded,
+                size: 32,
+                color: palette.accent,
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             'No videos to edit yet',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: palette.mutedInk,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: palette.mutedInk),
           ),
           const SizedBox(height: 4),
           Text(
             'Record something on the Capture tab first',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: palette.mutedInk,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
           ),
           const SizedBox(height: 16),
         ],
@@ -165,7 +176,7 @@ class _EmptyState extends StatelessWidget {
 class _VideoGrid extends StatelessWidget {
   const _VideoGrid({required this.items, required this.palette});
 
-  final List<dynamic> items;
+  final List<LocalVideo> items;
   final KidPalette palette;
 
   @override
@@ -191,7 +202,7 @@ class _VideoGrid extends StatelessWidget {
 class _EditorVideoCard extends StatelessWidget {
   const _EditorVideoCard({required this.video, required this.palette});
 
-  final dynamic video;
+  final LocalVideo video;
   final KidPalette palette;
 
   @override
@@ -199,74 +210,83 @@ class _EditorVideoCard extends StatelessWidget {
     final thumbFile = video.thumbPath.isEmpty ? null : File(video.thumbPath);
     final hasThumb = thumbFile?.existsSync() == true;
 
-    return FrostCard(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: hasThumb
-                        ? Image.file(thumbFile!, fit: BoxFit.cover)
-                        : Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  palette.accent.withValues(alpha: 0.2),
-                                  palette.accentSecondary.withValues(alpha: 0.2),
-                                ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => EditorDetailPage(video: video)),
+        );
+      },
+      child: FrostCard(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: hasThumb
+                          ? Image.file(thumbFile!, fit: BoxFit.cover)
+                          : Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    palette.accent.withValues(alpha: 0.2),
+                                    palette.accentSecondary.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.play_arrow_rounded,
+                                size: 40,
+                                color: palette.accent,
                               ),
                             ),
-                            child: Icon(
-                              Icons.play_arrow_rounded,
-                              size: 40,
-                              color: palette.accent,
-                            ),
-                          ),
-                  ),
-                ),
-                // Edit hint badge
-                Positioned(
-                  right: 6,
-                  bottom: 6,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: palette.accent.withValues(alpha: 0.85),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      size: 14,
-                      color: Colors.white,
                     ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: palette.accent.withValues(alpha: 0.85),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            video.title as String,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            video.tags.join(' \u00b7 ') as String,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: palette.mutedInk,
-                ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              video.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              video.tags.join(' \u00b7 '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+            ),
+          ],
+        ),
       ),
     );
   }

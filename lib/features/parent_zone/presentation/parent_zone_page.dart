@@ -7,7 +7,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
+import '../../../core/nostr/nostr_key_format.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/marmot/invite_transport_models.dart';
 import '../../../domain/models/remote_share_projection.dart';
@@ -41,6 +43,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   ParentZoneSection _section = ParentZoneSection.overview;
 
   final _nameController = TextEditingController();
+  final _displayNameController = TextEditingController();
   final _relayController = TextEditingController();
   final _blossomController = TextEditingController();
   final _pinManagementController = TextEditingController();
@@ -55,18 +58,25 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   bool _isAcceptingWelcome = false;
   bool _isCreatingDebugShare = false;
   bool _isImportingDebugEvent = false;
+  bool _approvalRequired = true;
   Uri? _queuedDeepLinkUri;
+  Timer? _pendingWelcomePollTimer;
+  bool _pendingWelcomePollInFlight = false;
+  int _pendingWelcomePollsRemaining = 0;
 
   @override
   void initState() {
     super.initState();
     _mdkDebugFuture = _loadMdkDebugState();
     _checkPin();
+    unawaited(_loadSettingsState());
   }
 
   @override
   void dispose() {
+    _pendingWelcomePollTimer?.cancel();
     _nameController.dispose();
+    _displayNameController.dispose();
     _relayController.dispose();
     _blossomController.dispose();
     _pinManagementController.dispose();
@@ -87,6 +97,20 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         _isUnlocked = false;
       }
     });
+  }
+
+  Future<void> _loadSettingsState() async {
+    final displayName = await ref
+        .read(parentProfileServiceProvider)
+        .loadLocalDisplayName();
+    final approvalRequired = await ref
+        .read(videoApprovalServiceProvider)
+        .isApprovalRequired();
+    if (!mounted) {
+      return;
+    }
+    _displayNameController.text = displayName ?? '';
+    setState(() => _approvalRequired = approvalRequired);
   }
 
   Future<void> _verifyPin() async {
@@ -145,7 +169,44 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   }
 
   void _refreshMdkState() {
-    setState(() => _mdkDebugFuture = _loadMdkDebugState());
+    setState(() {
+      _mdkDebugFuture = _loadMdkDebugState();
+    });
+  }
+
+  void _startPendingWelcomePolling({int attempts = 45}) {
+    _pendingWelcomePollTimer?.cancel();
+    _pendingWelcomePollsRemaining = attempts;
+    _pendingWelcomePollInFlight = false;
+    _pendingWelcomePollTimer = Timer.periodic(const Duration(seconds: 1), (
+      timer,
+    ) {
+      if (_pendingWelcomePollInFlight || !mounted) {
+        return;
+      }
+      _pendingWelcomePollInFlight = true;
+      unawaited(() async {
+        try {
+          final state = await _loadMdkDebugState();
+          if (!mounted) {
+            return;
+          }
+          final shouldStop =
+              state.pendingWelcomes.isNotEmpty ||
+              _pendingWelcomePollsRemaining <= 1;
+          setState(() {
+            _mdkDebugFuture = Future<ParentZoneMdkDebugState>.value(state);
+          });
+          if (shouldStop) {
+            timer.cancel();
+            _pendingWelcomePollTimer = null;
+          }
+        } finally {
+          _pendingWelcomePollsRemaining -= 1;
+          _pendingWelcomePollInFlight = false;
+        }
+      }());
+    });
   }
 
   Future<void> _acceptPendingWelcome(String welcomeEventIdHex) async {
@@ -162,6 +223,8 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         _isAcceptingWelcome = false;
         _mdkDebugFuture = _loadMdkDebugState();
       });
+      _pendingWelcomePollTimer?.cancel();
+      _pendingWelcomePollTimer = null;
       await ref
           .read(appDatabaseProvider)
           .assignPrimaryGroupToProfilesIfMissing(group.mlsGroupIdHex);
@@ -169,6 +232,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       if (!mounted) {
         return;
       }
+      await HapticFeedback.mediumImpact();
       messenger.showSnackBar(SnackBar(content: Text('Joined ${group.name}')));
     } catch (error) {
       if (!mounted) {
@@ -303,6 +367,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         return;
       }
       setState(() => _isGeneratingInvitePacket = false);
+      _startPendingWelcomePolling();
       _showQrDialog(
         title: 'Your Invite Code',
         payload: result.payload,
@@ -552,6 +617,109 @@ ${result.payload}
     return ref.read(appDatabaseProvider).deleteProfileById(profileId);
   }
 
+  Future<void> _approveVideo(String videoId) async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    await ref
+        .read(videoApprovalServiceProvider)
+        .approveVideo(
+          videoId: videoId,
+          parentPublicKeyHex: identity.publicKeyHex,
+        );
+  }
+
+  Future<void> _rejectVideo(String videoId) async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    await ref
+        .read(videoApprovalServiceProvider)
+        .rejectVideo(
+          videoId: videoId,
+          parentPublicKeyHex: identity.publicKeyHex,
+        );
+  }
+
+  Future<void> _saveDisplayName() async {
+    final next = _displayNameController.text.trim();
+    if (next.isEmpty) {
+      return;
+    }
+    await ref.read(parentProfileServiceProvider).saveLocalDisplayName(next);
+    ref.invalidate(parentDisplayNameProvider);
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Saved display name')));
+  }
+
+  Future<void> _publishDisplayName() async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final next = _displayNameController.text.trim();
+    if (next.isEmpty) {
+      return;
+    }
+    try {
+      await ref
+          .read(parentProfileServiceProvider)
+          .publishLocalProfile(identity: identity, displayName: next);
+      ref.invalidate(parentDisplayNameProvider);
+      ref.invalidate(resolvedParentProfileProvider(identity.publicKeyHex));
+      ref.invalidate(offlineActionsProvider);
+      if (!mounted) {
+        return;
+      }
+      await HapticFeedback.lightImpact();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Published parent profile')),
+      );
+    } catch (error) {
+      ref.invalidate(offlineActionsProvider);
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+    }
+  }
+
+  Future<void> _toggleApprovalRequired(bool value) async {
+    await ref.read(videoApprovalServiceProvider).setApprovalRequired(value);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _approvalRequired = value);
+  }
+
+  Future<void> _retryOfflineQueue() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final flushed = await ref.read(offlineActionProcessorProvider).flush();
+    ref.invalidate(offlineActionsProvider);
+    ref.invalidate(shareHistoryProvider);
+    ref.invalidate(reportsProvider);
+    if (!mounted) {
+      return;
+    }
+    await HapticFeedback.lightImpact();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          flushed == 0
+              ? 'Nothing new was sent'
+              : 'Retried $flushed queued action(s)',
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveRelay() async {
     final next = _relayController.text.trim();
     if (next.isEmpty) {
@@ -560,6 +728,36 @@ ${result.payload}
     final relays = await ref.read(nostrServiceProvider).loadRelayList();
     await ref.read(nostrServiceProvider).saveRelayList([...relays, next]);
     _relayController.clear();
+  }
+
+  Future<void> _removeRelay(String relay) async {
+    final relays = await ref.read(nostrServiceProvider).loadRelayList();
+    await ref
+        .read(nostrServiceProvider)
+        .saveRelayList(
+          relays.where((item) => item != relay).toList(growable: false),
+        );
+  }
+
+  Future<void> _resetRelays() {
+    return ref
+        .read(nostrServiceProvider)
+        .saveRelayList(AppConstants.defaultRelays);
+  }
+
+  Future<void> _reconnectRelays() async {
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(nostrServiceProvider).connect();
+    await ref.read(syncCoordinatorProvider).refreshSubscriptions();
+    await ref.read(offlineActionProcessorProvider).flush();
+    ref.invalidate(offlineActionsProvider);
+    ref.invalidate(shareHistoryProvider);
+    ref.invalidate(reportsProvider);
+    if (!mounted) {
+      return;
+    }
+    await HapticFeedback.lightImpact();
+    messenger.showSnackBar(const SnackBar(content: Text('Relays reconnected')));
   }
 
   Future<void> _saveBlossomServer() async {
@@ -613,6 +811,7 @@ ${result.payload}
     if (identity == null) {
       return;
     }
+    final messenger = ScaffoldMessenger.of(context);
     final group = await ref
         .read(safetyHqServiceProvider)
         .ensureProvisioned(identity: identity);
@@ -621,7 +820,8 @@ ${result.payload}
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    await HapticFeedback.mediumImpact();
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
           group == null
@@ -658,6 +858,8 @@ ${result.payload}
         onThemeSelected: (theme) => setState(() => _childTheme = theme),
         onSaveChild: _saveChild,
         onDeleteChild: _deleteChild,
+        onApproveVideo: _approveVideo,
+        onRejectVideo: _rejectVideo,
       ),
       ParentZoneSection.connections => ParentZoneConnectionsSection(
         mdkDebugFuture: _mdkDebugFuture,
@@ -679,11 +881,22 @@ ${result.payload}
         onImportDebugGroupEvent: _importDebugGroupEvent,
       ),
       ParentZoneSection.settings => ParentZoneSettingsSection(
+        displayNameController: _displayNameController,
         relayController: _relayController,
         blossomController: _blossomController,
         pinManagementController: _pinManagementController,
+        approvalRequired: _approvalRequired,
         onRefresh: () => setState(() {}),
+        onSaveDisplayName: _saveDisplayName,
+        onPublishDisplayName: _publishDisplayName,
+        onToggleApprovalRequired: (value) {
+          unawaited(_toggleApprovalRequired(value));
+        },
+        onRetryOfflineQueue: _retryOfflineQueue,
         onSaveRelays: _saveRelay,
+        onRemoveRelay: _removeRelay,
+        onResetRelays: _resetRelays,
+        onReconnectRelays: _reconnectRelays,
         onSaveBlossomServers: _saveBlossomServer,
         onPublishBlossomServers: _publishBlossomServers,
         onUpdatePin: _updatePin,
@@ -698,7 +911,9 @@ ${result.payload}
       if (!mounted) {
         return;
       }
-      setState(() => _mdkDebugFuture = _loadMdkDebugState());
+      setState(() {
+        _mdkDebugFuture = _loadMdkDebugState();
+      });
     });
     final pendingDeepLink = ref.watch(pendingDeepLinkProvider);
     if (pendingDeepLink != null &&
@@ -878,10 +1093,7 @@ class _QrScannerSheetState extends State<_QrScannerSheet> {
 }
 
 class _GroupModerationSheet extends ConsumerStatefulWidget {
-  const _GroupModerationSheet({
-    required this.group,
-    required this.onChanged,
-  });
+  const _GroupModerationSheet({required this.group, required this.onChanged});
 
   final MdkGroupSummary group;
   final VoidCallback onChanged;
@@ -923,19 +1135,23 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
     if (identity == null) {
       return;
     }
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _working = true);
     try {
-      await ref.read(moderationCoordinatorProvider).deleteSharedVideo(
-        identity: identity,
-        projection: projection,
-        reason: 'Removed by parent moderator',
-      );
+      await ref
+          .read(moderationCoordinatorProvider)
+          .deleteSharedVideo(
+            identity: identity,
+            projection: projection,
+            reason: 'Removed by parent moderator',
+          );
       if (!mounted) {
         return;
       }
       setState(() => _working = false);
       _refresh();
-      ScaffoldMessenger.of(context).showSnackBar(
+      await HapticFeedback.mediumImpact();
+      messenger.showSnackBar(
         SnackBar(content: Text('Deleted ${projection.title} for this family')),
       );
     } catch (error) {
@@ -943,9 +1159,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
         return;
       }
       setState(() => _working = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$error')));
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
     }
   }
 
@@ -954,20 +1168,24 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
     if (identity == null) {
       return;
     }
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _working = true);
     try {
-      await ref.read(moderationCoordinatorProvider).removeMember(
-        identity: identity,
-        mlsGroupIdHex: widget.group.mlsGroupIdHex,
-        memberPubkeyHex: memberPubkeyHex,
-        reason: 'Removed by parent moderator',
-      );
+      await ref
+          .read(moderationCoordinatorProvider)
+          .removeMember(
+            identity: identity,
+            mlsGroupIdHex: widget.group.mlsGroupIdHex,
+            memberPubkeyHex: memberPubkeyHex,
+            reason: 'Removed by parent moderator',
+          );
       if (!mounted) {
         return;
       }
       setState(() => _working = false);
       _refresh();
-      ScaffoldMessenger.of(context).showSnackBar(
+      await HapticFeedback.mediumImpact();
+      messenger.showSnackBar(
         const SnackBar(content: Text('Removed member from family group')),
       );
     } catch (error) {
@@ -975,9 +1193,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
         return;
       }
       setState(() => _working = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$error')));
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
     }
   }
 
@@ -1024,9 +1240,9 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                   const SizedBox(height: 6),
                   Text(
                     'Delete shared videos or remove family members. These are separate actions.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: palette.mutedInk,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -1041,32 +1257,11 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                     )
                   else
                     for (final member in data.members)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          member == identity?.publicKeyHex
-                              ? Icons.verified_user_rounded
-                              : Icons.person_outline_rounded,
-                          color: member == identity?.publicKeyHex
-                              ? palette.success
-                              : palette.accent,
-                        ),
-                        title: Text(
-                          member == identity?.publicKeyHex
-                              ? 'You'
-                              : _truncateKey(member),
-                        ),
-                        subtitle: member == identity?.publicKeyHex
-                            ? const Text('Current parent identity')
-                            : Text(member),
-                        trailing: member == identity?.publicKeyHex
-                            ? null
-                            : FilledButton.tonal(
-                                onPressed: _working
-                                    ? null
-                                    : () => _removeMember(member),
-                                child: Text(_working ? 'Working…' : 'Remove'),
-                              ),
+                      _MemberTile(
+                        memberPublicKeyHex: member,
+                        currentIdentityHex: identity?.publicKeyHex,
+                        working: _working,
+                        onRemove: () => _removeMember(member),
                       ),
                   const Divider(height: 28),
                   Text(
@@ -1107,9 +1302,9 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                   const SizedBox(height: 8),
                   Text(
                     'Removing a member does not delete their past content automatically.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.mutedInk,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
                 ],
               ),
@@ -1122,18 +1317,60 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
 }
 
 class _GroupModerationSnapshot {
-  const _GroupModerationSnapshot({
-    required this.members,
-    required this.shares,
-  });
+  const _GroupModerationSnapshot({required this.members, required this.shares});
 
   final List<String> members;
   final List<RemoteShareProjection> shares;
 }
 
-String _truncateKey(String value) {
-  if (value.length <= 16) {
-    return value;
+class _MemberTile extends ConsumerWidget {
+  const _MemberTile({
+    required this.memberPublicKeyHex,
+    required this.currentIdentityHex,
+    required this.working,
+    required this.onRemove,
+  });
+
+  final String memberPublicKeyHex;
+  final String? currentIdentityHex;
+  final bool working;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = ref.watch(activeThemeProvider).palette;
+    final isCurrentIdentity = memberPublicKeyHex == currentIdentityHex;
+    final profile = isCurrentIdentity
+        ? null
+        : ref
+              .watch(resolvedParentProfileProvider(memberPublicKeyHex))
+              .valueOrNull;
+    final displayKey = formatPublicKeyLabel(memberPublicKeyHex);
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        isCurrentIdentity
+            ? Icons.verified_user_rounded
+            : Icons.person_outline_rounded,
+        color: isCurrentIdentity ? palette.success : palette.accent,
+      ),
+      title: Text(
+        isCurrentIdentity
+            ? 'You'
+            : (profile?.displayName.trim().isNotEmpty ?? false)
+            ? profile!.displayName
+            : formatCompactPublicKeyLabel(memberPublicKeyHex),
+      ),
+      subtitle: Text(
+        isCurrentIdentity ? 'Current parent identity' : displayKey,
+      ),
+      trailing: isCurrentIdentity
+          ? null
+          : FilledButton.tonal(
+              onPressed: working ? null : onRemove,
+              child: Text(working ? 'Working…' : 'Remove'),
+            ),
+    );
   }
-  return '${value.substring(0, 8)}…${value.substring(value.length - 6)}';
 }

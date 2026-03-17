@@ -29,12 +29,16 @@ void main() {
       final service = FamilyConnectionService(
         mdkService: mdk,
         nostrService: nostr,
+        loadLocalDisplayName: () async => 'Lee',
       );
 
       final result = await service.createInvite(identity: identity);
+      final packet = GroupInvitePacket.decode(result.payload);
 
       expect(result.payload, startsWith('nook://family-invite'));
       expect(result.payload, isNot(contains('key_package_event_json')));
+      expect(packet.keyPackageEventId, 'event-id');
+      expect(packet.inviterDisplayName, 'Lee');
       expect(
         result.keyPackageEventJson,
         '{"kind":443,"content":"key-package-content"}',
@@ -61,6 +65,15 @@ void main() {
       final nostr = FakeNostrService()
         ..queryEventsResult = [
           Nip01Event(
+            id: 'meta-1',
+            pubKey: 'remote-parent',
+            createdAt: 1710460790,
+            kind: 0,
+            tags: const [],
+            content: '{"display_name":"Lee & Emma"}',
+            sig: 'sig-meta',
+          ),
+          Nip01Event(
             id: 'keypkg-1',
             pubKey: 'remote-parent',
             createdAt: 1710460800,
@@ -73,11 +86,14 @@ void main() {
       final service = FamilyConnectionService(
         mdkService: mdk,
         nostrService: nostr,
+        loadLocalDisplayName: () async => 'Noah',
       );
 
       final payload = const GroupInvitePacket(
         publicKeyHex: 'remote-parent',
         createdAt: 1710460800,
+        keyPackageEventId: 'keypkg-1',
+        inviterDisplayName: 'Lee',
       ).encode();
 
       final result = await service.connectFromInvite(
@@ -85,7 +101,8 @@ void main() {
         invitePayload: payload,
       );
 
-      expect(result.group.name, 'Family Space');
+      expect(result.group.name, 'Lee & Noah');
+      expect(mdk.lastCreateGroupDescription, 'Connected Lee with Noah');
       expect(result.publishedWelcomeCount, 1);
       expect(nostr.lastGiftWrapRecipient, 'remote-parent');
       expect(nostr.lastGiftWrapRumorJson, '{"kind":444,"content":"welcome"}');

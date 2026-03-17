@@ -28,7 +28,8 @@ void main() {
             '{"t":"mytube/video_share","video_id":"video-1","child_profile_id":"child-1","child_display_name":"Emma","meta":{"title":"Song","dur":12.5,"created_at":1710460800},"blob":{"hash":"blob-1","servers":["https://snapshot.example"],"mime":"video/mp4","len":321,"orig_hash":"orig-video","nonce":"nonce-video","filename":"clip.mp4","scheme":"mip04-v2"},"thumb":{"hash":"thumb-1","servers":["https://snapshot.example"],"mime":"image/jpeg","len":111,"orig_hash":"orig-thumb","nonce":"nonce-thumb","filename":"thumb.jpg","scheme":"mip04-v2"},"media":{"alg":"mip04","epoch":"1"},"policy":{"version":2,"expires_at":null},"by":"sender-parent","ts":1710460800}',
       );
       final share = await database
-          .watchRemoteShareProjectionByVideoId('video-1')
+          .watchRemoteShareProjections()
+          .map((items) => items.firstWhere((item) => item.videoId == 'video-1'))
           .first;
 
       final tempDir = await Directory.systemTemp.createTemp(
@@ -52,8 +53,10 @@ void main() {
         supportDirectoryProvider: () async => tempDir,
       );
 
-      final path = await service.downloadVideo(share!);
-      final cached = await database.getRemoteAssetByVideoId('video-1');
+      final path = await service.downloadVideo(share);
+      final cached = await database.getRemoteAssetByRemoteShareId(
+        share.remoteShareId,
+      );
       final shares = await database.watchShareRecords().first;
 
       expect(File(path).existsSync(), isTrue);
@@ -67,6 +70,63 @@ void main() {
       expect(blossomClient.attempts[2], ['https://snapshot.example']);
       expect(blossomClient.attempts[3], ['https://fallback.example']);
       expect(mdkService.lastDecryptUrl, 'https://fallback.example/thumb-1');
+    },
+  );
+
+  test(
+    'downloadVideo reports the actual preferred server that succeeded',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.upsertRemoteShareProjection(
+        videoId: 'video-2',
+        mlsGroupId: 'group-1',
+        senderParentKey: 'sender-parent',
+        childProfileId: 'child-1',
+        childDisplayName: 'Emma',
+        blobHash: 'blob-2',
+        thumbHash: 'thumb-2',
+        epoch: '1',
+        mime: 'video/mp4',
+        metadataJson:
+            '{"t":"mytube/video_share","video_id":"video-2","child_profile_id":"child-1","child_display_name":"Emma","meta":{"title":"Song","dur":12.5,"created_at":1710460800},"blob":{"hash":"blob-2","servers":["https://snapshot.example","https://preferred.example"],"mime":"video/mp4","len":321,"orig_hash":"orig-video","nonce":"nonce-video","filename":"clip.mp4","scheme":"mip04-v2"},"thumb":{"hash":"thumb-2","servers":["https://snapshot.example","https://preferred.example"],"mime":"image/jpeg","len":111,"orig_hash":"orig-thumb","nonce":"nonce-thumb","filename":"thumb.jpg","scheme":"mip04-v2"},"media":{"alg":"mip04","epoch":"1"},"policy":{"version":2,"expires_at":null},"by":"sender-parent","ts":1710460800}',
+      );
+      final share = await database
+          .watchRemoteShareProjections()
+          .map((items) => items.firstWhere((item) => item.videoId == 'video-2'))
+          .first;
+
+      final tempDir = await Directory.systemTemp.createTemp(
+        'remote-media-preferred-server-test',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final blossomClient = FakeBlossomClient();
+      final mdkService = FakeMdkService();
+      final nostrService = FakeNostrService();
+      final service = RemoteMediaService(
+        database: database,
+        blossomClient: blossomClient,
+        mdkService: mdkService,
+        nostrService: nostrService,
+        supportDirectoryProvider: () async => tempDir,
+      );
+
+      await service.downloadVideo(share);
+
+      expect(
+        blossomClient.attempts,
+        containsAllInOrder([
+          ['https://snapshot.example'],
+          ['https://preferred.example'],
+        ]),
+      );
+      expect(mdkService.lastDecryptUrl, 'https://preferred.example/thumb-2');
     },
   );
 }

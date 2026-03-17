@@ -14,10 +14,15 @@ import 'package:mytube/services/blossom/blossom_client.dart';
 import 'package:mytube/services/connections/family_connection_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
 import 'package:mytube/services/identity/identity_service.dart';
+import 'package:mytube/services/identity/parent_profile_service.dart';
 import 'package:mytube/services/mdk/mdk_service.dart';
 import 'package:mytube/services/media/remote_media_service.dart';
 import 'package:mytube/services/nostr/nostr_service.dart';
+import 'package:mytube/services/offline/offline_action_processor.dart';
+import 'package:mytube/services/offline/offline_action_store.dart';
+import 'package:mytube/services/safety/moderation_coordinator.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
+import 'package:mytube/services/share/share_history_service.dart';
 import 'package:mytube/services/share/video_lifecycle_coordinator.dart';
 import 'package:mytube/services/share/video_share_coordinator.dart';
 import 'package:mytube/services/sync/sync_coordinator.dart';
@@ -74,7 +79,9 @@ class LoopbackRelayBus {
     final tags = filter.tags;
     if (tags != null) {
       for (final entry in tags.entries) {
-        final key = entry.key.startsWith('#') ? entry.key.substring(1) : entry.key;
+        final key = entry.key.startsWith('#')
+            ? entry.key.substring(1)
+            : entry.key;
         final eventValues = event.getTags(key);
         if (eventValues.isEmpty ||
             !entry.value.any((value) => eventValues.contains(value))) {
@@ -96,6 +103,7 @@ class LoopbackNostrService implements NostrService {
   final Map<String, _LoopbackSubscription> _subscriptions = {};
   List<String> relayList = const ['wss://loopback.local'];
   List<String> blossomServers = const ['https://blossom.loopback'];
+  bool failPublishes = false;
 
   @override
   Future<void> connect() async {}
@@ -129,8 +137,7 @@ class LoopbackNostrService implements NostrService {
     final event = Nip01Event(
       id: _bus.nextEventId(),
       pubKey: identity.publicKeyHex,
-      createdAt:
-          createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      createdAt: createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
       kind: kind,
       tags: tags,
       content: content,
@@ -181,6 +188,9 @@ class LoopbackNostrService implements NostrService {
     List<String>? servers,
     List<String>? relays,
   }) async {
+    if (failPublishes) {
+      throw StateError('Relay offline');
+    }
     final activeServers = servers ?? blossomServers;
     blossomServers = activeServers;
     final event = Nip01Event(
@@ -205,6 +215,9 @@ class LoopbackNostrService implements NostrService {
     required String recipientPublicKeyHex,
     List<String>? relays,
   }) async {
+    if (failPublishes) {
+      throw StateError('Relay offline');
+    }
     final event = Nip01Event(
       id: _bus.nextEventId(),
       pubKey: identity.publicKeyHex,
@@ -232,14 +245,36 @@ class LoopbackNostrService implements NostrService {
       content: content,
       tagsJson: tagsJson,
     );
-    return publishSignedEventJson(identity: identity, eventJson: json, relays: relays);
+    return publishSignedEventJson(
+      identity: identity,
+      eventJson: json,
+      relays: relays,
+    );
   }
 
   @override
   Future<void> publishParentProfile({
     required ParentIdentity identity,
     required String displayName,
-  }) async {}
+  }) async {
+    if (failPublishes) {
+      throw StateError('Relay offline');
+    }
+    final event = Nip01Event(
+      id: _bus.nextEventId(),
+      pubKey: identity.publicKeyHex,
+      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      kind: 0,
+      tags: const [],
+      content: jsonEncode({
+        'display_name': displayName,
+        'name': displayName,
+        'about': 'Parent account for MyTube',
+      }),
+      sig: 'sig-${identity.publicKeyHex}',
+    );
+    await _bus.publish(event);
+  }
 
   @override
   Future<String> publishSignedEventJson({
@@ -247,6 +282,9 @@ class LoopbackNostrService implements NostrService {
     required String eventJson,
     List<String>? relays,
   }) async {
+    if (failPublishes) {
+      throw StateError('Relay offline');
+    }
     final event = Nip01EventModel.fromJson(
       jsonDecode(eventJson) as Map<String, dynamic>,
     );
@@ -314,10 +352,7 @@ class LoopbackNostrService implements NostrService {
 }
 
 class _LoopbackSubscription {
-  const _LoopbackSubscription({
-    required this.filter,
-    required this.controller,
-  });
+  const _LoopbackSubscription({required this.filter, required this.controller});
 
   final Filter filter;
   final StreamController<Nip01Event> controller;
@@ -345,6 +380,7 @@ class InMemoryBlossomClient extends BlossomClient {
     required String server,
     required List<int> bytes,
     required String mimeType,
+    BlossomUploadAuth? auth,
   }) async {
     final hash = sha256.convert(bytes).toString();
     _blobs[hash] = bytes;
@@ -411,11 +447,15 @@ class LoopbackMdkService extends MdkService {
     required List<String> relays,
     List<String> memberKeyPackageEventJsons = const [],
   }) async {
-    final invitedPubkeys = memberKeyPackageEventJsons.map((json) {
-      final event = Nip01EventModel.fromJson(jsonDecode(json) as Map<String, dynamic>);
-      final content = jsonDecode(event.content) as Map<String, dynamic>;
-      return content['member_pubkey'] as String;
-    }).toList(growable: false);
+    final invitedPubkeys = memberKeyPackageEventJsons
+        .map((json) {
+          final event = Nip01EventModel.fromJson(
+            jsonDecode(json) as Map<String, dynamic>,
+          );
+          final content = jsonDecode(event.content) as Map<String, dynamic>;
+          return content['member_pubkey'] as String;
+        })
+        .toList(growable: false);
 
     final group = _world._createGroup(
       name: name,
@@ -473,7 +513,8 @@ class LoopbackMdkService extends MdkService {
       'mls_group_id_hex': mlsGroupIdHex,
       'message_kind': kind,
       'message_content': content,
-      'message_created_at': createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      'message_created_at':
+          createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
     };
     final event = Nip01Event(
       id: _world.nextEventId(),
@@ -524,7 +565,8 @@ class LoopbackMdkService extends MdkService {
       filename: filename,
       originalSize: bytes.length,
       encryptedSize: encrypted.length,
-      nonceHex: 'nonce-${sha256.convert(utf8.encode(filename)).toString().substring(0, 12)}',
+      nonceHex:
+          'nonce-${sha256.convert(utf8.encode(filename)).toString().substring(0, 12)}',
       schemeVersion: 'loopback-mip04',
       epoch: _nextEpoch++,
     );
@@ -533,6 +575,15 @@ class LoopbackMdkService extends MdkService {
   @override
   Future<List<MdkGroupSummary>> getGroupSummaries() async {
     return _localGroups.values.toList(growable: false);
+  }
+
+  @override
+  Future<List<String>> getGroupMembers({required String mlsGroupIdHex}) async {
+    return _world
+            ._groupByMlsId(mlsGroupIdHex)
+            ?.memberPubkeysHex
+            .toList(growable: false) ??
+        const <String>[];
   }
 
   @override
@@ -564,8 +615,23 @@ class LoopbackMdkService extends MdkService {
   Future<MdkProcessedMessage> processMessageEvent({
     required String eventJson,
   }) async {
-    final event = Nip01EventModel.fromJson(jsonDecode(eventJson) as Map<String, dynamic>);
+    final event = Nip01EventModel.fromJson(
+      jsonDecode(eventJson) as Map<String, dynamic>,
+    );
     final envelope = jsonDecode(event.content) as Map<String, dynamic>;
+    if (!envelope.containsKey('message_kind')) {
+      return MdkProcessedMessage(
+        outcome: MdkMessageOutcome.commit,
+        mlsGroupIdHex: envelope['mls_group_id_hex']?.toString() ?? '',
+        messageEventIdHex: event.id,
+        wrapperEventIdHex: event.id,
+        pubkeyHex: event.pubKey,
+        kind: event.kind,
+        content: event.content,
+        createdAt: event.createdAt,
+        state: 'processed',
+      );
+    }
     return MdkProcessedMessage(
       outcome: MdkMessageOutcome.applicationMessage,
       mlsGroupIdHex: envelope['mls_group_id_hex'] as String,
@@ -600,12 +666,45 @@ class LoopbackMdkService extends MdkService {
       groupName: group['name'] as String,
       groupDescription: group['description'] as String,
       memberCount: group['member_count'] as int,
-      welcomerPubkeyHex: ((group['admin_pubkeys_hex'] as List<dynamic>).first).toString(),
+      welcomerPubkeyHex: ((group['admin_pubkeys_hex'] as List<dynamic>).first)
+          .toString(),
       relays: const ['wss://loopback.local'],
       state: 'pending',
     );
     _pendingWelcomes[pending.welcomeEventIdHex] = pending;
     return pending;
+  }
+
+  @override
+  Future<MdkGroupUpdate> removeGroupMembers({
+    required String mlsGroupIdHex,
+    required List<String> memberPubkeysHex,
+  }) async {
+    final group = _world._groupByMlsId(mlsGroupIdHex);
+    if (group == null) {
+      throw StateError('Group not found');
+    }
+    group.memberPubkeysHex.removeWhere(memberPubkeysHex.contains);
+    _localGroups[mlsGroupIdHex] = group.toSummary();
+    final event = Nip01Event(
+      id: _world.nextEventId(),
+      pubKey: _ownerPublicKeyHex,
+      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      kind: MarmotKinds.groupCommit,
+      tags: [
+        ['h', group.nostrGroupIdHex],
+      ],
+      content: jsonEncode({
+        'mls_group_id_hex': mlsGroupIdHex,
+        'removed_members': memberPubkeysHex,
+      }),
+      sig: 'sig-$_ownerPublicKeyHex',
+    );
+    return MdkGroupUpdate(
+      wrapperEventJson: Nip01EventModel.fromEntity(event).toJsonString(),
+      wrapperEventIdHex: event.id,
+      mlsGroupIdHex: mlsGroupIdHex,
+    );
   }
 }
 
@@ -634,7 +733,8 @@ class LoopbackMdkWorld {
     return group;
   }
 
-  LoopbackGroup? _groupByMlsId(String mlsGroupIdHex) => _groupsByMlsId[mlsGroupIdHex];
+  LoopbackGroup? _groupByMlsId(String mlsGroupIdHex) =>
+      _groupsByMlsId[mlsGroupIdHex];
 
   String nextEventId() => 'mdk-event-${_nextEvent++}';
 
@@ -642,7 +742,7 @@ class LoopbackMdkWorld {
 }
 
 class LoopbackGroup {
-  const LoopbackGroup({
+  LoopbackGroup({
     required this.mlsGroupIdHex,
     required this.nostrGroupIdHex,
     required this.name,
@@ -687,12 +787,16 @@ class FamilyAppHarness {
     required this.remoteMediaService,
     required this.likeCoordinator,
     required this.reportCoordinator,
+    required this.moderationCoordinator,
+    required this.parentProfileService,
+    required this.offlineActionStore,
+    required this.offlineActionProcessor,
   });
 
   final ParentIdentity identity;
   final AppDatabase database;
   final LoopbackMdkService mdk;
-  final NostrService nostr;
+  final LoopbackNostrService nostr;
   final InMemoryBlossomClient blossom;
   final Directory rootDir;
   final String childId;
@@ -704,6 +808,10 @@ class FamilyAppHarness {
   final RemoteMediaService remoteMediaService;
   final LikeCoordinator likeCoordinator;
   final ReportCoordinator reportCoordinator;
+  final ModerationCoordinator moderationCoordinator;
+  final ParentProfileService parentProfileService;
+  final OfflineActionStore offlineActionStore;
+  final OfflineActionProcessor offlineActionProcessor;
 
   static Future<FamilyAppHarness> create({
     required LoopbackRelayBus relayBus,
@@ -744,6 +852,52 @@ class FamilyAppHarness {
       identityService: fakeIdentityService,
       remoteMediaService: remoteMediaService,
     );
+    final offlineActionStore = OfflineActionStore(database: database);
+    final shareHistoryService = ShareHistoryService(database: database);
+    final parentProfileService = ParentProfileService(
+      database: database,
+      nostrService: nostr,
+      offlineActionStore: offlineActionStore,
+    );
+    final likeCoordinator = LikeCoordinator(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+      offlineActionStore: offlineActionStore,
+    );
+    final reportCoordinator = ReportCoordinator(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+      offlineActionStore: offlineActionStore,
+    );
+    final lifecycleCoordinator = VideoLifecycleCoordinator(
+      mdkService: mdk,
+      nostrService: nostr,
+    );
+    final moderationCoordinator = ModerationCoordinator(
+      database: database,
+      blossomClient: blossom,
+      mdkService: mdk,
+      nostrService: nostr,
+      videoLifecycleCoordinator: lifecycleCoordinator,
+    );
+    final shareCoordinator = VideoShareCoordinator(
+      database: database,
+      blossomClient: blossom,
+      mdkService: mdk,
+      nostrService: nostr,
+      offlineActionStore: offlineActionStore,
+      shareHistoryService: shareHistoryService,
+    );
+    final offlineActionProcessor = OfflineActionProcessor(
+      store: offlineActionStore,
+      identityService: fakeIdentityService,
+      parentProfileService: parentProfileService,
+      videoShareCoordinator: shareCoordinator,
+      likeCoordinator: likeCoordinator,
+      reportCoordinator: reportCoordinator,
+    );
     return FamilyAppHarness._(
       identity: identity,
       database: database,
@@ -757,27 +911,16 @@ class FamilyAppHarness {
         mdkService: mdk,
         nostrService: nostr,
       ),
-      shareCoordinator: VideoShareCoordinator(
-        blossomClient: blossom,
-        mdkService: mdk,
-        nostrService: nostr,
-      ),
-      lifecycleCoordinator: VideoLifecycleCoordinator(
-        mdkService: mdk,
-        nostrService: nostr,
-      ),
+      shareCoordinator: shareCoordinator,
+      lifecycleCoordinator: lifecycleCoordinator,
       syncCoordinator: syncCoordinator,
       remoteMediaService: remoteMediaService,
-      likeCoordinator: LikeCoordinator(
-        database: database,
-        mdkService: mdk,
-        nostrService: nostr,
-      ),
-      reportCoordinator: ReportCoordinator(
-        database: database,
-        mdkService: mdk,
-        nostrService: nostr,
-      ),
+      likeCoordinator: likeCoordinator,
+      reportCoordinator: reportCoordinator,
+      moderationCoordinator: moderationCoordinator,
+      parentProfileService: parentProfileService,
+      offlineActionStore: offlineActionStore,
+      offlineActionProcessor: offlineActionProcessor,
     );
   }
 
@@ -791,10 +934,8 @@ class FamilyAppHarness {
 }
 
 class _StaticIdentityService extends IdentityService {
-  _StaticIdentityService({
-    required this.identity,
-    required super.database,
-  }) : super(secureStorage: const FlutterSecureStorage());
+  _StaticIdentityService({required this.identity, required super.database})
+    : super(secureStorage: const FlutterSecureStorage());
 
   final ParentIdentity identity;
 

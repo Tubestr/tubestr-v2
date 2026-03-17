@@ -21,6 +21,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
+      GoRoute(
+        path: '/player/remote/:remoteShareId',
+        pageBuilder: (context, state) => MaterialPage(
+          fullscreenDialog: true,
+          child: PlayerPage(
+            remoteShareId: state.pathParameters['remoteShareId'] ?? '',
+          ),
+        ),
+      ),
     ],
   );
 });

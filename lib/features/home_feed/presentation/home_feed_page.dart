@@ -459,7 +459,7 @@ class _SharedVideosSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final grouped = groupBy(
       items,
-      (RemoteShareProjection item) => item.displayName,
+      (RemoteShareProjection item) => item.senderParentKey,
     );
 
     return Column(
@@ -468,15 +468,10 @@ class _SharedVideosSection extends StatelessWidget {
         _SectionHeader(title: 'From Friends & Family'),
         const SizedBox(height: 12),
         for (final entry in grouped.entries) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              'From ${entry.key}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: palette.mutedInk,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          _SharedFamilyHeader(
+            senderParentKey: entry.key,
+            fallbackChildName: entry.value.first.displayName,
+            palette: palette,
           ),
           SizedBox(
             height: 172,
@@ -495,6 +490,36 @@ class _SharedVideosSection extends StatelessWidget {
           const SizedBox(height: 20),
         ],
       ],
+    );
+  }
+}
+
+class _SharedFamilyHeader extends ConsumerWidget {
+  const _SharedFamilyHeader({
+    required this.senderParentKey,
+    required this.fallbackChildName,
+    required this.palette,
+  });
+
+  final String senderParentKey;
+  final String fallbackChildName;
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref
+        .watch(resolvedParentProfileProvider(senderParentKey))
+        .valueOrNull;
+    final label = profile?.displayName ?? fallbackChildName;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        'From $label',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: palette.mutedInk,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -520,7 +545,7 @@ class _SharedVideoTile extends StatelessWidget {
     return SizedBox(
       width: 196,
       child: GestureDetector(
-        onTap: () => context.push('/player/${item.videoId}'),
+        onTap: () => context.push('/player/remote/${item.remoteShareId}'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -578,19 +603,35 @@ class _SharedVideoTile extends StatelessWidget {
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 2),
-            Text(
-              item.isDownloaded
-                  ? 'Ready to watch'
-                  : 'Saved from ${item.displayName}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-            ),
+            _RemoteAttributionLine(item: item, palette: palette),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RemoteAttributionLine extends ConsumerWidget {
+  const _RemoteAttributionLine({required this.item, required this.palette});
+
+  final RemoteShareProjection item;
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref
+        .watch(resolvedParentProfileProvider(item.senderParentKey))
+        .valueOrNull;
+    final sourceLabel = profile == null
+        ? item.displayName
+        : '${profile.displayName} · ${item.displayName}';
+    return Text(
+      item.isDownloaded ? 'Ready to watch' : 'Saved from $sourceLabel',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(
+        context,
+      ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
     );
   }
 }

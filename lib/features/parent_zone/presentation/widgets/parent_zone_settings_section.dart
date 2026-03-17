@@ -10,22 +10,40 @@ import '../../../../services/safety/safety_hq_service.dart';
 class ParentZoneSettingsSection extends ConsumerWidget {
   const ParentZoneSettingsSection({
     super.key,
+    required this.displayNameController,
     required this.relayController,
     required this.blossomController,
     required this.pinManagementController,
+    required this.approvalRequired,
     required this.onRefresh,
+    required this.onSaveDisplayName,
+    required this.onPublishDisplayName,
+    required this.onToggleApprovalRequired,
+    required this.onRetryOfflineQueue,
     required this.onSaveRelays,
+    required this.onRemoveRelay,
+    required this.onResetRelays,
+    required this.onReconnectRelays,
     required this.onSaveBlossomServers,
     required this.onPublishBlossomServers,
     required this.onUpdatePin,
     required this.onProvisionSafetyHq,
   });
 
+  final TextEditingController displayNameController;
   final TextEditingController relayController;
   final TextEditingController blossomController;
   final TextEditingController pinManagementController;
+  final bool approvalRequired;
   final VoidCallback onRefresh;
+  final VoidCallback onSaveDisplayName;
+  final Future<void> Function() onPublishDisplayName;
+  final ValueChanged<bool> onToggleApprovalRequired;
+  final Future<void> Function() onRetryOfflineQueue;
   final VoidCallback onSaveRelays;
+  final Future<void> Function(String relay) onRemoveRelay;
+  final Future<void> Function() onResetRelays;
+  final Future<void> Function() onReconnectRelays;
   final VoidCallback onSaveBlossomServers;
   final Future<void> Function(List<String> servers) onPublishBlossomServers;
   final VoidCallback onUpdatePin;
@@ -38,6 +56,99 @@ class ParentZoneSettingsSection extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
       children: [
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Parent Profile',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: displayNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Display name',
+                  hintText: 'Lee and Emma',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  FilledButton.tonal(
+                    onPressed: onSaveDisplayName,
+                    child: const Text('Save locally'),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      await onPublishDisplayName();
+                    },
+                    child: const Text('Publish profile'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Approvals & Scanning',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile.adaptive(
+                value: approvalRequired,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Require parent approval before sharing'),
+                subtitle: const Text(
+                  'New clips stay pending until a parent reviews them.',
+                ),
+                onChanged: onToggleApprovalRequired,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Consumer(
+          builder: (context, ref, _) {
+            final queuedActions =
+                ref.watch(offlineActionsProvider).valueOrNull ?? const [];
+            return FrostCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Offline Queue',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    queuedActions.isEmpty
+                        ? 'Everything has synced.'
+                        : '${queuedActions.length} action(s) are waiting for a relay connection.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.tonal(
+                    onPressed: queuedActions.isEmpty
+                        ? null
+                        : () async {
+                            await onRetryOfflineQueue();
+                          },
+                    child: const Text('Retry now'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
         FutureBuilder<List<String>>(
           future: ref.read(nostrServiceProvider).loadRelayList(),
           builder: (context, snapshot) {
@@ -64,6 +175,13 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () async {
+                              await onRemoveRelay(relay);
+                              onRefresh();
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -75,12 +193,32 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  FilledButton.tonal(
-                    onPressed: () {
-                      onSaveRelays();
-                      onRefresh();
-                    },
-                    child: const Text('Save relays'),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      FilledButton.tonal(
+                        onPressed: () {
+                          onSaveRelays();
+                          onRefresh();
+                        },
+                        child: const Text('Save relays'),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          await onReconnectRelays();
+                          onRefresh();
+                        },
+                        child: const Text('Reconnect'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () async {
+                          await onResetRelays();
+                          onRefresh();
+                        },
+                        child: const Text('Use defaults'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -243,8 +381,7 @@ class _SafetyStatusBody extends StatelessWidget {
       'Status: ${status.label}',
       if (status.groupId != null && status.groupId!.isNotEmpty)
         'Group: ${status.groupId!}',
-      if (status.lastSyncAt != null)
-        'Updated: ${status.lastSyncAt!.toLocal()}',
+      if (status.lastSyncAt != null) 'Updated: ${status.lastSyncAt!.toLocal()}',
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

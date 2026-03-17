@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
+import '../../../../core/nostr/nostr_key_format.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../services/mdk/mdk_service.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
@@ -176,24 +177,8 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        welcome.groupName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${welcome.memberCount} members',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(color: palette.mutedInk),
-                                      ),
-                                    ],
+                                  child: _PendingWelcomeDetails(
+                                    welcome: welcome,
                                   ),
                                 ),
                                 FilledButton(
@@ -253,25 +238,7 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        group.name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${group.memberCount} members',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(color: palette.mutedInk),
-                                      ),
-                                    ],
-                                  ),
+                                  child: _ActiveGroupDetails(group: group),
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.more_horiz_rounded),
@@ -354,6 +321,105 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _PendingWelcomeDetails extends ConsumerWidget {
+  const _PendingWelcomeDetails({required this.welcome});
+
+  final MdkPendingWelcome welcome;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = ref.watch(activeThemeProvider).palette;
+    final welcomer = ref
+        .watch(resolvedParentProfileProvider(welcome.welcomerPubkeyHex))
+        .valueOrNull;
+    final inviterLabel =
+        welcomer?.displayName ??
+        formatCompactPublicKeyLabel(welcome.welcomerPubkeyHex);
+    final groupLabel = _preferredGroupLabel(
+      currentLabel: welcome.groupName,
+      fallbackParentName: welcomer?.displayName,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(
+          '$inviterLabel · ${welcome.memberCount} members',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActiveGroupDetails extends ConsumerWidget {
+  const _ActiveGroupDetails({required this.group});
+
+  final MdkGroupSummary group;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = ref.watch(activeThemeProvider).palette;
+    final adminPubkey = group.adminPubkeysHex.isEmpty
+        ? null
+        : group.adminPubkeysHex.first;
+    final adminProfile = adminPubkey == null
+        ? null
+        : ref.watch(resolvedParentProfileProvider(adminPubkey)).valueOrNull;
+    final familyLabel = adminProfile?.displayName;
+    final groupLabel = _preferredGroupLabel(
+      currentLabel: group.name,
+      fallbackParentName: familyLabel,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(
+          familyLabel == null || familyLabel.isEmpty
+              ? adminPubkey == null
+                    ? '${group.memberCount} members'
+                    : '${formatCompactPublicKeyLabel(adminPubkey)} · ${group.memberCount} members'
+              : '$familyLabel · ${group.memberCount} members',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+        ),
+        Text(
+          group.nostrGroupIdHex,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+        ),
+      ],
+    );
+  }
+}
+
+String _preferredGroupLabel({
+  required String currentLabel,
+  required String? fallbackParentName,
+}) {
+  final trimmedCurrent = currentLabel.trim();
+  if (trimmedCurrent.isNotEmpty &&
+      trimmedCurrent.toLowerCase() != 'family space') {
+    return trimmedCurrent;
+  }
+
+  final fallback = fallbackParentName?.trim();
+  if (fallback == null || fallback.isEmpty) {
+    return trimmedCurrent.isEmpty ? 'Family Space' : trimmedCurrent;
+  }
+  if (fallback.toLowerCase().contains('family')) {
+    return fallback;
+  }
+  return '$fallback Family';
 }
 
 class _ActionTile extends StatelessWidget {

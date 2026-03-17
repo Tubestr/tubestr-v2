@@ -4,15 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/auth/parent_auth_service.dart';
 import '../../../services/blossom/blossom_client.dart';
+import '../../../services/approval/content_scan_service.dart';
+import '../../../services/approval/video_approval_service.dart';
 import '../../../services/connections/family_connection_service.dart';
+import '../../../services/editor/editor_export_service.dart';
 import '../../../services/engagement/like_coordinator.dart';
 import '../../../services/identity/identity_service.dart';
+import '../../../services/identity/parent_profile_service.dart';
 import '../../../services/mdk/mdk_service.dart';
 import '../../../services/media/remote_media_service.dart';
 import '../../../services/nostr/nostr_service.dart';
+import '../../../services/offline/offline_action_processor.dart';
+import '../../../services/offline/offline_action_store.dart';
 import '../../../services/safety/moderation_coordinator.dart';
 import '../../../services/safety/report_coordinator.dart';
 import '../../../services/safety/safety_hq_service.dart';
+import '../../../services/share/share_history_service.dart';
 import '../../../services/share/video_lifecycle_coordinator.dart';
 import '../../../services/share/video_share_coordinator.dart';
 import '../../../services/sync/sync_coordinator.dart';
@@ -26,9 +33,20 @@ final identityServiceProvider = Provider<IdentityService>((ref) {
   );
 });
 
+final editorExportServiceProvider = Provider<EditorExportService>((ref) {
+  return EditorExportService(
+    database: ref.watch(appDatabaseProvider),
+    thumbnailService: ref.watch(thumbnailServiceProvider),
+  );
+});
+
 final parentAuthServiceProvider = Provider<ParentAuthService>((ref) {
   return ParentAuthService(ref.watch(secureStorageProvider));
 });
+
+final contentScanServiceProvider = Provider(
+  (ref) => const ContentScanService(),
+);
 
 final blossomClientProvider = Provider<BlossomClient>((ref) {
   return BlossomClient(ref.watch(dioProvider));
@@ -40,10 +58,32 @@ final nostrServiceProvider = Provider<NostrService>((ref) {
 
 final mdkServiceProvider = Provider((ref) => MdkService());
 
+final parentProfileServiceProvider = Provider((ref) {
+  return ParentProfileService(
+    database: ref.watch(appDatabaseProvider),
+    nostrService: ref.watch(nostrServiceProvider),
+    offlineActionStore: ref.watch(offlineActionStoreProvider),
+  );
+});
+
+final videoApprovalServiceProvider = Provider((ref) {
+  return VideoApprovalService(
+    database: ref.watch(appDatabaseProvider),
+    scanService: ref.watch(contentScanServiceProvider),
+  );
+});
+
+final offlineActionStoreProvider = Provider((ref) {
+  return OfflineActionStore(database: ref.watch(appDatabaseProvider));
+});
+
 final familyConnectionServiceProvider = Provider((ref) {
   return FamilyConnectionService(
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
+    loadLocalDisplayName: ref
+        .watch(parentProfileServiceProvider)
+        .loadLocalDisplayName,
   );
 });
 
@@ -63,6 +103,7 @@ final syncCoordinatorProvider = Provider<SyncCoordinator>((ref) {
     nostrService: ref.watch(nostrServiceProvider),
     identityService: ref.watch(identityServiceProvider),
     remoteMediaService: ref.watch(remoteMediaServiceProvider),
+    parentProfileService: ref.watch(parentProfileServiceProvider),
   );
   ref.onDispose(() {
     unawaited(coordinator.stop());
@@ -76,10 +117,17 @@ final syncRevisionProvider = StreamProvider<int>((ref) {
 
 final videoShareCoordinatorProvider = Provider((ref) {
   return VideoShareCoordinator(
+    database: ref.watch(appDatabaseProvider),
     blossomClient: ref.watch(blossomClientProvider),
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
+    offlineActionStore: ref.watch(offlineActionStoreProvider),
+    shareHistoryService: ref.watch(shareHistoryServiceProvider),
   );
+});
+
+final shareHistoryServiceProvider = Provider((ref) {
+  return ShareHistoryService(database: ref.watch(appDatabaseProvider));
 });
 
 final videoLifecycleCoordinatorProvider = Provider((ref) {
@@ -94,6 +142,7 @@ final likeCoordinatorProvider = Provider((ref) {
     database: ref.watch(appDatabaseProvider),
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
+    offlineActionStore: ref.watch(offlineActionStoreProvider),
   );
 });
 
@@ -102,6 +151,7 @@ final reportCoordinatorProvider = Provider((ref) {
     database: ref.watch(appDatabaseProvider),
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
+    offlineActionStore: ref.watch(offlineActionStoreProvider),
   );
 });
 
@@ -125,4 +175,15 @@ final safetyHqServiceProvider = Provider((ref) {
 
 final deepLinkServiceProvider = Provider<DeepLinkService>((ref) {
   return AppLinksDeepLinkService();
+});
+
+final offlineActionProcessorProvider = Provider((ref) {
+  return OfflineActionProcessor(
+    store: ref.watch(offlineActionStoreProvider),
+    identityService: ref.watch(identityServiceProvider),
+    parentProfileService: ref.watch(parentProfileServiceProvider),
+    videoShareCoordinator: ref.watch(videoShareCoordinatorProvider),
+    likeCoordinator: ref.watch(likeCoordinatorProvider),
+    reportCoordinator: ref.watch(reportCoordinatorProvider),
+  );
 });

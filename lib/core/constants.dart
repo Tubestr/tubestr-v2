@@ -2,6 +2,11 @@ class AppConstants {
   static const appName = 'MyTube';
   static const parentIdentityStorageKey = 'parent_identity_v1';
   static const parentPinStorageKey = 'parent_pin_hash_v1';
+  static const parentDisplayNameSettingKey = 'parent_display_name';
+  static const parentProfileCachePrefix = 'parent_profile_cache:';
+  static const approvalRequiredSettingKey = 'approval_required';
+  static const offlineActionQueueSettingKey = 'offline_action_queue';
+  static const shareHistorySettingKey = 'share_history';
   static const relayListSettingKey = 'relay_list';
   static const blossomServerListSettingKey = 'blossom_server_list';
   static const safetyJoinQueuedKey = 'safety_join_queued';
@@ -14,9 +19,7 @@ class AppConstants {
     'wss://relay.damus.io',
     'wss://relay.primal.net',
   ];
-  static const defaultBlossomServers = <String>[
-    'https://blossom.tubestr.app',
-  ];
+  static const defaultBlossomServers = <String>['https://blossom.tubestr.app'];
 }
 
 class MarmotKinds {

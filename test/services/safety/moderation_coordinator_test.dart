@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/marmot/message_models.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
+import 'package:mytube/domain/models/remote_share_identity.dart';
 import 'package:mytube/services/safety/moderation_coordinator.dart';
 import 'package:mytube/services/share/video_lifecycle_coordinator.dart';
 
@@ -104,7 +105,7 @@ void main() {
       ts: 1710460800,
     );
 
-    await database.upsertRemoteShareProjection(
+    final remoteShareId = await database.upsertRemoteShareProjection(
       videoId: 'video-1',
       mlsGroupId: 'group-123',
       senderParentKey: 'other-parent',
@@ -119,7 +120,9 @@ void main() {
       localThumbPath: thumbFile.path,
     );
 
-    final projection = await database.getRemoteShareProjectionByVideoId('video-1');
+    final projection = await database.getRemoteShareProjectionByRemoteShareId(
+      remoteShareId,
+    );
     expect(projection, isNotNull);
 
     await coordinator.deleteSharedVideo(
@@ -128,7 +131,13 @@ void main() {
       reason: 'Moderator action',
     );
 
-    final updated = await database.getRemoteShareProjectionByVideoId('video-1');
+    final updated = await database.getRemoteShareProjectionByRemoteShareId(
+      buildRemoteShareId(
+        senderParentKey: 'other-parent',
+        mlsGroupId: 'group-123',
+        videoId: 'video-1',
+      ),
+    );
     expect(updated?.status, 'deleted');
     expect(updated?.localMediaPath, isNull);
     expect(updated?.localThumbPath, isNull);

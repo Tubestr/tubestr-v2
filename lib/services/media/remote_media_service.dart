@@ -75,12 +75,12 @@ class RemoteMediaService {
       );
       final target = await _cacheFile(
         folder: 'thumbs',
-        videoId: share.videoId,
+        remoteShareId: share.remoteShareId,
         extension: _extensionForMime(thumb.mime, fallback: '.jpg'),
       );
       await target.writeAsBytes(decrypted, flush: true);
       await _database.updateRemoteAssetCache(
-        videoId: share.videoId,
+        remoteShareId: share.remoteShareId,
         localThumbPath: target.path,
       );
       return target.path;
@@ -103,7 +103,7 @@ class RemoteMediaService {
     }
 
     await _database.updateRemoteShareStatus(
-      videoId: share.videoId,
+      remoteShareId: share.remoteShareId,
       status: 'downloading',
       downloadError: null,
     );
@@ -128,26 +128,26 @@ class RemoteMediaService {
 
       final mediaTarget = await _cacheFile(
         folder: 'videos',
-        videoId: share.videoId,
+        remoteShareId: share.remoteShareId,
         extension: _extensionForMime(blob.mime, fallback: '.bin'),
       );
       await mediaTarget.writeAsBytes(decrypted, flush: true);
 
       final thumbPath = await prefetchThumbnail(share);
       await _database.updateRemoteAssetCache(
-        videoId: share.videoId,
+        remoteShareId: share.remoteShareId,
         localMediaPath: mediaTarget.path,
         localThumbPath: thumbPath ?? share.localThumbPath,
       );
       await _database.updateRemoteShareStatus(
-        videoId: share.videoId,
+        remoteShareId: share.remoteShareId,
         status: 'downloaded',
         downloadError: null,
       );
       return mediaTarget.path;
     } catch (error) {
       await _database.updateRemoteShareStatus(
-        videoId: share.videoId,
+        remoteShareId: share.remoteShareId,
         status: 'failed',
         downloadError: '$error',
       );
@@ -157,7 +157,7 @@ class RemoteMediaService {
 
   Future<File> _cacheFile({
     required String folder,
-    required String videoId,
+    required String remoteShareId,
     required String extension,
   }) async {
     final root = await _supportDirectoryProvider();
@@ -165,7 +165,7 @@ class RemoteMediaService {
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
     }
-    return File(p.join(dir.path, '$videoId$extension'));
+    return File(p.join(dir.path, '$remoteShareId$extension'));
   }
 
   String _extensionForMime(String mimeType, {required String fallback}) {
@@ -188,13 +188,7 @@ class RemoteMediaService {
     required String senderPublicKeyHex,
   }) async {
     try {
-      return DownloadedBlob(
-        bytes: await _blossomClient.downloadBlob(
-          hash: hash,
-          servers: preferredServers,
-        ),
-        server: preferredServers.first,
-      );
+      return await _downloadFromServers(hash: hash, servers: preferredServers);
     } catch (_) {
       final fallbackServers = await _nostrService.fetchBlossomServerList(
         publicKeyHex: senderPublicKeyHex,
@@ -205,10 +199,27 @@ class RemoteMediaService {
       if (retryServers.isEmpty) {
         rethrow;
       }
-      return DownloadedBlob(
-        bytes: await _blossomClient.downloadBlob(hash: hash, servers: retryServers),
-        server: retryServers.first,
-      );
+      return _downloadFromServers(hash: hash, servers: retryServers);
     }
+  }
+
+  Future<DownloadedBlob> _downloadFromServers({
+    required String hash,
+    required List<String> servers,
+  }) async {
+    Object? lastError;
+    for (final server in servers) {
+      try {
+        final bytes = await _blossomClient.downloadBlob(
+          hash: hash,
+          servers: [server],
+        );
+        return DownloadedBlob(bytes: bytes, server: server);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError ?? StateError('Unable to download blob $hash');
   }
 }

@@ -26,6 +26,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 
 - `/home/lee/apps/tubestr-ios/Docs/MyTubeProtocolSpec.md`
 - `/home/lee/apps/tubestr-v2/docs/UIReference.md`
+- `/home/lee/apps/tubestr-v2/docs/EditorResearch.md`
 - `/home/lee/apps/tubestr-ios/MyTube/Domain/Models.swift`
 - `/home/lee/apps/tubestr-ios/MyTube/Domain/ReportModels.swift`
 - `/home/lee/apps/tubestr-ios/MyTube/Domain/RankingEngine.swift`
@@ -37,7 +38,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Date: 2026-03-15
 - Workspace state: Flutter app bootstrapped, Drift code generated, analysis green
 - iOS app available for reference at `/home/lee/apps/tubestr-ios`
-- Current focus: tighten the Phase 3 media/share loop so shared events can carry real encrypted Blossom assets, remote thumbnails can prefetch automatically, and downloaded shares can decrypt into playable local cache files
+- Current focus: harden automatic retry and multi-family lifecycle reliability while editor design continues in parallel
 
 ## Execution Rules
 
@@ -101,11 +102,12 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Thumbnail generation is wired for captured local clips and displayed in the feed.
 - Editor handoff is still pending.
 - Player route exists; real playback works only once captured/imported files are stored with valid paths.
+- Player playback now uses the actual media dimensions when available instead of forcing every clip into `16:9`, and Android debug builds prefer software video rendering to reduce emulator black-screen decode issues while we keep hardening remote playback.
 - `nook://` deep-link handling is now wired through `app_links` into the app shell and opens Parent Zone, with Android intent-filter support. `tubestr://` and `mytube://` are still pending by choice after narrowing the current scope.
 
 ## Phase 2.5: Editor Spike
 
-- [ ] Prototype trim + LUT filter + audio overlay with `ffmpeg_kit`
+- [-] Prototype trim + LUT filter + audio overlay with `ffmpeg_kit`
 - [ ] Test on Android and iOS targets where possible
 - [ ] Record render time, memory observations, and output quality
 - [ ] Decide whether to keep `ffmpeg_kit` or fall back to native platform channels
@@ -113,6 +115,32 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 ### Notes
 
 - Editing is required for MVP. The spike decides implementation path, not whether the feature ships.
+- Research conclusion is now captured in `docs/EditorResearch.md`.
+- Current recommendation: build the editor as custom Flutter UI plus Dart edit-state models, keep `media_kit` for preview, use `just_audio` for music preview, and use `ffmpeg_kit_flutter_new_video` as the export engine.
+- We should not center the editor around `video_editor_2` or `easy_video_editor`; both are too narrow for MyTube's trim + filters + stickers + text + audio requirements.
+- `google_mlkit_selfie_segmentation` is the best current fit for the selfie-sticker flow once the base editor loop is working.
+- If the FFmpeg export spike fails on performance, quality, or stability, we should preserve the Flutter UI and swap only the renderer behind platform channels.
+- The old iOS LUTs, sticker PNGs, and bundled music tracks are now copied into Flutter assets under `assets/editor/`.
+- Initial editor foundation models now exist for trim state, overlays, audio selection, effect sliders, and catalogued built-in resources.
+- The Editor tab now opens a real full-screen editor detail page for local videos, with trim/effects/overlays/audio/text tool panels overlaid on the video itself and local edit-session state.
+- The first interactive editor preview supports live sticker placement with drag, scale, and rotation on top of `media_kit` playback; export is still the next step.
+- `ffmpeg_kit_flutter_new_video` and `just_audio` are now added to the app so the next slice can wire real export and soundtrack preview instead of changing package strategy again.
+- User feedback changed the design direction from a side-by-side tablet workspace to a more immersive TikTok-style editor. We should continue honoring that preference for future editor UI work while still keeping tablet ergonomics in spacing and sizing.
+- Trim normalization utilities now guard against zero or bad clip duration metadata so the editor does not crash when the slider initializes.
+- The audio tool now previews built-in soundtrack assets through `just_audio`, and the editor can stop or switch previews cleanly while editing.
+- The first export path now exists: trim + LUT/effect adjustments + soundtrack export via `ffmpeg_kit_flutter_new_video`, saving a new local remix and thumbnail back into Drift.
+- Sticker and text overlays are now rasterized into a transparent compositor image and burned into exported remixes, which closes the biggest preview/export mismatch in the editor.
+- Export now mixes original clip audio with the selected soundtrack when the source clip has audio, and falls back cleanly to soundtrack-only export when it does not.
+- Selfie sticker capture is now wired as a full-screen front-camera flow using `google_mlkit_selfie_segmentation`, with generated transparent PNG stickers stored per child profile under app support storage and immediately reusable in the editor.
+- The immersive preview now applies an approximate live look stack for the selected filter/effect settings, which brings the on-screen preview much closer to the exported result even though FFmpeg LUT output remains the source of truth for final renders.
+- The preview player now loops within the selected trim range and exposes an over-video play/pause affordance, so trim changes affect the editing experience immediately instead of only affecting export.
+- Sticker behavior now supports stacking multiple stickers instead of a single replacement sticker slot, and the overlay tool removes the selected sticker rather than wiping all stickers at once.
+- FFmpeg export now normalizes render size down to an even, capped output resolution before applying filters and overlays, which should make filter-heavy exports more stable on Android devices and emulators.
+- The export filter graph now uses named `eq=` parameters and more defensive overlay staging, which fixes a real failure mode where effect-heavy exports could throw `EditorExportException` or destabilize the app.
+- Editor export now pauses the live preview player first and retries through simpler compatibility plans if the full FFmpeg stack fails, so the editor can still save a remix instead of hard-failing on the first unsupported filter/effect combination.
+- Editor export now reads rotation metadata from FFprobe and applies orientation-aware sizing/transpose filters, which should stop portrait captures from exporting as stretched landscape remixes.
+- Compatibility export now writes a diagnostics log when every FFmpeg plan fails, which gives us a concrete device-specific trail instead of a generic export exception.
+- Current editor gaps: selfie subject lifting is implemented but still needs more on-device validation for edge quality/performance, and preview LUT rendering remains an approximation rather than pixel-exact parity with FFmpeg export.
 
 ## Phase 3: Sharing, Sync, and Safety HQ
 
@@ -123,7 +151,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - [-] Implement remote/shared feed
 - [x] Implement asset download, decrypt, and local cache pipeline
 - [-] Implement QR-based group invite flow
-- [-] Publish and resolve parent NIP-01 metadata for parent names, group labels, and shared-video attribution
+- [x] Publish and resolve parent NIP-01 metadata for parent names, group labels, and shared-video attribution
 - [x] Publish/fetch `kind:10063` Blossom server lists
 - [x] Queue and complete Safety HQ joining asynchronously
 
@@ -133,7 +161,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - No public NIP-94 events for shared media.
 - Safety HQ is currently provisioned as an app-managed moderator group named `Safety HQ` on first app start after onboarding. This is a deliberate pre-launch bootstrap decision while there are no real moderators or live users yet; later we can swap the provisioner to a network-delivered welcome without changing the report flow.
 - The current family invite flow is intentionally pre-launch only: compact invite link/QR -> relay-discovered key package -> welcome returned over Nostr -> inviter approves in Parent Zone. We do not need or plan legacy invite/welcome fallback packets while the app has no live users.
-- Parent NIP-01 metadata is only partially wired today: publishing support exists in the Nostr adapter, but onboarding/settings still need to capture a parent display name, publish it reliably, resolve other parents' profiles, and use those names for family group labeling and shared-video attribution.
+- Parent NIP-01 metadata now has a real service layer for local save, publish, cache, and resolve; the remaining gap is broader usage in connection/group labeling beyond remote-share attribution.
 - Child identities remain local-only by product decision. Cross-family attribution should come from the share payload and the sending parent's metadata, not from child npubs or child-level NIP-01 profiles.
 - Video share events should continue carrying child-level display data for UX, and we should tighten that contract so remote feed/player surfaces can show both the child's name and the sending parent's resolved display name together.
 - Joining a family should stay a parent-to-parent relationship at the MLS/group layer. The per-child linkage remains an app-local profile-to-primary-group mapping, not a network-visible child identity binding.
@@ -154,15 +182,29 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Test coverage now includes relay-delivered `kind:445` events flowing through `SyncCoordinator.start()` subscriptions into Drift projections without manual event paste.
 - Family invites now encode as `nook://family-invite?...` deep links, and Parent Zone exposes them via QR, copy, and native share-sheet actions for SMS/WhatsApp-style handoff.
 - The player now exposes a real local-video share action that uses `VideoShareCoordinator` to encrypt, upload, create a group message, and publish to the mapped primary family group for that child profile.
+- Sharing now refuses local videos that are still pending approval, which ties the local parental-control flow into the network share path instead of leaving approval as a cosmetic state.
 - Child profiles now inherit a primary family group when one exists, and new/joined groups seed missing profile-group mappings so local sharing does not depend on a blind "first group" fallback.
 - App startup now provisions Safety HQ in the background, stores its group id/status in app settings, refreshes sync subscriptions when created, and flushes queued Safety HQ reports once the moderator group exists.
 - `ReportCoordinator` now publishes real `kind:4547` MDK messages to the child's family group when possible, mirrors level-2+ reports into Safety HQ when provisioned, and otherwise keeps them queued locally with explicit statuses like `queued_safety` and `pending_blob_hash`.
+- Remote feed headers and the player subtitle now resolve cached/query-backed parent display names so cross-family shares can show the sending parent and child together.
+- Parent Zone Settings now includes real relay management controls for add/remove/reset/reconnect, which makes local relay experimentation and recovery possible without leaving the app.
+- Parent Zone Overview now includes recent outbound share history, and local share attempts now record `sent` vs `queued` entries so retry behavior is visible without digging through logs.
+- App startup and app resume now both flush the offline action queue, and a manual relay reconnect in Parent Zone also retries queued work immediately so recovery is less dependent on one specific app launch moment.
+- Share uploads now mirror encrypted media and thumbnails across all configured Blossom servers on a best-effort basis, and only successfully uploaded servers are written into the encrypted payload snapshot for receivers.
+- Blossom uploads now use the public-server-compatible `PUT /upload` endpoint with signed Nostr authorization and only fall back to legacy `PUT /<hash>` behavior if a server explicitly returns `404`.
+- Blossom upload auth now matches current BUD-11/BUD-02 expectations more closely: base64url `Authorization: Nostr ...`, `server` scoping tags, and `X-SHA-256` / `X-Content-*` headers on `PUT /upload`.
+- Blossom upload auth uses the bare hostname in the `server` tag (for example `blossom.tubestr.app`) and also carries `u=https://.../upload` plus `method=PUT` for server implementations that validate the exact upload endpoint as part of auth.
+- Family connections and recent share history now surface stronger parent/group labels, and new family groups try to inherit the inviter's published parent profile name instead of generic "Family Space" naming.
+- Parent Zone now actively polls for pending welcomes immediately after generating an invite, so approvals surface without needing a manual section refresh if the other parent scans right away.
+- Connection and moderation member surfaces now prefer resolved parent display names and fall back to `npub` formatting instead of raw hex pubkeys.
+- Family invites now carry the inviter's local display name directly, best-effort republish parent NIP-01 metadata during invite/connect, and compose group names from both parents' names so the happy path is `Parent 1 & Parent 2` instead of `Family Space`.
+- Player share no longer relies on one stale child-primary group mapping; it now targets every active non-Safety family group with more than one member, which avoids accidentally publishing only into an old solo group.
 
 ## Phase 4: Safety, Moderation, and Editor
 
 - [ ] Ship video editor on the selected path
-- [ ] Add parental controls and approval flow
-- [ ] Implement three-level reporting UX
+- [x] Add parental controls and approval flow
+- [x] Implement three-level reporting UX
 - [x] Implement report coordinator
 - [x] Separate delete-video and remove-member moderation actions in UI and logic
 - [x] Add BUD-09 blob reporting for moderation path only
@@ -171,19 +213,33 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 ### Notes
 
 - Owner delete, moderation delete, and member removal must remain independent actions.
+- Parent Zone Family now exposes a real pending-approval queue for local clips, content scan summaries, and approve/reject actions. Capture writes new clips as pending first, scans them immediately, and auto-approval only happens when the parent has explicitly disabled approval requirements.
+- Parent approval is now enforced in the actual share path, not only shown in UI: pending or rejected clips cannot be shared until a parent approves them.
+- Content scanning now incorporates title keywords alongside existing media metadata and produces more specific review reasons, which are surfaced as risk/reason chips in the parent approval queue instead of only a generic summary line.
+- The child-facing report sheet now exposes the three escalation levels clearly in-product, with explicit destination messaging for family feedback, parent help, and Safety HQ alerts.
 - Parent Zone Active Connections now opens a management sheet per family group with separate actions for deleting shared videos and removing members.
 - Moderation actions are recorded locally in `moderation_audit_logs` and surfaced in Parent Zone Overview.
 - The current moderation delete path publishes the app-level lifecycle delete, sends a signed `kind:1984` blob report to the shared Blossom servers as a best-effort BUD-09-style abuse signal, and purges local cache immediately.
+- Editor research is complete. The chosen build path is a hybrid architecture: Flutter editor UI + Dart edit models + `ffmpeg_kit_flutter_new_video` export spike, with native renderer fallback only if the spike fails.
 
 ## Phase 5: Polish and Paid Features
 
 - [ ] Add subscription/paywall support for cloud features
-- [ ] Add relay management UI
-- [ ] Add share history
-- [ ] Add offline action queue + retry
-- [ ] Add multi-server Blossom mirroring
-- [ ] Add haptics, confetti, and motion polish
-- [ ] Add integration tests for critical end-to-end flows
+- [x] Add relay management UI
+- [x] Add share history
+- [-] Add offline action queue + retry
+- [x] Add multi-server Blossom mirroring
+- [-] Add haptics, confetti, and motion polish
+- [x] Add integration tests for critical end-to-end flows
+
+### Notes
+
+- Offline queue persistence and manual/startup retry are now real for parent-profile publish, share, like, and report actions, but this line stays in progress until retry reacts more broadly to reconnect events and more critical flows are covered by end-to-end tests.
+- End-to-end coverage now includes queued family actions replaying after relay recovery: parent-profile publish, share, like, and report all queue while the loopback relay is offline and flush successfully once connectivity is restored.
+- Relay management and share history are now complete enough for MVP: settings can add/remove/reset/reconnect relays, and Parent Zone Overview shows recent outbound shares with sent/queued states.
+- Multi-server Blossom mirroring is now live in the share path: each encrypted asset attempts uploads to every configured server, the payload snapshot only keeps successful servers, and download fallback still works against that ordered list plus fetched `kind:10063` servers.
+- The in-memory two-family harness now covers the core family lifecycle well enough to count as critical end-to-end coverage for development: invite/welcome, share, relay sync, download/decrypt, like, report, delete propagation, offline replay, and delete-vs-remove moderation independence.
+- Haptics/confetti/motion polish is in progress: onboarding now celebrates completion with a lightweight confetti overlay, and key success flows like sharing, joining, downloading, moderation, and report submission now trigger tactile feedback.
 
 ## Cross-Cutting Workstreams
 
@@ -235,6 +291,15 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Started by validating the workspace state and confirming `tubestr-v2` was empty.
 - Confirmed Flutter, Dart, Rust, and Cargo are available in the environment.
 - Reviewed protocol, theme, domain model, report model, ranking, and message references from the iOS app.
+- Reviewed the old editor architecture and current Flutter package landscape, then documented the editor recommendation in `docs/EditorResearch.md`.
+- Copied the old app's LUT, sticker, and music assets into the Flutter project and added initial editor session/resource models.
+- Wired the Editor Hub into a real full-screen Editor Detail screen with local trim/effects/overlay/audio/text state and sticker gesture interaction.
+- Fixed the trim slider crash path by normalizing zero-duration and out-of-range trim metadata before building `RangeSlider` values.
+- Added the first editor runtime dependencies (`ffmpeg_kit_flutter_new_video`, `just_audio`) and re-verified Android debug builds after the package change.
+- Added `EditorAudioPreviewService` for soundtrack preview and `EditorExportService` for the first real FFmpeg-backed remix export path.
+- Extended `EditorExportService` to probe source dimensions, rasterize preview overlays into a staged PNG, and include that overlay in FFmpeg export.
+- Extended `EditorExportService` again to probe source audio presence and build a true original-audio + soundtrack `amix` graph when possible.
+- Added export-plan tests to lock trim/LUT/soundtrack/overlay/audio-mix FFmpeg argument generation.
 - Created this tracked implementation plan.
 - Bootstrapped the Flutter project and added the primary app dependencies.
 - Resolved a `drift_dev`/Riverpod toolchain conflict by pinning Riverpod to the 2.x line for now.
@@ -264,6 +329,12 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Added MDK bridge support for group member queries and `remove_members`, then used it to wire Parent Zone family moderation actions: remove member, delete shared video, and record both actions in the moderation audit log with new service tests and overview visibility.
 - Added a generic Nostr event-signing helper plus Blossom `/report` support so moderation deletes now also send a signed blob abuse report (`kind:1984`) to the relevant Blossom servers alongside the app-level lifecycle delete.
 - Fixed the Parent Zone connection screen so pending MDK groups no longer crash the bridge summary path with `group not found`; pending welcomes now remain approval-only while active connection summaries only enumerate active groups.
+- Fixed Parent Zone's live connection refresh path so sync-driven welcome updates no longer throw an async `setState` error, and added targeted pending-welcome polling right after invite creation to make approvals surface automatically on the inviter device.
+- Switched visible parent-key fallbacks from raw hex to `npub` formatting and used resolved NIP-01 names more aggressively in pending-invite, active-connection, and family moderation member views.
+- Hardened the editor export pipeline by capping render size, fixing malformed FFmpeg `eq` filter syntax, and making overlay staging more defensive for sticker-heavy/filter-heavy edits.
+- Tightened the family naming path so invite packets include the inviter's local display name, connect flow composes the family group name from both parents' names, and invite/create now best-effort republish parent metadata to relays for faster NIP-01 resolution on the other device.
+- Added compatibility fallback behavior to the editor export service: if the full export path fails, it now retries without risky visual effects and then with a safer codec, while surfacing a warning instead of only throwing a raw FFmpeg error.
+- Updated the Blossom upload client toward public-server compatibility: uploads now target `PUT /upload`, include Nostr auth headers, and only fall back to the legacy hash path if a server returns `404`.
 - Verified `flutter build apk --debug` succeeds.
 - Installed local Rust mobile targets, generated `flutter_rust_bridge` bindings, compiled `native/mdk_bridge`, and replaced the MDK placeholder with a working smoke-test bridge (`bridgeVersion`, `initMdkUnencrypted`, group inspection).
 - Extended the MDK bridge to return structured group summaries, generate key package event payloads, and create local MDK groups for smoke testing.
@@ -297,6 +368,18 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Added `kind:10063` Blossom server list load/save/publish/fetch support to the NDK adapter, surfaced Blossom server management in Parent Zone Settings, and used fetched server lists as a remote-download fallback path.
 - Added a focused `RemoteMediaService` test that proves remote downloads fall back from stale snapshot servers to fetched Blossom servers and still cache both media and thumbnails locally.
 - Re-verified `flutter analyze`, `flutter test`, and `flutter build apk --debug` after the Blossom server list and fallback pass.
+- Added a real parent-approval/content-scan loop: new captures save as pending, scan results persist in Drift, Parent Zone Family exposes approve/reject actions, and the share path now refuses clips until they are approved.
+- Added parent-profile metadata save/publish/cache/resolve behavior, surfaced parent display-name editing in onboarding and Parent Zone, and used resolved parent names in remote feed/player attribution.
+- Added persistent offline action storage and retry for parent-profile publish, share, like, and report actions, along with Parent Zone visibility into queued work and recent outbound share history.
+- Added relay management controls for add/remove/reset/reconnect in Parent Zone Settings, and wired reconnect to refresh subscriptions and retry the offline queue immediately.
+- Added app-shell retry hardening so startup and app resume both flush queued actions and refresh queue/share-history-backed UI state.
+- Extended the two-family end-to-end harness to cover relay-recovery replay for queued parent-profile publish, share, like, and report actions once connectivity returns.
+- Extended Blossom uploads to mirror encrypted media and thumbnails across all configured servers, keeping only successful upload endpoints in the encrypted share payload and adding share-coordinator coverage for full and partial mirror success.
+- Extended the two-family harness again to prove the locked moderation rule that deleting a video does not remove a family member, and removing a member does not retroactively delete already-shared content.
+- Tightened the feeling-based report sheet so the three escalation levels are explicit in the confirm step, and added direct tests for family vs parent-helper vs Safety HQ routing labels.
+- Added a lightweight confetti overlay component and started using it for onboarding completion, plus broader success haptics across share/join/download/report/moderation flows.
+- Improved parent/group identity polish by deriving new family names from published parent metadata when available and surfacing better family labels in active connections and recent share history.
+- Improved approval/scanning quality by incorporating title keywords into scan signals, generating clearer review summaries, and surfacing risk/reason chips directly in Parent Zone's approval queue.
 
 ## Open Risks / Unknowns
 

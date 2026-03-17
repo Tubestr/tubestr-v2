@@ -6,9 +6,11 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants.dart';
 import '../../core/storage/app_database.dart';
 import '../../domain/marmot/message_models.dart';
+import '../../domain/models/offline_action.dart';
 import '../../domain/models/parent_identity.dart';
 import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
+import '../offline/offline_action_store.dart';
 
 class ReportSubmissionResult {
   const ReportSubmissionResult({
@@ -31,13 +33,16 @@ class ReportCoordinator {
     required AppDatabase database,
     required MdkService mdkService,
     required NostrService nostrService,
+    required OfflineActionStore offlineActionStore,
   }) : _database = database,
        _mdkService = mdkService,
-       _nostrService = nostrService;
+       _nostrService = nostrService,
+       _offlineActionStore = offlineActionStore;
 
   final AppDatabase _database;
   final MdkService _mdkService;
   final NostrService _nostrService;
+  final OfflineActionStore _offlineActionStore;
   final Uuid _uuid = const Uuid();
 
   Future<void> fileReport({
@@ -75,6 +80,7 @@ class ReportCoordinator {
     String? note,
     int level = 1,
     String recipientType = 'group',
+    bool allowQueueOnFailure = true,
   }) async {
     final reportId = _uuid.v4();
     final createdAt = DateTime.now();
@@ -94,7 +100,10 @@ class ReportCoordinator {
 
     final effectiveBlobHash = blobHash?.trim();
     if (effectiveBlobHash == null || effectiveBlobHash.isEmpty) {
-      await _updateReportStatus(reportId: reportId, status: 'pending_blob_hash');
+      await _updateReportStatus(
+        reportId: reportId,
+        status: 'pending_blob_hash',
+      );
       return ReportSubmissionResult(
         reportId: reportId,
         status: 'pending_blob_hash',
@@ -138,9 +147,7 @@ class ReportCoordinator {
         final safetyGroupId = await _database.getSetting(
           AppConstants.safetyGroupIdSettingKey,
         );
-        if (safetyJoined &&
-            safetyGroupId != null &&
-            safetyGroupId.isNotEmpty) {
+        if (safetyJoined && safetyGroupId != null && safetyGroupId.isNotEmpty) {
           await _publishReportToGroup(
             identity: identity,
             mlsGroupIdHex: safetyGroupId,
@@ -179,7 +186,24 @@ class ReportCoordinator {
         safetyPublished: safetyPublished,
         safetyQueued: safetyQueued,
       );
-    } catch (_) {
+    } catch (error) {
+      if (allowQueueOnFailure) {
+        await _offlineActionStore.enqueue(
+          type: OfflineActionType.submitReport,
+          payload: <String, dynamic>{
+            'video_id': videoId,
+            'subject_child_id': subjectChildId,
+            'blob_hash': blobHash,
+            'reporter_child_id': reporterChildId,
+            'reason': reason,
+            'note': note,
+            'level': level,
+            'recipient_type': recipientType,
+          },
+        );
+        await _updateReportStatus(reportId: reportId, status: 'queued_offline');
+        throw StateError('Report queued for retry: $error');
+      }
       await _updateReportStatus(reportId: reportId, status: 'failed');
       rethrow;
     }
@@ -197,10 +221,9 @@ class ReportCoordinator {
       return 0;
     }
 
-    final queuedReports =
-        await (_database.select(_database.reports)
-              ..where((tbl) => tbl.status.equals('queued_safety')))
-            .get();
+    final queuedReports = await (_database.select(
+      _database.reports,
+    )..where((tbl) => tbl.status.equals('queued_safety'))).get();
     if (queuedReports.isEmpty) {
       return 0;
     }
@@ -293,21 +316,23 @@ class ReportCoordinator {
     required String recipientType,
     DateTime? createdAt,
   }) {
-    return _database.into(_database.reports).insert(
-      ReportsCompanion.insert(
-        id: reportId,
-        videoId: videoId,
-        subjectChildId: subjectChildId,
-        blobHash: Value(blobHash),
-        reason: reason,
-        note: Value(note),
-        level: Value(level),
-        recipientType: Value(recipientType),
-        reporterChildId: Value(reporterChildId),
-        reporterParentKey: reporterParentKey,
-        createdAt: createdAt ?? DateTime.now(),
-      ),
-    );
+    return _database
+        .into(_database.reports)
+        .insert(
+          ReportsCompanion.insert(
+            id: reportId,
+            videoId: videoId,
+            subjectChildId: subjectChildId,
+            blobHash: Value(blobHash),
+            reason: reason,
+            note: Value(note),
+            level: Value(level),
+            recipientType: Value(recipientType),
+            reporterChildId: Value(reporterChildId),
+            reporterParentKey: reporterParentKey,
+            createdAt: createdAt ?? DateTime.now(),
+          ),
+        );
   }
 
   Future<void> _updateReportStatus({

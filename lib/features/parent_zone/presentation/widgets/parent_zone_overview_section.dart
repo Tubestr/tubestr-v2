@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/storage/app_database.dart';
 import '../../../../core/theme/theme_descriptor.dart';
+import '../../../../domain/models/share_history_entry.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../models/parent_zone_models.dart';
 
@@ -19,6 +20,12 @@ class ParentZoneOverviewSection extends ConsumerWidget {
     final reports = ref.watch(reportsProvider).valueOrNull ?? const [];
     final moderationLogs =
         ref.watch(moderationAuditLogsProvider).valueOrNull ?? const [];
+    final pendingVideos =
+        ref.watch(pendingApprovalVideosProvider).valueOrNull ?? const [];
+    final queuedActions =
+        ref.watch(offlineActionsProvider).valueOrNull ?? const [];
+    final shareHistory =
+        ref.watch(shareHistoryProvider).valueOrNull ?? const [];
     final safetyStatus = ref.watch(safetyHqStatusProvider).valueOrNull;
     final palette = ref.watch(activeThemeProvider).palette;
     final pendingReports = reports
@@ -68,15 +75,56 @@ class ParentZoneOverviewSection extends ConsumerWidget {
                 value: safetyStatus?.label ?? 'Loading',
               ),
               _SummaryRow(
+                icon: pendingVideos.isEmpty
+                    ? Icons.verified_rounded
+                    : Icons.pending_actions_rounded,
+                color: pendingVideos.isEmpty
+                    ? palette.success
+                    : palette.warning,
+                label: 'Approval queue',
+                value: '${pendingVideos.length}',
+              ),
+              _SummaryRow(
                 icon: pendingReports == 0
                     ? Icons.mark_email_read_rounded
                     : Icons.mark_email_unread_rounded,
-                color: pendingReports == 0
-                    ? palette.success
-                    : palette.warning,
+                color: pendingReports == 0 ? palette.success : palette.warning,
                 label: 'Pending reports',
                 value: '$pendingReports',
               ),
+              _SummaryRow(
+                icon: queuedActions.isEmpty
+                    ? Icons.cloud_done_rounded
+                    : Icons.cloud_off_rounded,
+                color: queuedActions.isEmpty
+                    ? palette.success
+                    : palette.warning,
+                label: 'Offline queue',
+                value: '${queuedActions.length}',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Recent Shares',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              if (shareHistory.isEmpty)
+                Text(
+                  'When you share with another family, the history will show up here.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                )
+              else
+                for (final entry in shareHistory.take(5))
+                  _ShareHistoryRow(entry: entry),
             ],
           ),
         ),
@@ -184,6 +232,69 @@ class ParentZoneOverviewSection extends ConsumerWidget {
   }
 }
 
+class _ShareHistoryRow extends ConsumerWidget {
+  const _ShareHistoryRow({required this.entry});
+
+  final ShareHistoryEntry entry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final color = switch (entry.status) {
+      'sent' => Colors.green,
+      'queued' => Colors.orange,
+      _ => Colors.blueGrey,
+    };
+    final group = ref
+        .watch(mdkGroupSummaryProvider(entry.mlsGroupId))
+        .valueOrNull;
+    final groupLabel = group?.name ?? 'Family connection';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.send_rounded, size: 18, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${entry.childDisplayName} · ${entry.status}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  groupLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.blueGrey.shade700,
+                  ),
+                ),
+                if (entry.error case final error? when error.isNotEmpty)
+                  Text(
+                    error,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SummaryRow extends StatelessWidget {
   const _SummaryRow({
     required this.icon,
@@ -255,13 +366,16 @@ class _InboundReportRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(helperText, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    helperText,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     '${report.recipientType} · ${report.createdAt.toLocal()}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.black54,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.black54),
                   ),
                 ],
               ),
@@ -351,9 +465,9 @@ class _ModerationLogRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(

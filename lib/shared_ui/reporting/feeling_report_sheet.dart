@@ -49,17 +49,13 @@ enum ReportActionOption {
 }
 
 class FeelingReportSubmission {
-  const FeelingReportSubmission({
-    required this.feeling,
-    required this.action,
-  });
+  const FeelingReportSubmission({required this.feeling, required this.action});
 
   final ReportFeeling feeling;
   final ReportActionOption action;
 
-  int get level => action.level > feeling.minimumLevel
-      ? action.level
-      : feeling.minimumLevel;
+  int get level =>
+      action.level > feeling.minimumLevel ? action.level : feeling.minimumLevel;
 
   String get recipientType => switch (level) {
     1 => 'group',
@@ -67,17 +63,31 @@ class FeelingReportSubmission {
     _ => 'safety_hq',
   };
 
+  String get destinationLabel => switch (level) {
+    1 => 'Your family',
+    2 => 'Parent helpers',
+    _ => 'Safety HQ',
+  };
+
+  String get levelLabel => switch (level) {
+    1 => 'Level 1 · Family feedback',
+    2 => 'Level 2 · Parent help',
+    _ => 'Level 3 · Safety alert',
+  };
+
+  String get helperText => switch (level) {
+    1 => 'This stays inside the family group so grown-ups can talk it through.',
+    2 => 'This asks parents to step in and take a closer look.',
+    _ => 'This sends a serious alert to Safety HQ for follow-up.',
+  };
+
   String get reason => feeling.reason;
 
-  String get note =>
-      '${feeling.label} · ${action.title}';
+  String get note => '${feeling.label} · ${action.title}';
 }
 
 class FeelingReportSheet extends StatefulWidget {
-  const FeelingReportSheet({
-    super.key,
-    required this.onSubmit,
-  });
+  const FeelingReportSheet({super.key, required this.onSubmit});
 
   final Future<void> Function(FeelingReportSubmission submission) onSubmit;
 
@@ -133,10 +143,7 @@ class _FeelingReportSheetState extends State<FeelingReportSheet> {
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF251D38),
-                Color(0xFF171121),
-              ],
+              colors: [Color(0xFF251D38), Color(0xFF171121)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -197,43 +204,43 @@ class _FeelingReportSheetState extends State<FeelingReportSheet> {
                   duration: const Duration(milliseconds: 220),
                   child: switch (_step) {
                     _ReportStep.feeling => _FeelingStep(
-                        key: const ValueKey('feeling'),
-                        theme: theme,
-                        selected: _feeling,
-                        onSelected: (feeling) async {
-                          setState(() {
-                            _feeling = feeling;
-                            _action = null;
-                          });
-                          await Future<void>.delayed(
-                            const Duration(milliseconds: 220),
-                          );
-                          if (mounted) {
-                            setState(() => _step = _ReportStep.action);
-                          }
-                        },
-                      ),
+                      key: const ValueKey('feeling'),
+                      theme: theme,
+                      selected: _feeling,
+                      onSelected: (feeling) async {
+                        setState(() {
+                          _feeling = feeling;
+                          _action = null;
+                        });
+                        await Future<void>.delayed(
+                          const Duration(milliseconds: 220),
+                        );
+                        if (mounted) {
+                          setState(() => _step = _ReportStep.action);
+                        }
+                      },
+                    ),
                     _ReportStep.action => _ActionStep(
-                        key: const ValueKey('action'),
-                        theme: theme,
-                        feeling: _feeling!,
-                        selected: _action,
-                        options: _availableActions,
-                        onSelected: (action) {
-                          setState(() => _action = action);
-                        },
-                        onNext: _action == null
-                            ? null
-                            : () => setState(() => _step = _ReportStep.confirm),
-                      ),
+                      key: const ValueKey('action'),
+                      theme: theme,
+                      feeling: _feeling!,
+                      selected: _action,
+                      options: _availableActions,
+                      onSelected: (action) {
+                        setState(() => _action = action);
+                      },
+                      onNext: _action == null
+                          ? null
+                          : () => setState(() => _step = _ReportStep.confirm),
+                    ),
                     _ReportStep.confirm => _ConfirmStep(
-                        key: const ValueKey('confirm'),
-                        theme: theme,
-                        feeling: _feeling!,
-                        action: _action!,
-                        submitting: _submitting,
-                        onSubmit: _submit,
-                      ),
+                      key: const ValueKey('confirm'),
+                      theme: theme,
+                      feeling: _feeling!,
+                      action: _action!,
+                      submitting: _submitting,
+                      onSubmit: _submit,
+                    ),
                   },
                 ),
               ],
@@ -353,10 +360,7 @@ class _ActionStep extends StatelessWidget {
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
-          child: FilledButton(
-            onPressed: onNext,
-            child: const Text('Next'),
-          ),
+          child: FilledButton(onPressed: onNext, child: const Text('Next')),
         ),
       ],
     );
@@ -385,6 +389,11 @@ class _ConfirmStep extends StatelessWidget {
       feeling: feeling,
       action: action,
     );
+    final accent = switch (submission.level) {
+      1 => const Color(0xFF78C3FF),
+      2 => const Color(0xFFFFB347),
+      _ => const Color(0xFFFF7B7B),
+    };
     return Column(
       key: key,
       mainAxisSize: MainAxisSize.min,
@@ -400,15 +409,31 @@ class _ConfirmStep extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          '${action.title} · level ${submission.level}',
+          submission.levelLabel,
           style: theme.textTheme.titleMedium?.copyWith(
             color: Colors.white.withValues(alpha: 0.86),
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: accent.withValues(alpha: 0.5)),
+          ),
+          child: Text(
+            submission.destinationLabel,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         Text(
-          'This will go to ${submission.recipientType.replaceAll('_', ' ')}.',
+          submission.helperText,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: Colors.white.withValues(alpha: 0.7),
           ),

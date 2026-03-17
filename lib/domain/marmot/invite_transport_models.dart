@@ -8,10 +8,14 @@ class GroupInvitePacket {
   const GroupInvitePacket({
     required this.publicKeyHex,
     required this.createdAt,
+    this.keyPackageEventId,
+    this.inviterDisplayName,
   });
 
   final String publicKeyHex;
   final int createdAt;
+  final String? keyPackageEventId;
+  final String? inviterDisplayName;
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -19,13 +23,17 @@ class GroupInvitePacket {
       'v': 1,
       'pubkey': publicKeyHex,
       'created_at': createdAt,
+      if (inviterDisplayName != null && inviterDisplayName!.trim().isNotEmpty)
+        'inviter_name': inviterDisplayName!.trim(),
+      if (keyPackageEventId != null && keyPackageEventId!.isNotEmpty)
+        'event_id': keyPackageEventId,
     };
   }
 
   String get shareText =>
       '''
 Nook Family Invite
-Parent: $publicKeyHex
+Parent: ${inviterDisplayName?.trim().isNotEmpty == true ? inviterDisplayName!.trim() : publicKeyHex}
 
 Open this link on the other parent's device:
 ${encode()}
@@ -48,6 +56,8 @@ ${encode()}
     return GroupInvitePacket(
       publicKeyHex: json['pubkey'] as String,
       createdAt: (json['created_at'] as num).toInt(),
+      keyPackageEventId: json['event_id']?.toString(),
+      inviterDisplayName: json['inviter_name']?.toString(),
     );
   }
 

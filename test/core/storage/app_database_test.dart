@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/storage/app_database.dart';
+import 'package:mytube/domain/models/remote_share_identity.dart';
 
 void main() {
   test(
@@ -40,7 +41,7 @@ void main() {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
 
-    await database.upsertRemoteShareProjection(
+    final remoteShareId = await database.upsertRemoteShareProjection(
       videoId: 'remote-1',
       mlsGroupId: 'group-1',
       senderParentKey: 'sender-1',
@@ -54,23 +55,86 @@ void main() {
     );
 
     await database.updateRemoteAssetCache(
-      videoId: 'remote-1',
+      remoteShareId: remoteShareId,
       localMediaPath: '/tmp/remote.mp4',
       localThumbPath: '/tmp/remote.jpg',
     );
     await database.updateRemoteShareStatus(
-      videoId: 'remote-1',
+      remoteShareId: remoteShareId,
       status: 'downloaded',
       downloadError: null,
     );
 
-    final remoteAsset = await database.getRemoteAssetByVideoId('remote-1');
+    final remoteAsset = await database.getRemoteAssetByRemoteShareId(remoteShareId);
     final shares = await database.watchShareRecords().first;
 
     expect(remoteAsset?.localMediaPath, '/tmp/remote.mp4');
     expect(remoteAsset?.localThumbPath, '/tmp/remote.jpg');
     expect(shares.single.status, 'downloaded');
     expect(shares.single.downloadError, isNull);
+  });
+
+  test('remote shares with the same video id stay isolated by scoped remoteShareId', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final firstRemoteShareId = await database.upsertRemoteShareProjection(
+      videoId: 'shared-video',
+      mlsGroupId: 'group-1',
+      senderParentKey: 'sender-1',
+      childProfileId: 'child-1',
+      childDisplayName: 'Emma',
+      blobHash: 'blob-1',
+      thumbHash: 'thumb-1',
+      epoch: '1',
+      mime: 'video/mp4',
+      metadataJson: '{"t":"mytube/video_share"}',
+    );
+    final secondRemoteShareId = await database.upsertRemoteShareProjection(
+      videoId: 'shared-video',
+      mlsGroupId: 'group-2',
+      senderParentKey: 'sender-2',
+      childProfileId: 'child-2',
+      childDisplayName: 'Noah',
+      blobHash: 'blob-2',
+      thumbHash: 'thumb-2',
+      epoch: '2',
+      mime: 'video/mp4',
+      metadataJson: '{"t":"mytube/video_share"}',
+    );
+
+    await database.updateRemoteAssetCache(
+      remoteShareId: firstRemoteShareId,
+      localMediaPath: '/tmp/one.mp4',
+      localThumbPath: '/tmp/one.jpg',
+    );
+    await database.updateRemoteShareStatus(
+      remoteShareId: firstRemoteShareId,
+      status: 'downloaded',
+    );
+
+    final first = await database.getRemoteShareProjectionByRemoteShareId(
+      firstRemoteShareId,
+    );
+    final second = await database.getRemoteShareProjectionByRemoteShareId(
+      secondRemoteShareId,
+    );
+    final allRemoteShares = await database.watchRemoteShareProjections().first;
+
+    expect(
+      firstRemoteShareId,
+      buildRemoteShareId(
+        senderParentKey: 'sender-1',
+        mlsGroupId: 'group-1',
+        videoId: 'shared-video',
+      ),
+    );
+    expect(secondRemoteShareId, isNot(firstRemoteShareId));
+    expect(first?.status, 'downloaded');
+    expect(first?.localMediaPath, '/tmp/one.mp4');
+    expect(second?.status, 'available');
+    expect(second?.localMediaPath, isNull);
+    expect(allRemoteShares, hasLength(2));
   });
 
   test(

@@ -86,9 +86,11 @@ class ModerationCoordinator {
       reason: reason,
     );
     await _deleteLocalCacheFiles(projection);
-    await _database.purgeRemoteAssetCache(videoId: projection.videoId);
+    await _database.purgeRemoteAssetCache(
+      remoteShareId: projection.remoteShareId,
+    );
     await _database.markRemoteShareDeleted(
-      videoId: projection.videoId,
+      remoteShareId: projection.remoteShareId,
       reason: reason ?? 'moderation_delete',
     );
     await _database.addModerationAuditLog(

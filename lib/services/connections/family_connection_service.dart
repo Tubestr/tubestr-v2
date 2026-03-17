@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:ndk/entities.dart';
 
@@ -36,16 +37,30 @@ class FamilyConnectionService {
   FamilyConnectionService({
     required MdkService mdkService,
     required NostrService nostrService,
-  })  : _mdkService = mdkService,
-        _nostrService = nostrService;
+    Future<String?> Function()? loadLocalDisplayName,
+  }) : _mdkService = mdkService,
+       _nostrService = nostrService,
+       _loadLocalDisplayName = loadLocalDisplayName;
 
   final MdkService _mdkService;
   final NostrService _nostrService;
+  final Future<String?> Function()? _loadLocalDisplayName;
 
   Future<FamilyInviteResult> createInvite({
     required ParentIdentity identity,
   }) async {
     final relays = await _nostrService.loadRelayList();
+    final inviterDisplayName = (await _loadLocalDisplayName?.call())?.trim();
+    if (inviterDisplayName != null && inviterDisplayName.isNotEmpty) {
+      try {
+        await _nostrService.publishParentProfile(
+          identity: identity,
+          displayName: inviterDisplayName,
+        );
+      } catch (_) {
+        // Best effort only. The invite packet also carries the local name.
+      }
+    }
     final preview = await _mdkService.createKeyPackageEvent(
       publicKeyHex: identity.publicKeyHex,
       relays: relays,
@@ -58,7 +73,7 @@ class FamilyConnectionService {
 
     // Publish before showing the invite so scanners can discover the package
     // even if the invite is tiny and the scan happens a moment later.
-    await _nostrService.publishSignedEventJson(
+    final keyPackageEventId = await _nostrService.publishSignedEventJson(
       identity: identity,
       eventJson: signedEventJson,
       relays: relays,
@@ -67,6 +82,8 @@ class FamilyConnectionService {
     final packet = GroupInvitePacket(
       publicKeyHex: identity.publicKeyHex,
       createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      keyPackageEventId: keyPackageEventId,
+      inviterDisplayName: inviterDisplayName,
     );
 
     return FamilyInviteResult(
@@ -81,8 +98,31 @@ class FamilyConnectionService {
   }) async {
     final packet = GroupInvitePacket.decode(invitePayload);
     final relays = await _nostrService.loadRelayList();
-    final groupName =
-        'Family Space ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}';
+    final inviterName = packet.inviterDisplayName?.trim().isNotEmpty == true
+        ? packet.inviterDisplayName!.trim()
+        : await _resolveInviterDisplayName(
+            publicKeyHex: packet.publicKeyHex,
+            relays: relays,
+          );
+    final inviteeName = (await _loadLocalDisplayName?.call())?.trim();
+    if (inviteeName != null && inviteeName.isNotEmpty) {
+      try {
+        await _nostrService.publishParentProfile(
+          identity: identity,
+          displayName: inviteeName,
+        );
+      } catch (_) {
+        // Best effort only. The group name still carries the local name.
+      }
+    }
+    final groupName = _buildGroupName(
+      inviterName: inviterName,
+      inviteeName: inviteeName,
+    );
+    final description = _buildGroupDescription(
+      inviterName: inviterName,
+      inviteeName: inviteeName,
+    );
     final keyPackageEventsJson = await _resolveKeyPackageEvents(
       packet: packet,
       relays: relays,
@@ -90,7 +130,7 @@ class FamilyConnectionService {
     final result = await _mdkService.createGroupWithWelcomes(
       creatorPublicKeyHex: identity.publicKeyHex,
       name: groupName,
-      description: 'Created from scanned invite',
+      description: description,
       relays: relays,
       memberKeyPackageEventJsons: keyPackageEventsJson,
     );
@@ -112,11 +152,90 @@ class FamilyConnectionService {
     );
   }
 
+  Future<String?> _resolveInviterDisplayName({
+    required String publicKeyHex,
+    required List<String> relays,
+  }) async {
+    final events = await _nostrService.queryEvents(
+      filter: Filter(authors: [publicKeyHex], kinds: const [0], limit: 1),
+      relays: relays,
+      timeout: const Duration(seconds: 2),
+    );
+    if (events.isEmpty) {
+      return null;
+    }
+    final content = jsonDecode(events.first.content);
+    if (content is! Map<String, dynamic>) {
+      return null;
+    }
+    final displayName =
+        content['display_name']?.toString().trim() ??
+        content['displayName']?.toString().trim() ??
+        content['name']?.toString().trim();
+    if (displayName == null || displayName.isEmpty) {
+      return null;
+    }
+    return displayName;
+  }
+
+  String _buildGroupName({String? inviterName, String? inviteeName}) {
+    final names = <String>[];
+    for (final name in [inviterName, inviteeName]) {
+      final trimmed = name?.trim();
+      if (trimmed == null || trimmed.isEmpty) {
+        continue;
+      }
+      if (!names.any(
+        (existing) => existing.toLowerCase() == trimmed.toLowerCase(),
+      )) {
+        names.add(trimmed);
+      }
+    }
+
+    if (names.length >= 2) {
+      return '${names[0]} & ${names[1]}';
+    }
+    if (names.length == 1) {
+      final name = names.first;
+      if (name.toLowerCase().contains('family')) {
+        return name;
+      }
+      return '$name Family';
+    }
+    return 'Family Space';
+  }
+
+  String _buildGroupDescription({String? inviterName, String? inviteeName}) {
+    final groupName = _buildGroupName(
+      inviterName: inviterName,
+      inviteeName: inviteeName,
+    );
+    if (groupName == 'Family Space') {
+      return 'Created from scanned invite';
+    }
+    final inviter = inviterName?.trim();
+    final invitee = inviteeName?.trim();
+    if (inviter != null &&
+        inviter.isNotEmpty &&
+        invitee != null &&
+        invitee.isNotEmpty) {
+      return 'Connected $inviter with $invitee';
+    }
+    if (inviter != null && inviter.isNotEmpty) {
+      return 'Connected with $inviter';
+    }
+    if (invitee != null && invitee.isNotEmpty) {
+      return 'Connected with $invitee';
+    }
+    return 'Created from scanned invite';
+  }
+
   Future<List<String>> _resolveKeyPackageEvents({
     required GroupInvitePacket packet,
     required List<String> relays,
   }) async {
     final queried = await _queryKeyPackages(
+      packet: packet,
       publicKeyHex: packet.publicKeyHex,
       relays: relays,
     );
@@ -125,6 +244,7 @@ class FamilyConnectionService {
     }
 
     final polled = await _pollForKeyPackages(
+      packet: packet,
       publicKeyHex: packet.publicKeyHex,
       relays: relays,
     );
@@ -133,6 +253,7 @@ class FamilyConnectionService {
     }
 
     final finalAttempt = await _queryKeyPackages(
+      packet: packet,
       publicKeyHex: packet.publicKeyHex,
       relays: relays,
       timeout: const Duration(seconds: 1),
@@ -147,6 +268,7 @@ class FamilyConnectionService {
   }
 
   Future<List<String>> _queryKeyPackages({
+    required GroupInvitePacket packet,
     required String publicKeyHex,
     required List<String> relays,
     Duration timeout = _keyPackageQueryTimeout,
@@ -155,6 +277,11 @@ class FamilyConnectionService {
       relays: relays,
       timeout: timeout,
       filter: Filter(
+        ids:
+            packet.keyPackageEventId == null ||
+                packet.keyPackageEventId!.isEmpty
+            ? null
+            : [packet.keyPackageEventId!],
         authors: [publicKeyHex],
         kinds: [MarmotKinds.keyPackage],
         limit: 20,
@@ -164,6 +291,7 @@ class FamilyConnectionService {
   }
 
   Future<List<String>> _pollForKeyPackages({
+    required GroupInvitePacket packet,
     required String publicKeyHex,
     required List<String> relays,
   }) async {
@@ -173,6 +301,11 @@ class FamilyConnectionService {
       subscriptionId: subscriptionId,
       relays: relays,
       filter: Filter(
+        ids:
+            packet.keyPackageEventId == null ||
+                packet.keyPackageEventId!.isEmpty
+            ? null
+            : [packet.keyPackageEventId!],
         authors: [publicKeyHex],
         kinds: [MarmotKinds.keyPackage],
         limit: 20,
@@ -191,7 +324,8 @@ class FamilyConnectionService {
 
     try {
       final iterations =
-          _keyPackagePollWindow.inMilliseconds ~/ _keyPackagePollInterval.inMilliseconds;
+          _keyPackagePollWindow.inMilliseconds ~/
+          _keyPackagePollInterval.inMilliseconds;
       for (var i = 0; i < iterations; i += 1) {
         await Future<void>.delayed(_keyPackagePollInterval);
         if (collectedById.isNotEmpty) {

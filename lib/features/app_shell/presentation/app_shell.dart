@@ -21,12 +21,14 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends ConsumerState<AppShell> {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   StreamSubscription<Uri>? _deepLinkSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPinSetup();
     ref.read(syncCoordinatorProvider).start();
     _bindDeepLinks();
@@ -35,8 +37,17 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _deepLinkSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_flushOperationalQueues());
+    }
   }
 
   Future<void> _checkPinSetup() async {
@@ -58,11 +69,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (safetyGroup != null) {
       await ref.read(syncCoordinatorProvider).refreshSubscriptions();
     }
-    await ref.read(reportCoordinatorProvider).flushQueuedSafetyReports(
-      identity: identity,
-    );
+    await ref
+        .read(reportCoordinatorProvider)
+        .flushQueuedSafetyReports(identity: identity);
+    await _flushOperationalQueues();
     ref.invalidate(safetyHqStatusProvider);
+  }
+
+  Future<void> _flushOperationalQueues() async {
+    await ref.read(offlineActionProcessorProvider).flush();
     ref.invalidate(reportsProvider);
+    ref.invalidate(offlineActionsProvider);
+    ref.invalidate(shareHistoryProvider);
   }
 
   void _bindDeepLinks() {
