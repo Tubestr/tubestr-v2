@@ -8,6 +8,7 @@ import 'package:google_mlkit_selfie_segmentation/google_mlkit_selfie_segmentatio
 
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../services/editor/editor_sticker_library.dart';
+import '../../../shared_ui/components/fill_camera_preview.dart';
 
 class SelfieStickerCapturePage extends StatefulWidget {
   const SelfieStickerCapturePage({
@@ -314,7 +315,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
                       palette: widget.palette,
                     )
                   : isReady
-                  ? CameraPreview(controller)
+                  ? FillCameraPreview(controller: controller)
                   : const ColoredBox(color: Colors.black),
             ),
             Positioned(

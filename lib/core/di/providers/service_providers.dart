@@ -37,6 +37,7 @@ final editorExportServiceProvider = Provider<EditorExportService>((ref) {
   return EditorExportService(
     database: ref.watch(appDatabaseProvider),
     thumbnailService: ref.watch(thumbnailServiceProvider),
+    videoApprovalService: ref.watch(videoApprovalServiceProvider),
   );
 });
 
@@ -118,6 +119,7 @@ final syncRevisionProvider = StreamProvider<int>((ref) {
 final videoShareCoordinatorProvider = Provider((ref) {
   return VideoShareCoordinator(
     database: ref.watch(appDatabaseProvider),
+    videoApprovalService: ref.watch(videoApprovalServiceProvider),
     blossomClient: ref.watch(blossomClientProvider),
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),

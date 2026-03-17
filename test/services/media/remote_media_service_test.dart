@@ -129,4 +129,62 @@ void main() {
       expect(mdkService.lastDecryptUrl, 'https://preferred.example/thumb-2');
     },
   );
+
+  test(
+    'ensureVideoAvailable redownloads when cached media file is invalid',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final tempDir = await Directory.systemTemp.createTemp(
+        'remote-media-invalid-cache-test',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final staleFile = File('${tempDir.path}/stale.mp4')
+        ..writeAsStringSync('not-an-mp4');
+
+      await database.upsertRemoteShareProjection(
+        videoId: 'video-3',
+        mlsGroupId: 'group-1',
+        senderParentKey: 'sender-parent',
+        childProfileId: 'child-1',
+        childDisplayName: 'Emma',
+        blobHash: 'blob-3',
+        thumbHash: 'thumb-3',
+        epoch: '1',
+        mime: 'video/mp4',
+        metadataJson:
+            '{"t":"mytube/video_share","video_id":"video-3","child_profile_id":"child-1","child_display_name":"Emma","meta":{"title":"Song","dur":12.5,"created_at":1710460800},"blob":{"hash":"blob-3","servers":["https://snapshot.example"],"mime":"video/mp4","len":321,"orig_hash":"orig-video","nonce":"nonce-video","filename":"clip.mp4","scheme":"mip04-v2"},"thumb":{"hash":"thumb-3","servers":["https://snapshot.example"],"mime":"image/jpeg","len":111,"orig_hash":"orig-thumb","nonce":"nonce-thumb","filename":"thumb.jpg","scheme":"mip04-v2"},"media":{"alg":"mip04","epoch":"1"},"policy":{"version":2,"expires_at":null},"by":"sender-parent","ts":1710460800}',
+        localMediaPath: staleFile.path,
+      );
+      final share = await database
+          .watchRemoteShareProjections()
+          .map((items) => items.firstWhere((item) => item.videoId == 'video-3'))
+          .first;
+
+      final service = RemoteMediaService(
+        database: database,
+        blossomClient: FakeBlossomClient(),
+        mdkService: FakeMdkService(),
+        nostrService: FakeNostrService(),
+        supportDirectoryProvider: () async => tempDir,
+      );
+
+      final repairedPath = await service.ensureVideoAvailable(share);
+      final repairedBytes = await File(repairedPath).readAsBytes();
+      final cached = await database.getRemoteAssetByRemoteShareId(
+        share.remoteShareId,
+      );
+
+      expect(repairedPath, isNot(staleFile.path));
+      expect(await staleFile.exists(), isFalse);
+      expect(repairedBytes.sublist(4, 8), [0x66, 0x74, 0x79, 0x70]);
+      expect(cached?.localMediaPath, repairedPath);
+    },
+  );
 }

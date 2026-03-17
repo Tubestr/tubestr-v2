@@ -13,6 +13,8 @@ import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/blossom/blossom_client.dart';
 import 'package:mytube/services/connections/family_connection_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
+import 'package:mytube/services/approval/content_scan_service.dart';
+import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/identity/identity_service.dart';
 import 'package:mytube/services/identity/parent_profile_service.dart';
 import 'package:mytube/services/mdk/mdk_service.dart';
@@ -884,6 +886,10 @@ class FamilyAppHarness {
     );
     final shareCoordinator = VideoShareCoordinator(
       database: database,
+      videoApprovalService: VideoApprovalService(
+        database: database,
+        scanService: const ContentScanService(),
+      ),
       blossomClient: blossom,
       mdkService: mdk,
       nostrService: nostr,

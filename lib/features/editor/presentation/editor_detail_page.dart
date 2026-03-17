@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
@@ -8,17 +9,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
+import '../../../domain/models/content_scan_summary.dart';
 import '../../../domain/models/editor_resources.dart';
 import '../../../domain/models/editor_session.dart';
 import '../../../services/editor/editor_audio_preview_service.dart';
+import '../../../services/editor/editor_export_service.dart';
 import '../../../services/editor/editor_resource_catalog.dart';
 import '../../../services/editor/editor_sticker_library.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
+import '../../../shared_ui/components/media_thumbnail_frame.dart';
+import '../../player/presentation/player_page.dart';
 import '../domain/editor_preview_style.dart';
 import '../domain/editor_trim_utils.dart';
 import 'selfie_sticker_capture_page.dart';
@@ -57,6 +61,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   late EditorSession _session;
   double _gestureStartScale = 1;
   double _gestureStartRotation = 0;
+  Offset _gestureStartPosition = const Offset(0.5, 0.5);
+  Offset? _gestureStartFocalPoint;
   String? _selectedOverlayId;
   String? _previewingTrackId;
   Duration _previewPosition = Duration.zero;
@@ -65,6 +71,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   bool _isExporting = false;
   bool _loopSeekInFlight = false;
   List<EditorStickerAsset> _userStickers = const [];
+  int? _videoWidth;
+  int? _videoHeight;
 
   @override
   void initState() {
@@ -115,6 +123,18 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     _positionSubscription = _player.stream.position.listen(
       _handlePreviewPosition,
     );
+    _player.stream.width.listen((value) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _videoWidth = value);
+    });
+    _player.stream.height.listen((value) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _videoHeight = value);
+    });
     _player.open(Media(widget.video.filePath));
     unawaited(_loadUserStickers());
   }
@@ -179,6 +199,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                       palette: palette,
                       videoController: _videoController,
                       session: _session,
+                      videoAspectRatio: _resolvedVideoAspectRatio(),
                       selectedOverlayId: _selectedOverlayId,
                       isPlaying: _previewPlaying,
                       onTogglePlayback: _togglePreviewPlayback,
@@ -357,22 +378,14 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   void _selectSticker(String stickerId, String assetPath) {
-    final existingIndex = _session.overlays.indexWhere(
-      (overlay) => overlay.type == EditorOverlayType.sticker,
-    );
     final sticker = EditorOverlayItem(
-      id: 'sticker:$stickerId',
+      id: 'sticker:$stickerId:${DateTime.now().microsecondsSinceEpoch}',
       type: EditorOverlayType.sticker,
       stickerId: stickerId,
       stickerAssetPath: assetPath,
       transform: const StickerTransform(),
     );
-    final overlays = [..._session.overlays];
-    if (existingIndex == -1) {
-      overlays.add(sticker);
-    } else {
-      overlays[existingIndex] = sticker;
-    }
+    final overlays = [..._session.overlays, sticker];
     setState(() {
       _selectedOverlayId = sticker.id;
       _session = _session.copyWith(overlays: overlays);
@@ -380,12 +393,16 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   void _removeSticker() {
+    final selectedOverlayId = _selectedOverlayId;
     setState(() {
+      final nextOverlays = selectedOverlayId == null
+          ? _session.overlays
+          : _session.overlays
+                .where((overlay) => overlay.id != selectedOverlayId)
+                .toList(growable: false);
       _selectedOverlayId = null;
       _session = _session.copyWith(
-        overlays: _session.overlays
-            .where((overlay) => overlay.type != EditorOverlayType.sticker)
-            .toList(growable: false),
+        overlays: nextOverlays,
       );
     });
   }
@@ -452,14 +469,15 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
           );
       if (!mounted) return;
       ref.invalidate(videosForSelectedProfileProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.warning == null
-                ? 'Saved remix to your library: ${p.basename(result.outputPath)}'
-                : '${result.warning} Saved ${p.basename(result.outputPath)}.',
-          ),
-        ),
+      final exportedVideo = await ref
+          .read(appDatabaseProvider)
+          .getLocalVideoById(result.videoId);
+      if (!mounted) {
+        return;
+      }
+      await _showExportCompleteSheet(
+        result: result,
+        exportedVideo: exportedVideo,
       );
     } catch (error) {
       if (!mounted) return;
@@ -521,6 +539,198 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     await _loadUserStickers();
   }
 
+  Future<void> _showExportCompleteSheet({
+    required EditorExportResult result,
+    required LocalVideo? exportedVideo,
+  }) async {
+    final scan = _parseScanSummary(exportedVideo?.scanResults);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        final palette = ref.read(activeThemeProvider).palette;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFF15111C),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: palette.accent.withValues(alpha: 0.18),
+                          ),
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            color: palette.accent,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Remix saved',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      result.warning == null
+                          ? 'Your remix is in the library and ready for the next step.'
+                          : '${result.warning} The remix is still saved and ready to keep going.',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    if (scan != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              scan.needsReview
+                                  ? Icons.shield_outlined
+                                  : Icons.verified_rounded,
+                              color: scan.needsReview
+                                  ? Colors.amber.shade300
+                                  : palette.success,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                scan.summary,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: exportedVideo == null
+                              ? null
+                              : () {
+                                  Navigator.of(sheetContext).pop();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          PlayerPage(videoId: exportedVideo.id),
+                                    ),
+                                  );
+                                },
+                          icon: const Icon(Icons.play_circle_outline_rounded),
+                          label: const Text('Watch'),
+                        ),
+                        FilledButton.icon(
+                          onPressed:
+                              exportedVideo == null || scan?.needsReview == true
+                              ? null
+                              : () async {
+                                  Navigator.of(sheetContext).pop();
+                                  await _shareExportedVideo(exportedVideo);
+                                },
+                          icon: const Icon(Icons.ios_share_rounded),
+                          label: Text(
+                            scan?.needsReview == true ? 'Review first' : 'Share',
+                          ),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: const Text('Keep editing later'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  ContentScanSummary? _parseScanSummary(String? encoded) {
+    if (encoded == null || encoded.isEmpty) {
+      return null;
+    }
+    try {
+      return ContentScanSummary.decode(encoded);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _shareExportedVideo(LocalVideo video) async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    final profiles = ref.read(profilesProvider).valueOrNull ?? const [];
+    final profile = profiles.firstWhereOrNull((item) => item.id == video.profileId);
+    if (identity == null || profile == null) {
+      return;
+    }
+    try {
+      final result = await ref
+          .read(videoShareCoordinatorProvider)
+          .shareLocalVideoToEligibleGroups(
+            identity: identity,
+            videoId: video.id,
+            profileId: profile.id,
+            childDisplayName: profile.name,
+          );
+      if (!mounted) {
+        return;
+      }
+      final shared = result.sharedGroupCount;
+      final queued = result.queuedGroupCount;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            queued == 0
+                ? 'Shared with $shared family space${shared == 1 ? '' : 's'}'
+                : 'Shared to $shared family space${shared == 1 ? '' : 's'}, queued $queued more',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error')),
+      );
+    }
+  }
+
   void _updateTextOverlay({
     required String text,
     required String fontFamily,
@@ -570,6 +780,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   ) {
     _gestureStartScale = overlay.transform.scale;
     _gestureStartRotation = overlay.transform.rotationDegrees;
+    _gestureStartPosition = overlay.transform.position;
+    _gestureStartFocalPoint = details.focalPoint;
   }
 
   void _handleStickerScaleUpdate(
@@ -578,11 +790,14 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     EditorOverlayItem overlay,
   ) {
     if (previewSize.width == 0 || previewSize.height == 0) return;
-    final normalizedDx = details.focalPointDelta.dx / previewSize.width;
-    final normalizedDy = details.focalPointDelta.dy / previewSize.height;
+    final startFocalPoint = _gestureStartFocalPoint ?? details.focalPoint;
+    final normalizedDx =
+        (details.focalPoint.dx - startFocalPoint.dx) / previewSize.width;
+    final normalizedDy =
+        (details.focalPoint.dy - startFocalPoint.dy) / previewSize.height;
     final nextPosition = Offset(
-      (overlay.transform.position.dx + normalizedDx).clamp(0.1, 0.9),
-      (overlay.transform.position.dy + normalizedDy).clamp(0.1, 0.9),
+      (_gestureStartPosition.dx + normalizedDx).clamp(0.1, 0.9),
+      (_gestureStartPosition.dy + normalizedDy).clamp(0.1, 0.9),
     );
     final nextScale = (_gestureStartScale * details.scale).clamp(0.5, 2.2);
     final nextRotation =
@@ -603,6 +818,15 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     setState(() {
       _session = _session.copyWith(overlays: overlays);
     });
+  }
+
+  double _resolvedVideoAspectRatio() {
+    final width = _videoWidth;
+    final height = _videoHeight;
+    if (width != null && height != null && width > 0 && height > 0) {
+      return width / height;
+    }
+    return 9 / 16;
   }
 }
 
@@ -1023,7 +1247,17 @@ class _TimelineStripContent extends StatelessWidget {
                         child: SizedBox(
                           height: 36,
                           child: hasThumb
-                              ? Image.file(thumbFile!, fit: BoxFit.cover)
+                              ? MediaThumbnailFrame(
+                                  file: thumbFile!,
+                                  borderRadius: BorderRadius.circular(6),
+                                  background: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF16111D),
+                                      Color(0xFF0C0A11),
+                                    ],
+                                  ),
+                                  padding: const EdgeInsets.all(2),
+                                )
                               : DecoratedBox(
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
@@ -1947,6 +2181,7 @@ class _PreviewPane extends StatelessWidget {
     required this.palette,
     required this.videoController,
     required this.session,
+    required this.videoAspectRatio,
     required this.selectedOverlayId,
     required this.isPlaying,
     required this.onTogglePlayback,
@@ -1958,6 +2193,7 @@ class _PreviewPane extends StatelessWidget {
   final KidPalette palette;
   final VideoController videoController;
   final EditorSession session;
+  final double videoAspectRatio;
   final String? selectedOverlayId;
   final bool isPlaying;
   final Future<void> Function() onTogglePlayback;
@@ -1991,6 +2227,10 @@ class _PreviewPane extends StatelessWidget {
       color: Colors.black,
       child: LayoutBuilder(
         builder: (context, viewport) {
+          final previewSize = _fitSizeWithin(
+            viewport.biggest,
+            videoAspectRatio,
+          );
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -2005,70 +2245,79 @@ class _PreviewPane extends StatelessWidget {
                   ),
                 ),
               ),
-              if (hasPreviewFile)
-                ColorFiltered(
-                  colorFilter: ColorFilter.matrix(previewStyle.colorMatrix),
-                  child: Video(controller: videoController),
-                )
-              else
-                const ColoredBox(color: Colors.black12),
-              if (previewStyle.tintColor case final tint?)
-                IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: tint.withValues(alpha: previewStyle.tintOpacity),
-                    ),
-                  ),
-                ),
-              if (previewStyle.vignetteStrength > 0)
-                IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.transparent,
-                          Colors.black.withValues(
-                            alpha: 0.28 * previewStyle.vignetteStrength,
-                          ),
-                        ],
-                        stops: const [0.1, 0.64, 1],
-                        radius: 0.96 + (previewStyle.vignetteStrength * 0.2),
-                      ),
-                    ),
-                  ),
-                ),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final previewSize = Size(
-                    constraints.maxWidth,
-                    constraints.maxHeight,
-                  );
-                  return Stack(
+              Center(
+                child: SizedBox(
+                  width: previewSize.width,
+                  height: previewSize.height,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      for (final overlay in stickerOverlays)
-                        _StickerOverlay(
-                          overlay: overlay,
-                          previewSize: previewSize,
-                          selected: overlay.id == selectedOverlayId,
-                          onTap: () => onOverlaySelected(overlay.id),
-                          onScaleStart: (details) {
-                            onOverlaySelected(overlay.id);
-                            onStickerScaleStart(details, previewSize, overlay);
-                          },
-                          onScaleUpdate: (details) {
-                            onStickerScaleUpdate(details, previewSize, overlay);
-                          },
+                      if (hasPreviewFile)
+                        ColorFiltered(
+                          colorFilter: ColorFilter.matrix(
+                            previewStyle.colorMatrix,
+                          ),
+                          child: Video(controller: videoController),
+                        )
+                      else
+                        const ColoredBox(color: Colors.black12),
+                      if (previewStyle.tintColor case final tint?)
+                        IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: tint.withValues(
+                                alpha: previewStyle.tintOpacity,
+                              ),
+                            ),
+                          ),
                         ),
-                      if (textOverlay case final overlay?)
-                        _TextOverlay(
-                          overlay: overlay,
-                          selected: overlay.id == selectedOverlayId,
-                          onTap: () => onOverlaySelected(overlay.id),
+                      if (previewStyle.vignetteStrength > 0)
+                        IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                  Colors.black.withValues(
+                                    alpha: 0.28 * previewStyle.vignetteStrength,
+                                  ),
+                                ],
+                                stops: const [0.1, 0.64, 1],
+                                radius:
+                                    0.96 +
+                                    (previewStyle.vignetteStrength * 0.2),
+                              ),
+                            ),
+                          ),
                         ),
+                      Stack(
+                        children: [
+                          for (final overlay in stickerOverlays)
+                            _StickerOverlay(
+                              overlay: overlay,
+                              previewSize: previewSize,
+                              selected: overlay.id == selectedOverlayId,
+                              onTap: () => onOverlaySelected(overlay.id),
+                              onScaleStart: (details) {
+                                onOverlaySelected(overlay.id);
+                                onStickerScaleStart(details, previewSize, overlay);
+                              },
+                              onScaleUpdate: (details) {
+                                onStickerScaleUpdate(details, previewSize, overlay);
+                              },
+                            ),
+                          if (textOverlay case final overlay?)
+                            _TextOverlay(
+                              overlay: overlay,
+                              selected: overlay.id == selectedOverlayId,
+                              onTap: () => onOverlaySelected(overlay.id),
+                            ),
+                        ],
+                      ),
                     ],
-                  );
-                },
+                  ),
+                ),
               ),
               Center(
                 child: GestureDetector(
@@ -2101,6 +2350,19 @@ class _PreviewPane extends StatelessWidget {
       ),
     );
   }
+}
+
+Size _fitSizeWithin(Size viewport, double aspectRatio) {
+  if (viewport.width <= 0 || viewport.height <= 0 || aspectRatio <= 0) {
+    return viewport;
+  }
+  final viewportAspect = viewport.width / viewport.height;
+  if (viewportAspect > aspectRatio) {
+    final height = viewport.height;
+    return ui.Size(height * aspectRatio, height);
+  }
+  final width = viewport.width;
+  return ui.Size(width, width / aspectRatio);
 }
 
 // ── Sticker Overlay ─────────────────────────────────────────────────────

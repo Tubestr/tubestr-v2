@@ -21,6 +21,7 @@ class ThumbnailService {
       thumbnailPath: thumbnailsDir.path,
       imageFormat: ImageFormat.JPEG,
       maxWidth: 360,
+      maxHeight: 360,
       quality: 75,
       timeMs: 500,
     );

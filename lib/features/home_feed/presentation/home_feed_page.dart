@@ -4,12 +4,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
-
 import '../../../core/di/providers.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
+import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/components/nook_decorations.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
 
@@ -93,11 +92,6 @@ class HomeFeedContent extends ConsumerWidget {
 
                   // Add Friends CTA
                   _AddFriendsCta(palette: palette),
-
-                  const SizedBox(height: 16),
-
-                  // Seed demo content (dev tool, de-emphasized)
-                  _SeedDemoCard(profileId: selectedProfile?.id),
                 ],
               ),
             ),
@@ -247,7 +241,20 @@ class _VideoTile extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: hasThumb
-                        ? Image.file(thumbFile!, fit: BoxFit.cover)
+                        ? MediaThumbnailFrame(
+                            file: thumbFile!,
+                            borderRadius: BorderRadius.circular(20),
+                            background: LinearGradient(
+                              colors: [
+                                palette.accent.withValues(alpha: 0.18),
+                                palette.accentSecondary.withValues(alpha: 0.16),
+                                const Color(0xFF120F18),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                            padding: const EdgeInsets.all(6),
+                          )
                         : Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -556,7 +563,17 @@ class _SharedVideoTile extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(22),
                       child: hasThumb
-                          ? Image.file(thumbnailFile!, fit: BoxFit.cover)
+                          ? MediaThumbnailFrame(
+                              file: thumbnailFile!,
+                              borderRadius: BorderRadius.circular(20),
+                              background: const LinearGradient(
+                                colors: [
+                                  Color(0xFF16111D),
+                                  Color(0xFF0C0A11),
+                                ],
+                              ),
+                              padding: const EdgeInsets.all(6),
+                            )
                           : Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -678,58 +695,6 @@ class _SectionHeader extends StatelessWidget {
       style: Theme.of(
         context,
       ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Seed demo content card (dev tool, bottom of feed)
-// ---------------------------------------------------------------------------
-
-class _SeedDemoCard extends ConsumerWidget {
-  const _SeedDemoCard({this.profileId});
-
-  final String? profileId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
-
-    return Opacity(
-      opacity: 0.6,
-      child: FrostCard(
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Dev: Seed demo content',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-                  ),
-                ],
-              ),
-            ),
-            FilledButton.tonal(
-              onPressed: profileId == null
-                  ? null
-                  : () async {
-                      await ref
-                          .read(appDatabaseProvider)
-                          .addDemoVideo(
-                            videoId: const Uuid().v4(),
-                            profileId: profileId!,
-                            title: 'Backyard adventure',
-                          );
-                    },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

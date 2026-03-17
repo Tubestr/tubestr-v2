@@ -23,6 +23,7 @@ void main() {
   test(
     'scanAndClassifyVideo leaves new clips pending when approval is required',
     () async {
+      await service.setApprovalRequired(true);
       await database.upsertProfile(
         id: 'child-1',
         name: 'Emma',
@@ -74,6 +75,34 @@ void main() {
 
       expect(saved?.approvalStatus, 'approved');
       expect(saved?.approvedAt, isNotNull);
+    },
+  );
+
+  test(
+    'scanAndClassifyVideo still leaves risky clips pending when approval is disabled',
+    () async {
+      await service.setApprovalRequired(false);
+      await database.upsertProfile(
+        id: 'child-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'avatar.png',
+      );
+      await database.saveLocalVideo(
+        videoId: 'video-2',
+        profileId: 'child-1',
+        filePath: '/tmp/video.mp4',
+        thumbPath: '/tmp/video.jpg',
+        title: 'Scary challenge',
+        tags: const ['captured'],
+        approvalStatus: 'pending',
+      );
+
+      final scan = await service.scanAndClassifyVideo(videoId: 'video-2');
+      final saved = await database.getLocalVideoById('video-2');
+
+      expect(scan.needsReview, isTrue);
+      expect(saved?.approvalStatus, 'pending');
     },
   );
 }

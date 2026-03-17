@@ -107,7 +107,7 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Require parent approval before sharing'),
                 subtitle: const Text(
-                  'New clips stay pending until a parent reviews them.',
+                  'Clips are always scanned on-device. Turn this on if you also want every new clip to wait for a parent.',
                 ),
                 onChanged: onToggleApprovalRequired,
               ),

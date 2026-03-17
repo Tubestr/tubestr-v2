@@ -15,9 +15,6 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
     required this.isGeneratingInvitePacket,
     required this.isCreatingWelcome,
     required this.isAcceptingWelcome,
-    required this.isCreatingDebugShare,
-    required this.isImportingDebugEvent,
-    required this.eventImportController,
     required this.inviteImportController,
     required this.onCreateInvite,
     required this.onScanAndProcessInvite,
@@ -25,17 +22,12 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
     required this.onAcceptPendingWelcome,
     required this.onRefreshMdkState,
     required this.onManageGroup,
-    required this.onCreateDebugShareEvent,
-    required this.onImportDebugGroupEvent,
   });
 
   final Future<ParentZoneMdkDebugState> mdkDebugFuture;
   final bool isGeneratingInvitePacket;
   final bool isCreatingWelcome;
   final bool isAcceptingWelcome;
-  final bool isCreatingDebugShare;
-  final bool isImportingDebugEvent;
-  final TextEditingController eventImportController;
   final TextEditingController inviteImportController;
   final VoidCallback onCreateInvite;
   final VoidCallback onScanAndProcessInvite;
@@ -43,8 +35,6 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
   final ValueChanged<String> onAcceptPendingWelcome;
   final VoidCallback onRefreshMdkState;
   final ValueChanged<MdkGroupSummary> onManageGroup;
-  final Future<void> Function(bool publish) onCreateDebugShareEvent;
-  final VoidCallback onImportDebugGroupEvent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -251,69 +241,6 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                       ],
                     ),
                   ),
-                const SizedBox(height: 12),
-                FrostCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Transport Debug',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Create a sample video share wrapper event from your latest local clip, then import that event JSON on another device.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: palette.mutedInk,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          FilledButton.tonal(
-                            onPressed: isCreatingDebugShare
-                                ? null
-                                : () => onCreateDebugShareEvent(false),
-                            child: Text(
-                              isCreatingDebugShare
-                                  ? 'Working…'
-                                  : 'Create sample event',
-                            ),
-                          ),
-                          FilledButton.tonal(
-                            onPressed: isCreatingDebugShare
-                                ? null
-                                : () => onCreateDebugShareEvent(true),
-                            child: const Text('Create + publish'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: eventImportController,
-                        minLines: 3,
-                        maxLines: 6,
-                        decoration: const InputDecoration(
-                          labelText: 'Incoming group event JSON',
-                          hintText: 'Paste a signed kind:445 event here',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: isImportingDebugEvent
-                            ? null
-                            : onImportDebugGroupEvent,
-                        child: Text(
-                          isImportingDebugEvent
-                              ? 'Importing…'
-                              : 'Import event into SyncCoordinator',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             );
           },

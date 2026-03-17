@@ -15,6 +15,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/remote_share_projection.dart';
+import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/reporting/feeling_report_sheet.dart';
 
 /// Full-screen video player matching v1 PlayerView design.
@@ -34,10 +35,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   late final VideoController _videoController;
   String? _openedPath;
   bool _isDownloadingRemote = false;
+  bool _isRepairingRemoteCache = false;
   bool _isSharingLocal = false;
   bool _isSendingLike = false;
   int? _videoWidth;
   int? _videoHeight;
+  String? _lastRemoteValidationId;
 
   // Controls visibility
   bool _showControls = true;
@@ -144,6 +147,44 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     return 9 / 16;
   }
 
+  void _ensureRemoteMediaReady(RemoteShareProjection? remoteShare) {
+    if (remoteShare == null || _isRepairingRemoteCache) {
+      return;
+    }
+    if (remoteShare.status == 'downloading' || remoteShare.status == 'deleted') {
+      return;
+    }
+    final marker =
+        '${remoteShare.remoteShareId}:${remoteShare.localMediaPath ?? ''}:${remoteShare.status}';
+    if (_lastRemoteValidationId == marker) {
+      return;
+    }
+    _lastRemoteValidationId = marker;
+    unawaited(() async {
+      final shouldRepair =
+          remoteShare.localMediaPath != null &&
+          remoteShare.localMediaPath!.isNotEmpty &&
+          !await ref
+              .read(remoteMediaServiceProvider)
+              .hasValidCachedVideo(remoteShare);
+      if (!shouldRepair || !mounted) {
+        return;
+      }
+      setState(() => _isRepairingRemoteCache = true);
+      try {
+        await ref
+            .read(remoteMediaServiceProvider)
+            .ensureVideoAvailable(remoteShare);
+      } catch (_) {
+        // Leave the projection in a failed state; UI already exposes download.
+      } finally {
+        if (mounted) {
+          setState(() => _isRepairingRemoteCache = false);
+        }
+      }
+    }());
+  }
+
   @override
   Widget build(BuildContext context) {
     final videos =
@@ -164,6 +205,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
     final filePath = video?.filePath;
     final remotePath = remoteShare?.localMediaPath;
+    _ensureRemoteMediaReady(remoteShare);
     final mediaPath = switch ((filePath, remotePath)) {
       (final String path?, _) when path.isNotEmpty => path,
       (_, final String path?) when path.isNotEmpty => path,
@@ -259,7 +301,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                             fit: StackFit.expand,
                             children: [
                               if (hasRemoteThumb)
-                                Image.file(remoteThumbFile!, fit: BoxFit.cover)
+                                MediaThumbnailFrame(
+                                  file: remoteThumbFile!,
+                                  borderRadius: BorderRadius.circular(14),
+                                  padding: const EdgeInsets.all(8),
+                                )
                               else
                                 const ColoredBox(color: Color(0x22FFFFFF)),
                               DecoratedBox(
@@ -319,6 +365,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         label: Text(
                                           _isDownloadingRemote
                                               ? 'Downloading...'
+                                              : remoteShare.status == 'failed'
+                                              ? 'Repair Download'
                                               : 'Download Now',
                                         ),
                                       ),

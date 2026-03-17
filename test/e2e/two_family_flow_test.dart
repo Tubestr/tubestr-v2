@@ -79,8 +79,27 @@ void main() {
       await familyA.syncCoordinator.refreshSubscriptions();
       await familyB.syncCoordinator.refreshSubscriptions();
 
-      const originalVideoBytes = <int>[1, 3, 3, 7, 9, 2, 1, 4, 8, 6];
-      const originalThumbBytes = <int>[8, 6, 7, 5, 3, 0, 9];
+      const originalVideoBytes = <int>[
+        0x00,
+        0x00,
+        0x00,
+        0x18,
+        0x66,
+        0x74,
+        0x79,
+        0x70,
+        1,
+        3,
+        3,
+        7,
+        9,
+        2,
+        1,
+        4,
+        8,
+        6,
+      ];
+      const originalThumbBytes = <int>[0xFF, 0xD8, 0xFF, 8, 6, 7, 5, 3, 0, 9];
       final localVideoPath = File('${familyA.rootDir.path}/share-video.mp4');
       final localThumbPath = File('${familyA.rootDir.path}/share-thumb.jpg');
       await localVideoPath.writeAsBytes(originalVideoBytes, flush: true);

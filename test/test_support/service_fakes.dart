@@ -263,6 +263,28 @@ class FakeMdkService extends MdkService {
     required String url,
   }) async {
     lastDecryptUrl = url;
+    if (mimeType == 'video/mp4') {
+      return <int>[
+        0x00,
+        0x00,
+        0x00,
+        0x18,
+        0x66,
+        0x74,
+        0x79,
+        0x70,
+        0x69,
+        0x73,
+        0x6F,
+        0x6D,
+      ];
+    }
+    if (mimeType == 'image/jpeg') {
+      return <int>[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
+    }
+    if (mimeType == 'image/png') {
+      return <int>[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A];
+    }
     return List<int>.from('plaintext-$filename'.codeUnits);
   }
 

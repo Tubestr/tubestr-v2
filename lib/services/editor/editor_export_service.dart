@@ -14,6 +14,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/storage/app_database.dart';
 import '../../domain/models/editor_resources.dart';
 import '../../domain/models/editor_session.dart';
+import '../approval/video_approval_service.dart';
 import '../media/thumbnail_service.dart';
 import 'editor_resource_catalog.dart';
 
@@ -83,12 +84,14 @@ class EditorExportService {
   EditorExportService({
     required AppDatabase database,
     required ThumbnailService thumbnailService,
+    required VideoApprovalService videoApprovalService,
     AssetBundle? assetBundle,
     Uuid? uuid,
     ExecuteFfmpegWithArguments? executeFfmpeg,
     ProbeSourceMediaInfo? probeSourceMediaInfo,
   }) : _database = database,
        _thumbnailService = thumbnailService,
+       _videoApprovalService = videoApprovalService,
        _assetBundle = assetBundle ?? rootBundle,
        _uuid = uuid ?? const Uuid(),
        _executeFfmpeg = executeFfmpeg ?? _defaultExecuteFfmpeg,
@@ -97,6 +100,7 @@ class EditorExportService {
 
   final AppDatabase _database;
   final ThumbnailService _thumbnailService;
+  final VideoApprovalService _videoApprovalService;
   final AssetBundle _assetBundle;
   final Uuid _uuid;
   final ExecuteFfmpegWithArguments _executeFfmpeg;
@@ -120,7 +124,7 @@ class EditorExportService {
     final sourceMediaInfo =
         await _probeSourceMediaInfo(session.sourcePath) ??
         const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false);
-    final renderSize = normalizeEditorRenderSize(
+    final baseRenderSize = normalizeEditorRenderSize(
       _displayOrientedSize(sourceMediaInfo),
     );
     final attempts = _buildExportAttempts(session);
@@ -142,8 +146,9 @@ class EditorExportService {
         session: attempt.session,
         assetBundle: _assetBundle,
         stagingDir: stagingDir.path,
-        videoSize: renderSize,
+        videoSize: scaleEditorRenderSize(baseRenderSize, attempt.renderScale),
       );
+      final renderSize = scaleEditorRenderSize(baseRenderSize, attempt.renderScale);
       final plan = await buildEditorExportPlan(
         session: attempt.session,
         outputPath: attemptOutputPath,
@@ -198,7 +203,9 @@ class EditorExportService {
       title: title,
       durationSeconds: session.trimRange.duration.inMilliseconds / 1000,
       tags: const ['edited', 'remix'],
+      approvalStatus: 'pending',
     );
+    await _videoApprovalService.scanAndClassifyVideo(videoId: exportedVideoId);
 
     return EditorExportResult(
       videoId: exportedVideoId,
@@ -216,12 +223,14 @@ class _ExportAttempt {
     required this.label,
     required this.session,
     required this.videoCodec,
+    this.renderScale = 1,
     this.warning,
   });
 
   final String label;
   final EditorSession session;
   final String videoCodec;
+  final double renderScale;
   final String? warning;
 }
 
@@ -247,6 +256,7 @@ Future<EditorExportPlan> buildEditorExportPlan({
     _secondsString(session.trimRange.start),
     '-t',
     _secondsString(session.trimRange.duration),
+    '-noautorotate',
     '-i',
     session.sourcePath,
   ];
@@ -364,6 +374,8 @@ Future<EditorExportPlan> buildEditorExportPlan({
     'veryfast',
     '-pix_fmt',
     'yuv420p',
+    '-metadata:s:v:0',
+    'rotate=0',
     '-c:a',
     'aac',
     '-movflags',
@@ -379,51 +391,23 @@ Future<EditorExportPlan> buildEditorExportPlan({
 }
 
 List<_ExportAttempt> _buildExportAttempts(EditorSession session) {
-  final attempts = <_ExportAttempt>[
+  return <_ExportAttempt>[
     _ExportAttempt(label: 'full', session: session, videoCodec: 'libx264'),
-  ];
-
-  final hasVisualStyling =
-      session.filterPresetId != 'none' ||
-      _hasNonDefaultAdjustments(session.adjustments) ||
-      session.overlays.isNotEmpty;
-  if (hasVisualStyling) {
-    attempts.add(
-      _ExportAttempt(
-        label: 'no_visual_effects',
-        session: session.copyWith(
-          filterPresetId: 'none',
-          adjustments: const EditorAdjustments(),
-          overlays: const <EditorOverlayItem>[],
-        ),
-        videoCodec: 'libx264',
-        warning: 'Saved remix without some visual effects on this device.',
-      ),
-    );
-  }
-
-  attempts.add(
+    _ExportAttempt(
+      label: 'smaller_full',
+      session: session,
+      videoCodec: 'libx264',
+      renderScale: 0.8,
+      warning: 'Saved remix at a smaller size for this device.',
+    ),
     _ExportAttempt(
       label: 'safe_codec',
-      session: session.copyWith(
-        filterPresetId: 'none',
-        adjustments: const EditorAdjustments(),
-        overlays: const <EditorOverlayItem>[],
-      ),
+      session: session,
       videoCodec: 'mpeg4',
+      renderScale: 0.8,
       warning: 'Saved remix with a compatibility export path on this device.',
     ),
-  );
-
-  return attempts;
-}
-
-bool _hasNonDefaultAdjustments(EditorAdjustments adjustments) {
-  return adjustments.brightness != 0 ||
-      adjustments.contrast != 1 ||
-      adjustments.saturation != 1 ||
-      adjustments.sharpness != 0 ||
-      adjustments.vignette != 0;
+  ];
 }
 
 ui.Size normalizeEditorRenderSize(ui.Size input, {double maxDimension = 1280}) {
@@ -435,6 +419,14 @@ ui.Size normalizeEditorRenderSize(ui.Size input, {double maxDimension = 1280}) {
   }
   final scale = maxDimension / longestSide;
   return ui.Size(_makeEven(width * scale), _makeEven(height * scale));
+}
+
+ui.Size scaleEditorRenderSize(ui.Size input, double scale) {
+  final normalizedScale = scale.clamp(0.5, 1.0);
+  return normalizeEditorRenderSize(
+    ui.Size(input.width * normalizedScale, input.height * normalizedScale),
+    maxDimension: math.max(input.width, input.height),
+  );
 }
 
 Future<String?> _stageOverlayImage({
@@ -573,6 +565,7 @@ Future<String?> _buildVideoFilterGraph({
   filters.add(
     'scale=${renderSize.width.round()}:${renderSize.height.round()}:flags=lanczos',
   );
+  filters.add('setsar=1');
 
   if (filterPreset != null && filterPreset.engine == EditorFilterEngine.lut3d) {
     final lutId = filterPreset.lutAssetId;

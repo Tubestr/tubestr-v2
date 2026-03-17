@@ -47,7 +47,6 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   final _relayController = TextEditingController();
   final _blossomController = TextEditingController();
   final _pinManagementController = TextEditingController();
-  final _eventImportController = TextEditingController();
   final _inviteImportController = TextEditingController();
   ThemeDescriptor _childTheme = ThemeDescriptor.campfire;
 
@@ -56,9 +55,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   bool _isGeneratingInvitePacket = false;
   bool _isCreatingWelcome = false;
   bool _isAcceptingWelcome = false;
-  bool _isCreatingDebugShare = false;
-  bool _isImportingDebugEvent = false;
-  bool _approvalRequired = true;
+  bool _approvalRequired = false;
   Uri? _queuedDeepLinkUri;
   Timer? _pendingWelcomePollTimer;
   bool _pendingWelcomePollInFlight = false;
@@ -80,7 +77,6 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     _relayController.dispose();
     _blossomController.dispose();
     _pinManagementController.dispose();
-    _eventImportController.dispose();
     _inviteImportController.dispose();
     super.dispose();
   }
@@ -324,34 +320,6 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     );
   }
 
-  void _showPayloadDialog({required String title, required String payload}) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(child: SelectableText(payload)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: payload));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Copied to clipboard')),
-              );
-            },
-            child: const Text('Copy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _createInvite() async {
     final identity = await ref.read(parentIdentityProvider.future);
     if (identity == null) {
@@ -500,106 +468,6 @@ ${result.payload}
     }
 
     await _processInvitePayload(queued.toString(), clearPendingDeepLink: true);
-  }
-
-  Future<void> _createDebugShareEvent({required bool publish}) async {
-    final identity = await ref.read(parentIdentityProvider.future);
-    if (identity == null) {
-      return;
-    }
-
-    setState(() => _isCreatingDebugShare = true);
-
-    try {
-      final selectedProfileId = ref.read(selectedProfileIdProvider);
-      final latestVideo = await ref
-          .read(appDatabaseProvider)
-          .getLatestLocalVideo(profileId: selectedProfileId);
-      if (latestVideo == null) {
-        throw StateError(
-          'Capture a local video before creating a sample share.',
-        );
-      }
-
-      final profile = (ref.read(profilesProvider).valueOrNull ?? const [])
-          .firstWhere(
-            (item) => item.id == latestVideo.profileId,
-            orElse: () =>
-                throw StateError('Profile for latest video not found.'),
-          );
-      final groups = await ref.read(mdkServiceProvider).getGroupSummaries();
-      if (groups.isEmpty) {
-        throw StateError('Create or join a family connection first.');
-      }
-
-      final event = await ref
-          .read(videoShareCoordinatorProvider)
-          .createUploadedShareMessage(
-            identity: identity,
-            localVideo: latestVideo,
-            childDisplayName: profile.name,
-            mlsGroupIdHex: groups.first.mlsGroupIdHex,
-          );
-
-      if (publish) {
-        final relays = await ref.read(nostrServiceProvider).loadRelayList();
-        await ref
-            .read(videoShareCoordinatorProvider)
-            .publishSignedGroupMessage(
-              identity: identity,
-              signedEventJson: event.wrapperEventJson,
-              relays: relays,
-            );
-      }
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() => _isCreatingDebugShare = false);
-      _showPayloadDialog(
-        title: publish ? 'Published Share Event' : 'Share Event',
-        payload: event.wrapperEventJson,
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _isCreatingDebugShare = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$error')));
-    }
-  }
-
-  Future<void> _importDebugGroupEvent() async {
-    final raw = _eventImportController.text.trim();
-    if (raw.isEmpty) {
-      return;
-    }
-
-    setState(() => _isImportingDebugEvent = true);
-    try {
-      final result = await ref
-          .read(syncCoordinatorProvider)
-          .processIncomingEventJson(eventJson: raw);
-      if (!mounted) {
-        return;
-      }
-
-      setState(() => _isImportingDebugEvent = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.reason)));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _isImportingDebugEvent = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$error')));
-    }
   }
 
   Future<void> _saveChild() async {
@@ -866,9 +734,6 @@ ${result.payload}
         isGeneratingInvitePacket: _isGeneratingInvitePacket,
         isCreatingWelcome: _isCreatingWelcome,
         isAcceptingWelcome: _isAcceptingWelcome,
-        isCreatingDebugShare: _isCreatingDebugShare,
-        isImportingDebugEvent: _isImportingDebugEvent,
-        eventImportController: _eventImportController,
         inviteImportController: _inviteImportController,
         onCreateInvite: _createInvite,
         onScanAndProcessInvite: _scanAndProcessInvite,
@@ -876,9 +741,6 @@ ${result.payload}
         onAcceptPendingWelcome: _acceptPendingWelcome,
         onRefreshMdkState: _refreshMdkState,
         onManageGroup: _manageGroup,
-        onCreateDebugShareEvent: (publish) =>
-            _createDebugShareEvent(publish: publish),
-        onImportDebugGroupEvent: _importDebugGroupEvent,
       ),
       ParentZoneSection.settings => ParentZoneSettingsSection(
         displayNameController: _displayNameController,

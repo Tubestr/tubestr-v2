@@ -38,7 +38,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Date: 2026-03-15
 - Workspace state: Flutter app bootstrapped, Drift code generated, analysis green
 - iOS app available for reference at `/home/lee/apps/tubestr-ios`
-- Current focus: harden automatic retry and multi-family lifecycle reliability while editor design continues in parallel
+- Current focus: tighten the capture -> scan -> edit -> share media loop, especially aspect-ratio correctness and streamlined next-step UX
 
 ## Execution Rules
 
@@ -99,10 +99,13 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - The app should feel functional locally before network sharing is added.
 - UI work should follow `docs/UIReference.md` and preserve the old app's tablet-first structure.
 - Camera preview, recording, and local file persistence are wired into the Drift feed.
+- Capture now uses a fill-and-crop camera preview instead of stretching `CameraPreview`, which should make portrait and front-camera shots look correct while recording.
+- The main media surfaces now favor aspect-preserving presentation over hard crop: home-feed cards, shared-video tiles, editor-hub cards, player download placeholders, and the editor timeline all use letterboxed thumbnail framing so portrait media stops looking wrong before playback even starts.
 - Thumbnail generation is wired for captured local clips and displayed in the feed.
 - Editor handoff is still pending.
 - Player route exists; real playback works only once captured/imported files are stored with valid paths.
 - Player playback now uses the actual media dimensions when available instead of forcing every clip into `16:9`, and Android debug builds prefer software video rendering to reduce emulator black-screen decode issues while we keep hardening remote playback.
+- Capture now keeps users inside one flow after recording: save -> process -> on-device scan -> next-step card with Watch, Edit, and Share actions instead of dumping them back into the tab with no guidance.
 - `nook://` deep-link handling is now wired through `app_links` into the app shell and opens Parent Zone, with Android intent-filter support. `tubestr://` and `mytube://` are still pending by choice after narrowing the current scope.
 
 ## Phase 2.5: Editor Spike
@@ -140,7 +143,13 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Editor export now pauses the live preview player first and retries through simpler compatibility plans if the full FFmpeg stack fails, so the editor can still save a remix instead of hard-failing on the first unsupported filter/effect combination.
 - Editor export now reads rotation metadata from FFprobe and applies orientation-aware sizing/transpose filters, which should stop portrait captures from exporting as stretched landscape remixes.
 - Compatibility export now writes a diagnostics log when every FFmpeg plan fails, which gives us a concrete device-specific trail instead of a generic export exception.
-- Current editor gaps: selfie subject lifting is implemented but still needs more on-device validation for edge quality/performance, and preview LUT rendering remains an approximation rather than pixel-exact parity with FFmpeg export.
+- Editor preview now preserves the actual media aspect ratio inside the immersive canvas instead of stretching every clip to fill the viewport, which should make portrait and landscape edits line up better with capture/playback/export.
+- Selfie sticker capture now uses the same fill-and-crop camera-preview treatment as the main capture screen, which should stop the front-camera preview from looking stretched.
+- Sticker placement is now truly multi-sticker in the editor again, and removing a sticker removes the selected sticker instead of wiping all sticker overlays.
+- Editor export fallback no longer "succeeds" by dropping stickers, text, and effects. All retry paths now preserve the requested visual edit and only trade off render size / codec; if that still fails, export fails loudly with diagnostics.
+- Editor export now passes `-noautorotate` into FFmpeg before the input is opened, so our manual rotation handling is the single source of truth instead of fighting FFmpeg's own autorotation logic on portrait captures.
+- Exported remixes now go through the same on-device scan pipeline as captured clips and save as pending-then-classified instead of bypassing the safety flow.
+- Current editor gaps: selfie subject lifting still needs more on-device validation for edge quality/performance, and preview LUT rendering remains an approximation rather than pixel-exact parity with FFmpeg export.
 
 ## Phase 3: Sharing, Sync, and Safety HQ
 
@@ -174,9 +183,9 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - The player now uses a child-friendly, feeling-based report sheet aligned to the old app's flow instead of immediately firing a hard-coded report action.
 - Sync now projects inbound `kind:4547` messages into the local report store, and Parent Zone overview surfaces a basic “Let’s Talk” section for incoming family feedback.
 - Video lifecycle messages now work end to end in app logic: incoming `kind:4544/4545` events mark shared content deleted and purge cached remote files.
-- Parent Zone now includes a manual transport-debug loop for sample share events: create a `kind:4543` wrapper event from the latest local clip, optionally publish it, and import pasted signed event JSON through `SyncCoordinator`.
 - The share payload now carries the MIP-04 reference fields needed by `mdk-core` decryption (`orig_hash`, `nonce`, `filename`, `scheme`) as optional blob/thumb properties. This is an implementation extension beyond the original simplified payload sketch so real encrypted media can round-trip through Blossom and MDK today.
 - Remote thumbnail prefetch now runs after `video_share` projection, and full remote downloads decrypt into `ApplicationSupport/remote_cache/{thumbs,videos}` with Drift tracking `available/downloading/downloaded/failed`.
+- Remote media cache now validates basic file signatures before trusting downloaded video/thumb files, clears stale invalid cache entries, and lets the player repair bad remote downloads instead of silently reusing broken local files.
 - Local Blossom server preferences are now stored in app settings, publishable as `kind:10063`, fetchable by author pubkey over NDK, and used as a runtime fallback when the sender's encrypted snapshot server list is stale.
 - Sync subscriptions now refresh when local group membership changes in Parent Zone, which closes the gap where a newly created or newly accepted family group existed locally but had no active `kind:445` relay subscription yet.
 - Test coverage now includes relay-delivered `kind:445` events flowing through `SyncCoordinator.start()` subscriptions into Drift projections without manual event paste.
@@ -198,6 +207,9 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Parent Zone now actively polls for pending welcomes immediately after generating an invite, so approvals surface without needing a manual section refresh if the other parent scans right away.
 - Connection and moderation member surfaces now prefer resolved parent display names and fall back to `npub` formatting instead of raw hex pubkeys.
 - Family invites now carry the inviter's local display name directly, best-effort republish parent NIP-01 metadata during invite/connect, and compose group names from both parents' names so the happy path is `Parent 1 & Parent 2` instead of `Family Space`.
+- Dev-only sample-share/debug-import controls have been removed from Parent Zone now that the real invite/share/download flow is working on-device.
+- Capture preview, selfie capture, thumbnail framing, and editor playback now all preserve media aspect ratios instead of stretching portrait media to fill generic landscape surfaces.
+- Editor export now disables FFmpeg autorotate, clears output `rotate` metadata, and forces square-pixel output (`setsar=1`) so portrait remixes stay portrait through export and playback.
 - Player share no longer relies on one stale child-primary group mapping; it now targets every active non-Safety family group with more than one member, which avoids accidentally publishing only into an old solo group.
 
 ## Phase 4: Safety, Moderation, and Editor
@@ -216,6 +228,8 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Parent Zone Family now exposes a real pending-approval queue for local clips, content scan summaries, and approve/reject actions. Capture writes new clips as pending first, scans them immediately, and auto-approval only happens when the parent has explicitly disabled approval requirements.
 - Parent approval is now enforced in the actual share path, not only shown in UI: pending or rejected clips cannot be shared until a parent approves them.
 - Content scanning now incorporates title keywords alongside existing media metadata and produces more specific review reasons, which are surfaced as risk/reason chips in the parent approval queue instead of only a generic summary line.
+- Parent approval is now disabled by default, but on-device scanning still always runs before share. Safe clips auto-approve unless the parent opts back into mandatory review, while flagged clips still remain pending.
+- Share preflight now backfills a missing scan before upload, which closes the gap where remixes or older library items could otherwise miss the scan-before-share rule.
 - The child-facing report sheet now exposes the three escalation levels clearly in-product, with explicit destination messaging for family feedback, parent help, and Safety HQ alerts.
 - Parent Zone Active Connections now opens a management sheet per family group with separate actions for deleting shared videos and removing members.
 - Moderation actions are recorded locally in `moderation_audit_logs` and surfaced in Parent Zone Overview.
@@ -358,8 +372,6 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Re-ran FRB codegen, `cargo check`, `flutter analyze`, `flutter test`, Android Rust `jniLibs` rebuild, and `flutter build apk --debug` after the transport bridge changes.
 - Added joined remote share projection models/providers, surfaced shared content in the Home Feed as grouped horizontal tiles, and taught the player to fall back to remote-share metadata/local cached media paths when opening a shared video.
 - Verified `flutter analyze`, `flutter test`, and `flutter build apk --debug` after the remote feed/player pass.
-- Added a Parent Zone transport-debug card that can generate a sample share wrapper event from the latest local video, publish it through NDK, or import a pasted signed group event into `SyncCoordinator` for manual cross-device testing.
-- Verified `flutter analyze`, `flutter test`, and `flutter build apk --debug` after the transport-debug additions.
 - Extended the MDK Rust bridge and Dart wrapper with real MIP-04 media encryption/decryption APIs backed by `mdk-core` encrypted media manager.
 - Updated the share coordinator to encrypt the latest local clip + thumbnail, upload ciphertext to Blossom, attach IMETA-style tags to the outbound rumor event, and include the required decryption reference fields in the payload.
 - Added `RemoteMediaService` to prefetch shared thumbnails and download/decrypt remote videos into local cache files, plus Drift helpers to persist remote asset paths and share status transitions.

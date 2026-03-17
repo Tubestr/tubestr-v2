@@ -18,7 +18,7 @@ class VideoApprovalService {
       AppConstants.approvalRequiredSettingKey,
     );
     if (raw == null || raw.isEmpty) {
-      return true;
+      return false;
     }
     return raw == 'true';
   }

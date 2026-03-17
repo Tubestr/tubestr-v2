@@ -41,13 +41,21 @@ void main() {
 
       expect(
         plan.arguments,
-        containsAllInOrder(['-ss', '2.000', '-t', '6.000']),
+        containsAllInOrder(['-ss', '2.000', '-t', '6.000', '-noautorotate']),
       );
       expect(plan.arguments, contains('/tmp/input.mp4'));
       expect(plan.arguments, contains('/tmp/output.mp4'));
       expect(
+        plan.arguments,
+        containsAllInOrder(['-metadata:s:v:0', 'rotate=0']),
+      );
+      expect(
         plan.arguments.where((value) => value.contains('lut3d=file=')).single,
         contains('vintage.cube'),
+      );
+      expect(
+        plan.arguments.where((value) => value.contains('setsar=1')).single,
+        contains('setsar=1'),
       );
       expect(
         plan.arguments
@@ -233,7 +241,7 @@ void main() {
   });
 
   test(
-    'buildEditorExportPlan rotates portrait videos before scaling',
+    'buildEditorExportPlan disables ffmpeg autorotate before applying manual rotation',
     () async {
       final plan = await buildEditorExportPlan(
         session: const EditorSession(
@@ -252,6 +260,7 @@ void main() {
         sourceRotationDegrees: 90,
       );
 
+      expect(plan.arguments, containsAllInOrder(['-noautorotate', '-i']));
       expect(
         plan.arguments.where((value) => value.contains('transpose=1')).single,
         contains('scale=720:1280'),

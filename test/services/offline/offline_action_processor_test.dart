@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/offline_action.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
+import 'package:mytube/services/approval/content_scan_service.dart';
+import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
 import 'package:mytube/services/identity/parent_profile_service.dart';
 import 'package:mytube/services/offline/offline_action_processor.dart';
@@ -82,6 +84,10 @@ void main() {
         parentProfileService: profileService,
         videoShareCoordinator: VideoShareCoordinator(
           database: database,
+          videoApprovalService: VideoApprovalService(
+            database: database,
+            scanService: const ContentScanService(),
+          ),
           blossomClient: blossom,
           mdkService: mdk,
           nostrService: nostr,

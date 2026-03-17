@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../marmot/message_models.dart';
 
 class RemoteShareProjection {
@@ -54,9 +56,21 @@ class RemoteShareProjection {
 
   String get displayName => childDisplayName ?? 'Friend';
 
-  bool get isDownloaded =>
-      localMediaPath != null && localMediaPath!.isNotEmpty;
+  bool get isDownloaded {
+    final path = localMediaPath;
+    if (path == null || path.isEmpty) {
+      return false;
+    }
+    final file = File(path);
+    return file.existsSync() && file.lengthSync() > 0;
+  }
 
-  bool get hasThumbnail =>
-      localThumbPath != null && localThumbPath!.isNotEmpty;
+  bool get hasThumbnail {
+    final path = localThumbPath;
+    if (path == null || path.isEmpty) {
+      return false;
+    }
+    final file = File(path);
+    return file.existsSync() && file.lengthSync() > 0;
+  }
 }

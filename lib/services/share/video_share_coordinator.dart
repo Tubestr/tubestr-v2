@@ -8,6 +8,7 @@ import '../../core/storage/app_database.dart';
 import '../../domain/marmot/message_models.dart';
 import '../../domain/models/offline_action.dart';
 import '../../domain/models/parent_identity.dart';
+import '../approval/video_approval_service.dart';
 import '../blossom/blossom_client.dart';
 import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
@@ -17,6 +18,7 @@ import 'share_history_service.dart';
 class VideoShareCoordinator {
   VideoShareCoordinator({
     required AppDatabase database,
+    required VideoApprovalService videoApprovalService,
     required BlossomClient blossomClient,
     required MdkService mdkService,
     required NostrService nostrService,
@@ -24,6 +26,7 @@ class VideoShareCoordinator {
     required ShareHistoryService shareHistoryService,
   }) : _blossomClient = blossomClient,
        _database = database,
+       _videoApprovalService = videoApprovalService,
        _mdkService = mdkService,
        _nostrService = nostrService,
        _offlineActionStore = offlineActionStore,
@@ -31,6 +34,7 @@ class VideoShareCoordinator {
 
   final BlossomClient _blossomClient;
   final AppDatabase _database;
+  final VideoApprovalService _videoApprovalService;
   final MdkService _mdkService;
   final NostrService _nostrService;
   final OfflineActionStore _offlineActionStore;
@@ -358,9 +362,18 @@ class VideoShareCoordinator {
     required String mlsGroupIdHex,
     bool allowQueueOnFailure = true,
   }) async {
-    final localVideo = await _database.getLocalVideoById(videoId);
+    var localVideo = await _database.getLocalVideoById(videoId);
     if (localVideo == null) {
       throw StateError('Local video not found: $videoId');
+    }
+    if (localVideo.scanCompletedAt == null ||
+        localVideo.scanResults == null ||
+        localVideo.scanResults!.isEmpty) {
+      await _videoApprovalService.scanAndClassifyVideo(videoId: videoId);
+      localVideo = await _database.getLocalVideoById(videoId);
+      if (localVideo == null) {
+        throw StateError('Local video disappeared before sharing: $videoId');
+      }
     }
     try {
       final event = await createUploadedShareMessage(

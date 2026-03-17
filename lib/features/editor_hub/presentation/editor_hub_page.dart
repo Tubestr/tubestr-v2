@@ -7,6 +7,7 @@ import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
+import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
 import '../../editor/presentation/editor_detail_page.dart';
 
@@ -229,7 +230,20 @@ class _EditorVideoCard extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: hasThumb
-                          ? Image.file(thumbFile!, fit: BoxFit.cover)
+                          ? MediaThumbnailFrame(
+                              file: thumbFile!,
+                              borderRadius: BorderRadius.circular(16),
+                              background: LinearGradient(
+                                colors: [
+                                  palette.accent.withValues(alpha: 0.18),
+                                  palette.accentSecondary.withValues(alpha: 0.16),
+                                  const Color(0xFF120F18),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              padding: const EdgeInsets.all(6),
+                            )
                           : Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(

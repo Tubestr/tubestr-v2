@@ -464,26 +464,6 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<void> addDemoVideo({
-    required String videoId,
-    required String profileId,
-    required String title,
-  }) {
-    return into(localVideos).insert(
-      LocalVideosCompanion.insert(
-        id: videoId,
-        profileId: profileId,
-        filePath: '',
-        thumbPath: '',
-        title: Value(title),
-        durationSeconds: const Value(12),
-        createdAt: DateTime.now(),
-        tags: const Value(<String>['family', 'favorite']),
-        cvLabels: const Value(<String>[]),
-      ),
-    );
-  }
-
   Future<void> saveLocalVideo({
     required String videoId,
     required String profileId,
@@ -681,6 +661,22 @@ class AppDatabase extends _$AppDatabase {
             ? const Value.absent()
             : Value(localThumbPath),
       ),
+    );
+  }
+
+  Future<void> clearRemoteMediaCachePath({required String remoteShareId}) {
+    return (update(
+      remoteAssets,
+    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
+      const RemoteAssetsCompanion(localMediaPath: Value(null)),
+    );
+  }
+
+  Future<void> clearRemoteThumbCachePath({required String remoteShareId}) {
+    return (update(
+      remoteAssets,
+    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
+      const RemoteAssetsCompanion(localThumbPath: Value(null)),
     );
   }
 
