@@ -2,14 +2,13 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/remote_share_projection.dart';
-import '../../../shared_ui/components/kid_scaffold.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
-import '../../../shared_ui/components/nook_decorations.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
 
 /// Home tab content — matches v1 HomeFeedView.
@@ -60,18 +59,14 @@ class HomeFeedContent extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
                 children: [
-                  // Welcome header
-                  _WelcomeHeader(
-                    name: selectedProfile?.name ?? 'there',
-                    palette: palette,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // My Videos section
+                  // My Videos section — hero only shown for new users (empty state)
                   videos.when(
                     data: (items) {
                       if (items.isEmpty) {
-                        return _EmptyState(palette: palette);
+                        return _WelcomeEmptyState(
+                          name: selectedProfile?.name ?? 'there',
+                          palette: palette,
+                        );
                       }
                       return _MyVideosSection(items: items, palette: palette);
                     },
@@ -79,7 +74,25 @@ class HomeFeedContent extends ConsumerWidget {
                       padding: EdgeInsets.all(32),
                       child: Center(child: CircularProgressIndicator()),
                     ),
-                    error: (e, _) => FrostCard(child: Text('$e')),
+                    error: (e, _) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your videos need another moment',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'We couldn\'t load this child\'s library just yet. Pull down to try again.',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: palette.mutedInk),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 24),
@@ -103,17 +116,17 @@ class HomeFeedContent extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Welcome header with time-of-day greeting
+// Welcome + empty state (shown only when user has no videos)
 // ---------------------------------------------------------------------------
 
-class _WelcomeHeader extends StatelessWidget {
-  const _WelcomeHeader({required this.name, required this.palette});
+class _WelcomeEmptyState extends ConsumerWidget {
+  const _WelcomeEmptyState({required this.name, required this.palette});
 
   final String name;
   final KidPalette palette;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hour = DateTime.now().hour;
     final greeting = switch (hour) {
       < 12 => 'Good Morning',
@@ -121,33 +134,49 @@ class _WelcomeHeader extends StatelessWidget {
       _ => 'Good Evening',
     };
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$greeting,',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: palette.mutedInk),
-              ),
-              Text(
-                name,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
+        // Greeting + headline
+        Text(
+          '$greeting, $name',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: palette.mutedInk,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        GlowBox(
-          color: palette.accent,
-          child: CircleAvatar(
-            radius: 28,
-            backgroundColor: palette.accent.withValues(alpha: 0.15),
-            child: Icon(Icons.face_rounded, size: 28, color: palette.accent),
+        const SizedBox(height: 8),
+        Text(
+          'Make your first video',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            height: 1.05,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Start in Capture, then head to Edit Studio to add stickers, music, or text.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
+        ),
+        const SizedBox(height: 20),
+
+        // Ghost video grid with embedded CTA
+        _GhostVideoGrid(palette: palette),
+
+        const SizedBox(height: 20),
+
+        // Single primary action
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              ref.read(appShellTabIndexProvider.notifier).state = 1;
+            },
+            icon: const Icon(Icons.videocam_rounded),
+            label: const Text('Open Capture'),
           ),
         ),
       ],
@@ -156,7 +185,118 @@ class _WelcomeHeader extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// My Videos grid (v1: LazyVGrid, 3 columns)
+// Ghost video grid — placeholder tiles with embedded record CTA
+// ---------------------------------------------------------------------------
+
+class _GhostVideoGrid extends ConsumerWidget {
+  const _GhostVideoGrid({required this.palette});
+
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 2-column grid, 4 tiles. Tile 1 (index 0) is the CTA; the rest are ghosts.
+    const cols = 2;
+    const tileCount = 4;
+    const aspectRatio = 9 / 16;
+    const spacing = 12.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = (constraints.maxWidth - spacing * (cols - 1)) / cols;
+        final tileHeight = tileWidth / aspectRatio;
+
+        final tiles = List.generate(tileCount, (i) {
+          if (i == 1) {
+            // CTA tile — accent-colored, tappable
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                ref.read(appShellTabIndexProvider.notifier).state = 1;
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: palette.accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: palette.accent.withValues(alpha: 0.40),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: palette.accent.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.videocam_rounded,
+                        color: palette.accent,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Record your\nfirst clip',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: palette.accent,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // Ghost placeholder tile
+          return Container(
+            decoration: BoxDecoration(
+              color: palette.accent.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: palette.panelBorder,
+                width: 1,
+                style: BorderStyle.none,
+              ),
+            ),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: palette.panelBorder,
+                width: 1,
+              ),
+            ),
+          );
+        });
+
+        return SizedBox(
+          height: tileHeight * (tileCount / cols) + spacing * ((tileCount / cols) - 1),
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cols,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              childAspectRatio: aspectRatio,
+            ),
+            itemCount: tileCount,
+            itemBuilder: (context, i) => tiles[i],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// My Videos grid (2-column portrait)
 // ---------------------------------------------------------------------------
 
 class _MyVideosSection extends StatelessWidget {
@@ -202,7 +342,7 @@ class _MyVideosSection extends StatelessWidget {
                 crossAxisCount: cols,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 0.8,
+                childAspectRatio: 9 / 16,
               ),
               itemCount: items.length,
               itemBuilder: (context, i) =>
@@ -215,14 +355,14 @@ class _MyVideosSection extends StatelessWidget {
   }
 }
 
-class _VideoTile extends StatelessWidget {
+class _VideoTile extends ConsumerWidget {
   const _VideoTile({required this.video, required this.palette});
 
   final dynamic video;
   final KidPalette palette;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final thumbFile = video.thumbPath.isEmpty
         ? null
         : File(video.thumbPath as String);
@@ -326,70 +466,26 @@ class _VideoTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.palette});
-
-  final KidPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return FrostCard(
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Stack(
-            alignment: Alignment.center,
+          const SizedBox(height: 4),
+          Row(
             children: [
-              Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: palette.accent.withValues(alpha: 0.08),
-                    width: 2,
+              Icon(Icons.play_arrow_rounded, size: 14, color: palette.mutedInk),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  video.playCount == 0
+                      ? 'New clip'
+                      : '${video.playCount} ${video.playCount == 1 ? 'play' : 'plays'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: palette.mutedInk,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: palette.accent.withValues(alpha: 0.12),
-                    width: 2,
-                  ),
-                ),
-              ),
-              Icon(Icons.videocam_rounded, size: 48, color: palette.accent),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Your Nook awaits!',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Record your first video on the Capture tab.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
-          ),
-          const SizedBox(height: 12),
         ],
       ),
     );
@@ -411,7 +507,13 @@ class _AddFriendsCta extends ConsumerWidget {
       onTap: () {
         ref.read(appShellTabIndexProvider.notifier).state = 3;
       },
-      child: FrostCard(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: palette.panelBorder),
+          ),
+        ),
         child: Row(
           children: [
             Container(
@@ -531,14 +633,14 @@ class _SharedFamilyHeader extends ConsumerWidget {
   }
 }
 
-class _SharedVideoTile extends StatelessWidget {
+class _SharedVideoTile extends ConsumerWidget {
   const _SharedVideoTile({required this.item, required this.palette});
 
   final RemoteShareProjection item;
   final KidPalette palette;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final thumbnailFile = item.hasThumbnail ? File(item.localThumbPath!) : null;
     final hasThumb = thumbnailFile?.existsSync() == true;
     final statusLabel = switch (item.status) {
@@ -548,6 +650,9 @@ class _SharedVideoTile extends StatelessWidget {
       'failed' => 'Needs retry',
       _ => item.status,
     };
+    final likeCount =
+        ref.watch(videoLikeCountProvider(item.videoId)).valueOrNull ?? 0;
+    final reactions = ref.watch(videoReactionSummariesProvider(item.videoId));
 
     return SizedBox(
       width: 196,
@@ -567,10 +672,7 @@ class _SharedVideoTile extends StatelessWidget {
                               file: thumbnailFile!,
                               borderRadius: BorderRadius.circular(20),
                               background: const LinearGradient(
-                                colors: [
-                                  Color(0xFF16111D),
-                                  Color(0xFF0C0A11),
-                                ],
+                                colors: [Color(0xFF16111D), Color(0xFF0C0A11)],
                               ),
                               padding: const EdgeInsets.all(6),
                             )
@@ -621,6 +723,27 @@ class _SharedVideoTile extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             _RemoteAttributionLine(item: item, palette: palette),
+            if (likeCount > 0 || reactions.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (likeCount > 0)
+                    _FeedMetricPill(
+                      palette: palette,
+                      label: '$likeCount ${likeCount == 1 ? 'like' : 'likes'}',
+                      icon: Icons.favorite_rounded,
+                      iconColor: const Color(0xFFFF6B7A),
+                    ),
+                  for (final reaction in reactions.take(2))
+                    _FeedMetricPill(
+                      palette: palette,
+                      label: '${reaction.emoji} ${reaction.count}',
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -674,6 +797,48 @@ class _StatusBadge extends StatelessWidget {
           color: Colors.white,
           fontWeight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+}
+
+class _FeedMetricPill extends StatelessWidget {
+  const _FeedMetricPill({
+    required this.palette,
+    required this.label,
+    this.icon,
+    this.iconColor,
+  });
+
+  final KidPalette palette;
+  final String label;
+  final IconData? icon;
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: palette.panelBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: iconColor ?? palette.accent),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: palette.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
@@ -15,7 +16,8 @@ class ProfileSwitcherButton extends ConsumerWidget {
     final profiles = ref.watch(profilesProvider).valueOrNull ?? const [];
     final selectedId = ref.watch(selectedProfileIdProvider);
     final selected =
-        profiles.firstWhereOrNull((p) => p.id == selectedId) ?? profiles.firstOrNull;
+        profiles.firstWhereOrNull((p) => p.id == selectedId) ??
+        profiles.firstOrNull;
     final palette = ref.watch(activeThemeProvider).palette;
 
     return MenuAnchor(
@@ -25,14 +27,15 @@ class ProfileSwitcherButton extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Text(
               'Switch Profile',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: palette.mutedInk,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: palette.mutedInk),
             ),
           ),
           for (final profile in profiles)
             MenuItemButton(
               onPressed: () {
+                HapticFeedback.selectionClick();
                 ref.read(selectedProfileIdProvider.notifier).state = profile.id;
               },
               leadingIcon: profile.id == selectedId
@@ -46,9 +49,9 @@ class ProfileSwitcherButton extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text(
             'Theme',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: palette.mutedInk,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: palette.mutedInk),
           ),
         ),
         for (final theme in ThemeDescriptor.values)
@@ -56,8 +59,11 @@ class ProfileSwitcherButton extends ConsumerWidget {
             onPressed: selected == null
                 ? null
                 : () async {
+                    HapticFeedback.selectionClick();
                     // Update the profile's theme in the database
-                    await ref.read(appDatabaseProvider).updateProfileTheme(
+                    await ref
+                        .read(appDatabaseProvider)
+                        .updateProfileTheme(
                           profileId: selected.id,
                           theme: theme.name,
                         );
@@ -75,12 +81,21 @@ class ProfileSwitcherButton extends ConsumerWidget {
       ],
       builder: (context, controller, child) {
         return ActionChip(
-          avatar: CircleAvatar(
-            radius: 12,
-            backgroundColor: palette.accent.withValues(alpha: 0.15),
-            child: Icon(Icons.person_rounded, size: 14, color: palette.accent),
+          avatar: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: palette.accent, width: 1.5),
+            ),
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: palette.accent.withValues(alpha: 0.15),
+              child: Icon(Icons.person_rounded, size: 18, color: palette.accent),
+            ),
           ),
-          label: Text(selected?.name ?? 'Profile'),
+          label: Text(
+            selected?.name ?? 'Profile',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
           onPressed: () {
             if (controller.isOpen) {
               controller.close();

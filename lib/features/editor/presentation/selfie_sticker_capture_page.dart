@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -27,7 +28,8 @@ class SelfieStickerCapturePage extends StatefulWidget {
       _SelfieStickerCapturePageState();
 }
 
-class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
+class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
+    with WidgetsBindingObserver {
   CameraController? _controller;
   List<CameraDescription> _cameras = const [];
   int _cameraIndex = 0;
@@ -39,13 +41,45 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initCameras();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_previewStickerPng != null || _isProcessing) {
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      final controller = _controller;
+      if (controller == null) {
+        return;
+      }
+      _controller = null;
+      unawaited(controller.dispose());
+      if (mounted) {
+        setState(() {});
+      }
+      return;
+    }
+    if (state == AppLifecycleState.resumed) {
+      if (_isInitializing) {
+        return;
+      }
+      if (_cameras.isEmpty) {
+        unawaited(_initCameras());
+      } else {
+        unawaited(_initCamera(_cameras[_cameraIndex]));
+      }
+    }
   }
 
   Future<void> _initCameras() async {
@@ -65,7 +99,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
       if (mounted) {
         setState(() {
           _isInitializing = false;
-          _errorMessage = '$error';
+          _errorMessage = _cameraErrorMessage(error);
         });
       }
     }
@@ -128,7 +162,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
         return;
       }
       setState(() {
-        _errorMessage = '$error';
+        _errorMessage = _captureErrorMessage(error);
       });
     } finally {
       if (mounted) {
@@ -290,7 +324,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
       if (!mounted) {
         return;
       }
-      setState(() => _errorMessage = '$error');
+      setState(() => _errorMessage = _saveErrorMessage(error));
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -427,20 +461,25 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
                 left: 24,
                 right: 24,
                 top: 96,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: Colors.redAccent.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -456,6 +495,26 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage> {
         ),
       ),
     );
+  }
+
+  String _cameraErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('access') || message.contains('permission')) {
+      return 'Camera access is turned off. Allow it in Settings, then try again.';
+    }
+    return 'We couldn\'t open the selfie camera just yet. Please try again.';
+  }
+
+  String _captureErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('subject')) {
+      return 'We couldn\'t lift the sticker from that photo. Try another selfie with a clearer background.';
+    }
+    return 'We couldn\'t make that sticker just yet. Try another photo.';
+  }
+
+  String _saveErrorMessage(Object error) {
+    return 'We couldn\'t save that sticker yet. Please try again.';
   }
 }
 

@@ -6,6 +6,7 @@ import 'dart:ui';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -22,6 +23,7 @@ import '../../../services/editor/editor_resource_catalog.dart';
 import '../../../services/editor/editor_sticker_library.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
+import '../../../shared_ui/motion/app_motion.dart';
 import '../../player/presentation/player_page.dart';
 import '../domain/editor_preview_style.dart';
 import '../domain/editor_trim_utils.dart';
@@ -401,9 +403,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                 .where((overlay) => overlay.id != selectedOverlayId)
                 .toList(growable: false);
       _selectedOverlayId = null;
-      _session = _session.copyWith(
-        overlays: nextOverlays,
-      );
+      _session = _session.copyWith(overlays: nextOverlays);
     });
   }
 
@@ -475,6 +475,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       if (!mounted) {
         return;
       }
+      await HapticFeedback.mediumImpact();
       await _showExportCompleteSheet(
         result: result,
         exportedVideo: exportedVideo,
@@ -483,7 +484,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Export failed: $error'),
+          content: Text(_exportErrorMessage(error)),
           backgroundColor: Colors.red.shade700,
         ),
       );
@@ -507,8 +508,10 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   Future<void> _openSelfieStickerCapture() async {
+    HapticFeedback.selectionClick();
     final createdSticker = await Navigator.of(context).push<EditorStickerAsset>(
-      MaterialPageRoute(
+      AppMotion.modalRoute(
+        context: context,
         builder: (_) => SelfieStickerCapturePage(
           profileId: widget.video.profileId,
           palette: ref.read(activeThemeProvider).palette,
@@ -640,9 +643,11 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                           onPressed: exportedVideo == null
                               ? null
                               : () {
+                                  HapticFeedback.selectionClick();
                                   Navigator.of(sheetContext).pop();
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(
+                                    AppMotion.modalRoute(
+                                      context: context,
                                       builder: (_) =>
                                           PlayerPage(videoId: exportedVideo.id),
                                     ),
@@ -661,7 +666,9 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                                 },
                           icon: const Icon(Icons.ios_share_rounded),
                           label: Text(
-                            scan?.needsReview == true ? 'Review first' : 'Share',
+                            scan?.needsReview == true
+                                ? 'Review first'
+                                : 'Share',
                           ),
                         ),
                         FilledButton.tonal(
@@ -694,7 +701,9 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   Future<void> _shareExportedVideo(LocalVideo video) async {
     final identity = ref.read(parentIdentityProvider).valueOrNull;
     final profiles = ref.read(profilesProvider).valueOrNull ?? const [];
-    final profile = profiles.firstWhereOrNull((item) => item.id == video.profileId);
+    final profile = profiles.firstWhereOrNull(
+      (item) => item.id == video.profileId,
+    );
     if (identity == null || profile == null) {
       return;
     }
@@ -725,10 +734,29 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_shareErrorMessage(error))));
     }
+  }
+
+  String _exportErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('ffmpeg') || message.contains('export')) {
+      return 'We couldn\'t finish saving that remix yet. Try again in a moment.';
+    }
+    return 'We couldn\'t save that remix yet. Your edit choices are still here.';
+  }
+
+  String _shareErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('approval')) {
+      return 'This remix still needs a parent review before it can be shared.';
+    }
+    if (message.contains('group') || message.contains('family')) {
+      return 'Connect with a family space first, then try sharing this remix again.';
+    }
+    return 'We couldn\'t share that remix yet. It\'s still saved safely in your library.';
   }
 
   void _updateTextOverlay({
@@ -2301,10 +2329,18 @@ class _PreviewPane extends StatelessWidget {
                               onTap: () => onOverlaySelected(overlay.id),
                               onScaleStart: (details) {
                                 onOverlaySelected(overlay.id);
-                                onStickerScaleStart(details, previewSize, overlay);
+                                onStickerScaleStart(
+                                  details,
+                                  previewSize,
+                                  overlay,
+                                );
                               },
                               onScaleUpdate: (details) {
-                                onStickerScaleUpdate(details, previewSize, overlay);
+                                onStickerScaleUpdate(
+                                  details,
+                                  previewSize,
+                                  overlay,
+                                );
                               },
                             ),
                           if (textOverlay case final overlay?)

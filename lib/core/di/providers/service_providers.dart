@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/auth/parent_auth_service.dart';
+import '../../../services/app_reset_service.dart';
 import '../../../services/blossom/blossom_client.dart';
 import '../../../services/approval/content_scan_service.dart';
 import '../../../services/approval/video_approval_service.dart';
 import '../../../services/connections/family_connection_service.dart';
 import '../../../services/editor/editor_export_service.dart';
 import '../../../services/engagement/like_coordinator.dart';
+import '../../../services/engagement/playback_metrics_coordinator.dart';
+import '../../../services/engagement/reaction_coordinator.dart';
 import '../../../services/identity/identity_service.dart';
 import '../../../services/identity/parent_profile_service.dart';
 import '../../../services/mdk/mdk_service.dart';
@@ -43,6 +46,15 @@ final editorExportServiceProvider = Provider<EditorExportService>((ref) {
 
 final parentAuthServiceProvider = Provider<ParentAuthService>((ref) {
   return ParentAuthService(ref.watch(secureStorageProvider));
+});
+
+final appResetServiceProvider = Provider<AppResetService>((ref) {
+  return AppResetService(
+    database: ref.watch(appDatabaseProvider),
+    identityService: ref.watch(identityServiceProvider),
+    parentAuthService: ref.watch(parentAuthServiceProvider),
+    mdkService: ref.watch(mdkServiceProvider),
+  );
 });
 
 final contentScanServiceProvider = Provider(
@@ -148,6 +160,19 @@ final likeCoordinatorProvider = Provider((ref) {
   );
 });
 
+final reactionCoordinatorProvider = Provider((ref) {
+  return ReactionCoordinator(
+    database: ref.watch(appDatabaseProvider),
+    mdkService: ref.watch(mdkServiceProvider),
+    nostrService: ref.watch(nostrServiceProvider),
+    offlineActionStore: ref.watch(offlineActionStoreProvider),
+  );
+});
+
+final playbackMetricsCoordinatorProvider = Provider((ref) {
+  return PlaybackMetricsCoordinator(database: ref.watch(appDatabaseProvider));
+});
+
 final reportCoordinatorProvider = Provider((ref) {
   return ReportCoordinator(
     database: ref.watch(appDatabaseProvider),
@@ -186,6 +211,7 @@ final offlineActionProcessorProvider = Provider((ref) {
     parentProfileService: ref.watch(parentProfileServiceProvider),
     videoShareCoordinator: ref.watch(videoShareCoordinatorProvider),
     likeCoordinator: ref.watch(likeCoordinatorProvider),
+    reactionCoordinator: ref.watch(reactionCoordinatorProvider),
     reportCoordinator: ref.watch(reportCoordinatorProvider),
   );
 });

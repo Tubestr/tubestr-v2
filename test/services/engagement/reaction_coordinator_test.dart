@@ -1,0 +1,94 @@
+import 'dart:convert';
+
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mytube/core/constants.dart';
+import 'package:mytube/core/storage/app_database.dart';
+import 'package:mytube/domain/marmot/message_models.dart';
+import 'package:mytube/domain/models/parent_identity.dart';
+import 'package:mytube/services/engagement/reaction_coordinator.dart';
+import 'package:mytube/services/offline/offline_action_store.dart';
+
+import '../../test_support/service_fakes.dart';
+
+void main() {
+  late AppDatabase database;
+  late FakeMdkService mdk;
+  late FakeNostrService nostr;
+  late ReactionCoordinator coordinator;
+
+  const identity = ParentIdentity(
+    publicKeyHex: 'parent-pubkey',
+    privateKeyHex: 'parent-privkey',
+    npub: 'npub-parent',
+    nsec: 'nsec-parent',
+    createdAtIso: '2026-03-15T00:00:00.000Z',
+  );
+
+  setUp(() {
+    database = AppDatabase.forTesting(NativeDatabase.memory());
+    mdk = FakeMdkService();
+    nostr = FakeNostrService();
+    coordinator = ReactionCoordinator(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+      offlineActionStore: OfflineActionStore(database: database),
+    );
+  });
+
+  tearDown(() async {
+    await database.close();
+  });
+
+  test(
+    'sendRemoteReaction publishes kind 4548 and stores a local projection',
+    () async {
+      await coordinator.sendRemoteReaction(
+        identity: identity,
+        videoId: 'remote-video',
+        childProfileId: 'child-1',
+        mlsGroupIdHex: 'family-group',
+        emoji: '🎉',
+      );
+
+      final payload = ReactionMessage.fromJson(
+        jsonDecode(mdk.lastCreatedMessageContent!) as Map<String, dynamic>,
+      );
+      final reactions = await database
+          .watchReactionsForVideo('remote-video')
+          .first;
+
+      expect(mdk.lastCreatedMessageKind, MarmotKinds.reaction);
+      expect(mdk.lastCreatedMessageGroupId, 'family-group');
+      expect(nostr.publishedEventJsons, hasLength(1));
+      expect(payload.videoId, 'remote-video');
+      expect(payload.childProfileId, 'child-1');
+      expect(payload.emoji, '🎉');
+      expect(reactions, hasLength(1));
+      expect(reactions.single.emoji, '🎉');
+    },
+  );
+
+  test('sendRemoteReaction queues action when relay publish fails', () async {
+    nostr.throwOnPublishSignedEvent = true;
+
+    await expectLater(
+      () => coordinator.sendRemoteReaction(
+        identity: identity,
+        videoId: 'remote-video',
+        childProfileId: 'child-1',
+        mlsGroupIdHex: 'family-group',
+        emoji: '🔥',
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    final queued = await database.getSetting(
+      AppConstants.offlineActionQueueSettingKey,
+    );
+    expect(queued, isNotNull);
+    expect(queued, contains('sendReaction'));
+    expect(queued, contains('🔥'));
+  });
+}

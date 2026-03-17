@@ -32,6 +32,7 @@ class MarmotKinds {
   static const videoDelete = 4545;
   static const like = 4546;
   static const report = 4547;
+  static const reaction = 4548;
   static const tombstone = 30302;
   static const blossomServers = 10063;
   static const relayList = 10002;

@@ -132,12 +132,14 @@ class NdkNostrService implements NostrService {
   @override
   Future<void> connect() async {
     final relays = await loadRelayList();
-    for (final relay in relays) {
-      await _ndk.relays.connectRelay(
-        dirtyUrl: relay,
-        connectionSource: ConnectionSource.explicit,
-      );
-    }
+    await Future.wait(
+      relays.map(
+        (relay) => _ndk.relays.connectRelay(
+          dirtyUrl: relay,
+          connectionSource: ConnectionSource.explicit,
+        ),
+      ),
+    );
   }
 
   @override
@@ -148,15 +150,32 @@ class NdkNostrService implements NostrService {
     _ensureLoggedIn(identity);
     final relays = await loadRelayList();
     await connect();
-
-    final metadata = Metadata(
+    final event = Nip01Event(
       pubKey: identity.publicKeyHex,
-      name: displayName,
-      displayName: displayName,
-      about: 'Parent account for MyTube',
+      kind: 0,
+      tags: const [],
+      content: jsonEncode(<String, String>{
+        'name': displayName,
+        'display_name': displayName,
+        'about': 'Parent account for MyTube',
+      }),
+      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
-
-    await _ndk.metadata.broadcastMetadata(metadata, specificRelays: relays);
+    final response = _ndk.broadcast.broadcast(
+      nostrEvent: event,
+      specificRelays: relays,
+      timeout: const Duration(seconds: 2),
+    );
+    final results = await response.broadcastDoneFuture;
+    final failedRelays = results
+        .where((result) => !result.broadcastSuccessful)
+        .map((result) => result.relayUrl)
+        .toList(growable: false);
+    if (failedRelays.isNotEmpty) {
+      throw StateError(
+        'Failed to publish parent profile to: ${failedRelays.join(', ')}',
+      );
+    }
   }
 
   @override

@@ -15,6 +15,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/content_scan_summary.dart';
 import '../../../shared_ui/components/fill_camera_preview.dart';
+import '../../../shared_ui/motion/app_motion.dart';
 import '../../editor/presentation/editor_detail_page.dart';
 import '../../player/presentation/player_page.dart';
 
@@ -67,15 +68,30 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final isActiveTab = ref.read(appShellTabIndexProvider) == 1;
-    if (_controller == null || !_controller!.value.isInitialized) return;
-    if (state == AppLifecycleState.inactive) {
-      _controller?.dispose();
-      _controller = null;
-    } else if (state == AppLifecycleState.resumed) {
-      if (!isActiveTab || _cameras.isEmpty) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      final controller = _controller;
+      if (controller == null) {
         return;
       }
-      _initCamera(_cameras[_cameraIndex]);
+      _controller = null;
+      _currentZoom = 1.0;
+      _cameraDisposeStarted = false;
+      unawaited(controller.dispose());
+      if (mounted) {
+        setState(() {});
+      }
+      return;
+    }
+    if (state == AppLifecycleState.resumed) {
+      if (!isActiveTab || _isRecording || _cameraInitStarted) {
+        return;
+      }
+      if (_cameras.isEmpty) {
+        unawaited(_initCameras());
+      } else {
+        unawaited(_initCamera(_cameras[_cameraIndex]));
+      }
     }
   }
 
@@ -88,9 +104,14 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       _cameras = await availableCameras();
       if (_cameras.isNotEmpty) {
         await _initCamera(_cameras.first);
+      } else if (mounted) {
+        setState(
+          () => _errorMessage =
+              'We couldn\'t find a camera on this device right now.',
+        );
       }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = '$e');
+      if (mounted) setState(() => _errorMessage = _cameraErrorMessage(e));
     } finally {
       _cameraInitStarted = false;
     }
@@ -107,7 +128,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     try {
       await ctrl.initialize();
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = '$e');
+      if (mounted) setState(() => _errorMessage = _cameraErrorMessage(e));
       return;
     }
     if (!mounted) {
@@ -163,6 +184,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         _isRecording = true;
         _errorMessage = null;
       });
+      await HapticFeedback.lightImpact();
     } catch (error) {
       try {
         await ctrl.unlockCaptureOrientation();
@@ -172,7 +194,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       if (!mounted) {
         return;
       }
-      setState(() => _errorMessage = '$error');
+      setState(() => _errorMessage = _cameraErrorMessage(error));
     }
   }
 
@@ -193,7 +215,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       setState(() {
         _isRecording = false;
         _isSaving = false;
-        _errorMessage = 'No profile selected';
+        _errorMessage = 'Choose a child profile before recording a clip.';
       });
       return;
     }
@@ -244,9 +266,9 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       final scan = await ref
           .read(videoApprovalServiceProvider)
           .scanAndClassifyVideo(videoId: videoId);
-      final savedVideo = await ref.read(appDatabaseProvider).getLocalVideoById(
-        videoId,
-      );
+      final savedVideo = await ref
+          .read(appDatabaseProvider)
+          .getLocalVideoById(videoId);
 
       if (!mounted) return;
       setState(() {
@@ -256,6 +278,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         _lastSavedVideo = savedVideo;
         _workflowState = _buildFinishedWorkflowState(scan);
       });
+      await HapticFeedback.mediumImpact();
       Future.delayed(const Duration(milliseconds: 2500), () {
         if (mounted) setState(() => _showSavedBanner = false);
       });
@@ -269,7 +292,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       setState(() {
         _isRecording = false;
         _isSaving = false;
-        _errorMessage = '$e';
+        _errorMessage = _cameraErrorMessage(e);
       });
     }
   }
@@ -303,13 +326,14 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   @override
   Widget build(BuildContext context) {
     final activeTab = ref.watch(appShellTabIndexProvider);
-    if (activeTab == 1 &&
-        !_cameraInitStarted &&
-        _controller == null &&
-        _cameras.isEmpty) {
+    if (activeTab == 1 && !_cameraInitStarted && _controller == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          unawaited(_initCameras());
+          if (_cameras.isEmpty) {
+            unawaited(_initCameras());
+          } else {
+            unawaited(_initCamera(_cameras[_cameraIndex]));
+          }
         }
       });
     }
@@ -341,6 +365,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     final ctrl = _controller;
     final isReady = ctrl != null && ctrl.value.isInitialized;
     final isTorch = ctrl?.value.flashMode == FlashMode.torch;
+    final stateChangeDuration = AppMotion.duration(
+      context,
+      AppMotion.stateChange,
+    );
 
     return Stack(
       children: [
@@ -354,11 +382,44 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
             ),
           )
         else
-          const Positioned.fill(
+          Positioned.fill(
             child: ColoredBox(
               color: Colors.black,
               child: Center(
-                child: CircularProgressIndicator(color: Colors.white38),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: Colors.white38),
+                        const SizedBox(height: 18),
+                        Text(
+                          _errorMessage == null
+                              ? 'Opening camera'
+                              : 'Camera needs attention',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _errorMessage ??
+                              'Getting everything ready so you can record a new clip.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -455,21 +516,30 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
               // Record button
               GestureDetector(
                 onTap: isReady ? _toggleRecording : null,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 6),
-                  ),
-                  padding: const EdgeInsets.all(6),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
+                child: AnimatedScale(
+                  duration: stateChangeDuration,
+                  curve: AppMotion.easeOutQuint,
+                  scale: _isSaving
+                      ? 0.94
+                      : _isRecording
+                      ? 1.04
+                      : 1.0,
+                  child: Container(
+                    width: 80,
+                    height: 80,
                     decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(
-                        _isRecording ? 8 : 30,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 6),
+                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: AnimatedContainer(
+                      duration: stateChangeDuration,
+                      curve: AppMotion.easeOutQuint,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(
+                          _isRecording ? 8 : 30,
+                        ),
                       ),
                     ),
                   ),
@@ -481,8 +551,8 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
 
         // Saved banner (slides from top)
         AnimatedPositioned(
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOut,
+          duration: AppMotion.duration(context, AppMotion.layoutChange),
+          curve: AppMotion.easeOutQuint,
           top: _showSavedBanner ? topPad + 60 : -60,
           left: 0,
           right: 0,
@@ -526,15 +596,41 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
             right: 24,
             child: GestureDetector(
               onTap: () => setState(() => _errorMessage = null),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade800,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xCC4B2B2E),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0x66F3B0A4)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 1),
+                          child: Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFFFFD5C7),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -580,8 +676,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                 if (video == null) {
                   return;
                 }
+                HapticFeedback.selectionClick();
                 Navigator.of(context).push(
-                  MaterialPageRoute(
+                  AppMotion.modalRoute(
+                    context: context,
                     builder: (_) => PlayerPage(videoId: video.id),
                   ),
                 );
@@ -591,8 +689,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                 if (video == null) {
                   return;
                 }
+                HapticFeedback.selectionClick();
                 Navigator.of(context).push(
-                  MaterialPageRoute(
+                  AppMotion.modalRoute(
+                    context: context,
                     builder: (_) => EditorDetailPage(video: video),
                   ),
                 );
@@ -629,13 +729,11 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     }
 
     final identity = ref.read(parentIdentityProvider).valueOrNull;
-    final profile =
-        (ref.read(profilesProvider).valueOrNull ?? const []).firstWhereOrNull(
-          (item) => item.id == video.profileId,
-        );
+    final profile = (ref.read(profilesProvider).valueOrNull ?? const [])
+        .firstWhereOrNull((item) => item.id == video.profileId);
     if (identity == null || profile == null) {
       setState(() {
-        _errorMessage = 'Finish parent setup before sharing.';
+        _errorMessage = 'Finish parent setup before sharing this clip.';
       });
       return;
     }
@@ -670,12 +768,42 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(SnackBar(content: Text('$error')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(_shareErrorMessage(error))),
+      );
     } finally {
       if (mounted) {
         setState(() => _isRunningQuickShare = false);
       }
     }
+  }
+
+  String _cameraErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('access') || message.contains('permission')) {
+      return 'Camera or microphone access is still turned off. Allow access in Settings, then try again.';
+    }
+    if (message.contains('camera') && message.contains('in use')) {
+      return 'The camera is busy right now. Close any other app using it and try again.';
+    }
+    if (message.contains('profile')) {
+      return 'Choose a child profile before recording a clip.';
+    }
+    return 'We couldn\'t start the camera just yet. Give it another try.';
+  }
+
+  String _shareErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('parent') || message.contains('identity')) {
+      return 'Finish parent setup before sharing clips with family.';
+    }
+    if (message.contains('approval')) {
+      return 'This clip needs a parent review before it can be shared.';
+    }
+    if (message.contains('group') || message.contains('family')) {
+      return 'Connect with a family space first, then you can share this clip.';
+    }
+    return 'We couldn\'t share that clip yet. It\'s still saved safely here.';
   }
 }
 
@@ -702,52 +830,101 @@ class _CaptureWorkflowOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: Colors.white),
-            const SizedBox(height: 18),
-            Text(
-              state.headline,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+    final reducedMotion = AppMotion.reduceMotion(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 340),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: AppMotion.duration(context, AppMotion.stateChange),
+                child: Icon(
+                  _iconForStage(state.stage),
+                  key: ValueKey(state.stage),
+                  size: 28,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              state.detail,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: _CaptureWorkflowStage.values
-                  .map(
-                    (stage) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 5),
-                      child: Icon(
-                        _iconForStage(stage),
-                        size: 18,
-                        color: _isStageComplete(stage)
-                            ? Colors.white
-                            : Colors.white38,
+              const SizedBox(height: 18),
+              AnimatedSwitcher(
+                duration: AppMotion.duration(context, AppMotion.stateChange),
+                child: Text(
+                  state.headline,
+                  key: ValueKey(state.headline),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              AnimatedSwitcher(
+                duration: AppMotion.duration(context, AppMotion.stateChange),
+                child: Text(
+                  state.detail,
+                  key: ValueKey(state.detail),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: _CaptureWorkflowStage.values
+                    .map(
+                      (stage) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: AnimatedContainer(
+                          duration: AppMotion.duration(
+                            context,
+                            AppMotion.stateChange,
+                          ),
+                          curve: AppMotion.easeOutQuint,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _isStageComplete(stage)
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: _isStageComplete(stage)
+                                  ? Colors.white24
+                                  : Colors.white10,
+                            ),
+                          ),
+                          child: AnimatedScale(
+                            duration: AppMotion.duration(
+                              context,
+                              AppMotion.instantFeedback,
+                            ),
+                            scale: state.stage == stage && !reducedMotion
+                                ? 1.08
+                                : 1,
+                            child: Icon(
+                              _iconForStage(stage),
+                              size: 18,
+                              color: _isStageComplete(stage)
+                                  ? Colors.white
+                                  : Colors.white38,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  )
-                  .toList(growable: false),
-            ),
-          ],
+                    )
+                    .toList(growable: false),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -790,95 +967,129 @@ class _CaptureNextStepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: palette.accent.withValues(alpha: 0.18),
-                  ),
-                  child: Icon(
-                    state.canShare
-                        ? Icons.check_circle_rounded
-                        : Icons.shield_outlined,
-                    color: palette.accent,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    final duration = AppMotion.duration(context, AppMotion.layoutChange);
+    final offset = AppMotion.offset(context, const Offset(0, 18));
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('${video.id}:${state.headline}'),
+      duration: duration,
+      curve: AppMotion.easeOutQuint,
+      tween: Tween(begin: 0, end: 1),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(offset.dx * (1 - value), offset.dy * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        state.headline,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
+                      AnimatedContainer(
+                        duration: AppMotion.duration(
+                          context,
+                          AppMotion.stateChange,
+                        ),
+                        curve: AppMotion.easeOutQuint,
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: palette.accent.withValues(alpha: 0.18),
+                        ),
+                        child: Icon(
+                          state.canShare
+                              ? Icons.check_circle_rounded
+                              : Icons.shield_outlined,
+                          color: palette.accent,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        state.detail,
-                        style: const TextStyle(
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              state.headline,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 17,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              state.detail,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: onDismiss,
+                        icon: const Icon(
+                          Icons.close_rounded,
                           color: Colors.white70,
-                          fontSize: 13,
                         ),
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  onPressed: onDismiss,
-                  icon: const Icon(Icons.close_rounded, color: Colors.white70),
-                ),
-              ],
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: onOpenPlayer,
+                        icon: const Icon(Icons.play_circle_outline_rounded),
+                        label: const Text('Watch'),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: onOpenEditor,
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        label: const Text('Edit'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: state.canShare && !isQuickSharing
+                            ? () => unawaited(onShareNow())
+                            : null,
+                        icon: isQuickSharing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.ios_share_rounded),
+                        label: Text(
+                          state.canShare ? 'Share now' : 'Review first',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: onOpenPlayer,
-                  icon: const Icon(Icons.play_circle_outline_rounded),
-                  label: const Text('Watch'),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: onOpenEditor,
-                  icon: const Icon(Icons.auto_awesome_rounded),
-                  label: const Text('Edit'),
-                ),
-                FilledButton.icon(
-                  onPressed: state.canShare && !isQuickSharing
-                      ? () => unawaited(onShareNow())
-                      : null,
-                  icon: isQuickSharing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.ios_share_rounded),
-                  label: Text(state.canShare ? 'Share now' : 'Review first'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

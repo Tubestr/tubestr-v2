@@ -92,22 +92,6 @@ class KidScaffold extends ConsumerWidget {
         ),
         child: Stack(
           children: [
-            Positioned(
-              top: -50,
-              right: -30,
-              child: _Blob(
-                color: palette.accent.withValues(alpha: 0.18),
-                size: 180,
-              ),
-            ),
-            Positioned(
-              bottom: -20,
-              left: -40,
-              child: _Blob(
-                color: palette.accentSecondary.withValues(alpha: 0.16),
-                size: 220,
-              ),
-            ),
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -179,30 +163,6 @@ class FrostCard extends StatelessWidget {
       child: Padding(
         padding: padding,
         child: child,
-      ),
-    );
-  }
-}
-
-class _Blob extends StatelessWidget {
-  const _Blob({
-    required this.color,
-    required this.size,
-  });
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(size),
-        ),
       ),
     );
   }

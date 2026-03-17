@@ -1,6 +1,12 @@
 import 'dart:convert';
 
-enum OfflineActionType { shareVideo, sendLike, submitReport, publishParentProfile }
+enum OfflineActionType {
+  shareVideo,
+  sendLike,
+  sendReaction,
+  submitReport,
+  publishParentProfile,
+}
 
 class OfflineAction {
   const OfflineAction({

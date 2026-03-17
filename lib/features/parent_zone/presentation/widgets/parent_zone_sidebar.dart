@@ -7,20 +7,27 @@ class ParentZoneSidebar extends StatelessWidget {
   const ParentZoneSidebar({
     super.key,
     required this.palette,
-    required this.parentNpub,
+    required this.parentLabel,
+    required this.accountHint,
     required this.selected,
     required this.onSelect,
   });
 
   final KidPalette palette;
-  final String parentNpub;
+  final String parentLabel;
+  final String accountHint;
   final ParentZoneSection selected;
   final ValueChanged<ParentZoneSection> onSelect;
 
   @override
   Widget build(BuildContext context) {
+    final headerColor = Color.alphaBlend(
+      palette.accent.withValues(alpha: 0.06),
+      const Color(0xFFFFFBF7),
+    );
     return Material(
-      elevation: 8,
+      color: const Color(0xFFF7F2EA),
+      elevation: 12,
       child: Column(
         children: [
           Container(
@@ -32,38 +39,52 @@ class ParentZoneSidebar extends StatelessWidget {
               20,
             ),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [palette.accent, palette.accentSecondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: headerColor,
+              border: Border(bottom: BorderSide(color: palette.panelBorder)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.shield_rounded, size: 32, color: Colors.white),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: palette.ink.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.shield_rounded,
+                    size: 24,
+                    color: palette.ink,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'Parent Zone',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
+                    color: Color(0xFF201A15),
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                if (parentNpub.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    parentNpub.length > 20
-                        ? '${parentNpub.substring(0, 20)}…'
-                        : parentNpub,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  parentLabel,
+                  style: TextStyle(
+                    color: palette.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  accountHint,
+                  style: TextStyle(
+                    color: palette.mutedInk,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -110,33 +131,44 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: Material(
-        color: isActive
-            ? palette.accent.withValues(alpha: 0.12)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Icon(
-                  section.icon,
-                  size: 20,
-                  color: isActive ? palette.accent : palette.mutedInk,
-                ),
-                const SizedBox(width: 14),
-                Text(
-                  section.label,
-                  style: TextStyle(
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? palette.accent : palette.ink,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: Material(
+          color: isActive
+              ? palette.ink.withValues(alpha: 0.08)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              child: Row(
+                children: [
+                  AnimatedScale(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    scale: isActive ? 1.05 : 1,
+                    child: Icon(
+                      section.icon,
+                      size: 20,
+                      color: isActive ? palette.ink : palette.mutedInk,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 14),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    style: TextStyle(
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                      color: palette.ink,
+                    ),
+                    child: Text(section.label),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

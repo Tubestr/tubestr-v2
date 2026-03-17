@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -198,6 +200,22 @@ class MdkService {
   Future<String> mdkDbPath() async {
     await ensureInitialized();
     return bridge_api.mdkDbPath();
+  }
+
+  Future<void> resetLocalState() async {
+    final root = await getApplicationSupportDirectory();
+    final primaryDir = Directory(p.join(root.path, 'mdk'));
+    if (_bridgeInitialized) {
+      final scratchDir = p.join(
+        root.path,
+        'mdk_reset_runtime_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      await bridge_api.initMdkUnencrypted(dataDir: scratchDir);
+    }
+    _bridgeInitialized = false;
+    if (await primaryDir.exists()) {
+      await primaryDir.delete(recursive: true);
+    }
   }
 
   Future<int> groupCount() async {

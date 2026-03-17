@@ -50,12 +50,31 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Connect with a Family',
+                'Trusted Families',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Open a family space, approve pending welcomes, and keep every trusted connection easy to understand.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Open A Family Space',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
               Text(
-                'Share one invite code, then approve the connection here when their welcome arrives.',
+                'Share one invite code, then come back here when the other parent sends their welcome.',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -64,8 +83,8 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.qr_code_rounded,
                 color: palette.accent,
-                title: 'Invite a Family',
-                subtitle: 'Create a QR code or shareable invite link',
+                title: 'Create invite',
+                subtitle: 'Show a QR code or send a shareable invite link',
                 busy: isGeneratingInvitePacket,
                 onTap: identity == null || busy ? null : onCreateInvite,
               ),
@@ -73,8 +92,8 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.qr_code_scanner_rounded,
                 color: palette.accentSecondary,
-                title: 'Scan an Invite',
-                subtitle: 'Create the shared family space in one step',
+                title: 'Scan invite',
+                subtitle: 'Join the shared family space in one step',
                 busy: isCreatingWelcome,
                 onTap: identity == null || busy ? null : onScanAndProcessInvite,
               ),
@@ -94,7 +113,7 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                     ? null
                     : onProcessInviteInput,
                 child: Text(
-                  isCreatingWelcome ? 'Connecting…' : 'Process invite',
+                  isCreatingWelcome ? 'Joining family…' : 'Use pasted invite',
                 ),
               ),
             ],
@@ -113,27 +132,27 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
               );
             }
             if (snapshot.hasError) {
-              return FrostCard(child: Text('Error: ${snapshot.error}'));
+              return FrostCard(
+                child: Text(
+                  'We could not load family connections right now.',
+                ),
+              );
             }
             final data = snapshot.data!;
             if (data.groups.isEmpty && data.pendingWelcomes.isEmpty) {
               return FrostCard(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 8),
-                    Icon(
-                      Icons.people_outline_rounded,
-                      size: 40,
-                      color: palette.mutedInk,
-                    ),
-                    const SizedBox(height: 8),
                     Text(
-                      'No connections yet',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
+                      'No trusted families yet',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Create an invite or scan one from another parent to open your first family space.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               );
@@ -155,7 +174,7 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Pending Invitations',
+                              'Pending Welcomes',
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                           ],
@@ -178,7 +197,7 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                                           welcome.welcomeEventIdHex,
                                         ),
                                   child: Text(
-                                    isAcceptingWelcome ? 'Joining…' : 'Accept',
+                                    isAcceptingWelcome ? 'Joining…' : 'Approve',
                                   ),
                                 ),
                               ],
@@ -203,7 +222,7 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Active Connections',
+                              'Active Family Spaces',
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                             const Spacer(),
@@ -271,9 +290,10 @@ class _PendingWelcomeDetails extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
         Text(
-          '$inviterLabel · ${welcome.memberCount} members',
+          'From $inviterLabel · ${welcome.memberCount} members',
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -305,7 +325,8 @@ class _ActiveGroupDetails extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
         Text(
           familyLabel == null || familyLabel.isEmpty
               ? adminPubkey == null
@@ -371,7 +392,7 @@ class _ActionTile extends StatelessWidget {
     return Material(
       color: onTap == null
           ? Colors.grey.shade100
-          : color.withValues(alpha: 0.08),
+          : Colors.white.withValues(alpha: 0.72),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -385,7 +406,7 @@ class _ActionTile extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: busy
                     ? Padding(

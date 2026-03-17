@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -15,14 +17,37 @@ class QrScannerSheet extends StatefulWidget {
   State<QrScannerSheet> createState() => _QrScannerSheetState();
 }
 
-class _QrScannerSheetState extends State<QrScannerSheet> {
+class _QrScannerSheetState extends State<QrScannerSheet>
+    with WidgetsBindingObserver {
   final MobileScannerController _controller = MobileScannerController();
   bool _hasScanned = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_hasScanned) {
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      unawaited(_controller.stop());
+      return;
+    }
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_controller.start());
+    }
   }
 
   @override

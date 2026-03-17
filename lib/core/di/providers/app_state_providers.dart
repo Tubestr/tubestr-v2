@@ -1,11 +1,13 @@
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../storage/app_database.dart';
 import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/parent_profile.dart';
 import '../../../domain/models/ranking_engine.dart';
 import '../../../domain/models/ranking_state.dart';
 import '../../../domain/models/remote_share_projection.dart';
+import '../../../domain/models/video_reaction_summary.dart';
 import '../../../services/mdk/mdk_service.dart';
 import '../../theme/theme_descriptor.dart';
 import 'foundation_providers.dart';
@@ -19,15 +21,15 @@ final parentDisplayNameProvider = FutureProvider<String?>((ref) {
   return ref.watch(parentProfileServiceProvider).loadLocalDisplayName();
 });
 
-final profilesProvider = StreamProvider((ref) {
+final profilesProvider = StreamProvider<List<Profile>>((ref) {
   return ref.watch(appDatabaseProvider).watchProfiles();
 });
 
-final pendingApprovalVideosProvider = StreamProvider((ref) {
+final pendingApprovalVideosProvider = StreamProvider<List<LocalVideo>>((ref) {
   return ref.watch(appDatabaseProvider).watchPendingApprovalVideos();
 });
 
-final shareRecordsProvider = StreamProvider((ref) {
+final shareRecordsProvider = StreamProvider<List<ShareRecord>>((ref) {
   return ref.watch(appDatabaseProvider).watchShareRecords();
 });
 
@@ -42,11 +44,13 @@ final remoteShareByIdProvider =
           .watchRemoteShareProjectionByRemoteShareId(remoteShareId);
     });
 
-final reportsProvider = StreamProvider((ref) {
+final reportsProvider = StreamProvider<List<Report>>((ref) {
   return ref.watch(appDatabaseProvider).watchReports();
 });
 
-final moderationAuditLogsProvider = StreamProvider((ref) {
+final moderationAuditLogsProvider = StreamProvider<List<ModerationAuditLog>>((
+  ref,
+) {
   return ref.watch(appDatabaseProvider).watchModerationAuditLogs();
 });
 
@@ -89,6 +93,13 @@ final videoLikeCountProvider = StreamProvider.family<int, String>((
   return ref.watch(appDatabaseProvider).watchLikeCountForVideo(videoId);
 });
 
+final videoLikesProvider = StreamProvider.family<List<Like>, String>((
+  ref,
+  videoId,
+) {
+  return ref.watch(appDatabaseProvider).watchLikesForVideo(videoId);
+});
+
 final remoteLikeForSelectedViewerProvider = StreamProvider.family<bool, String>(
   (ref, videoId) {
     final selectedProfileId = ref.watch(selectedProfileIdProvider);
@@ -105,6 +116,63 @@ final remoteLikeForSelectedViewerProvider = StreamProvider.family<bool, String>(
         );
   },
 );
+
+final videoReactionsProvider = StreamProvider.family<List<Reaction>, String>((
+  ref,
+  videoId,
+) {
+  return ref.watch(appDatabaseProvider).watchReactionsForVideo(videoId);
+});
+
+final videoReactionSummariesProvider =
+    Provider.family<List<VideoReactionSummary>, String>((ref, videoId) {
+      final reactions = ref.watch(videoReactionsProvider(videoId)).valueOrNull;
+      if (reactions == null) {
+        return const <VideoReactionSummary>[];
+      }
+
+      final counts = <String, int>{};
+      for (final reaction in reactions) {
+        counts.update(reaction.emoji, (value) => value + 1, ifAbsent: () => 1);
+      }
+      final entries = counts.entries.toList()
+        ..sort((a, b) {
+          final countCompare = b.value.compareTo(a.value);
+          if (countCompare != 0) {
+            return countCompare;
+          }
+          return a.key.compareTo(b.key);
+        });
+      return entries
+          .map(
+            (entry) =>
+                VideoReactionSummary(emoji: entry.key, count: entry.value),
+          )
+          .toList(growable: false);
+    });
+
+final remoteReactionsForSelectedViewerProvider =
+    StreamProvider.family<List<String>, String>((ref, videoId) {
+      final selectedProfileId = ref.watch(selectedProfileIdProvider);
+      final identity = ref.watch(parentIdentityProvider).valueOrNull;
+      if (selectedProfileId == null || identity == null) {
+        return Stream<List<String>>.value(const <String>[]);
+      }
+      return ref
+          .watch(appDatabaseProvider)
+          .watchReactionsForVideoByParentAndChild(
+            videoId: videoId,
+            childProfileId: selectedProfileId,
+            parentPubkey: identity.publicKeyHex,
+          );
+    });
+
+final remotePlaybackMetricsProvider =
+    StreamProvider.family<RemotePlaybackMetric?, String>((ref, remoteShareId) {
+      return ref
+          .watch(appDatabaseProvider)
+          .watchRemotePlaybackMetrics(remoteShareId);
+    });
 
 final safetyHqStatusProvider = FutureProvider((ref) {
   return ref.watch(safetyHqServiceProvider).loadStatus();
@@ -134,7 +202,9 @@ final activeThemeProvider = Provider<ThemeDescriptor>((ref) {
   );
 });
 
-final videosForSelectedProfileProvider = StreamProvider((ref) {
+final videosForSelectedProfileProvider = StreamProvider<List<LocalVideo>>((
+  ref,
+) {
   final profileId = ref.watch(selectedProfileIdProvider);
   return ref.watch(appDatabaseProvider).watchVideosForProfile(profileId);
 });

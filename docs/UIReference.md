@@ -29,7 +29,7 @@ Complete inventory of every screen, flow, component, and navigation path in the 
 ### Entry Point
 
 - Creates `AppEnvironment.live()`, injected as `@EnvironmentObject` throughout the tree.
-- Handles deep link URL schemes: `nook://`, `tubestr://`, `mytube://` — stores URL in `environment.pendingDeepLink`, triggers navigation to Parent Zone tab.
+- Handles the `nook://` deep link URL scheme — stores URL in `environment.pendingDeepLink`, triggers navigation to Parent Zone tab.
 
 ### Root View (`AppRootView`)
 

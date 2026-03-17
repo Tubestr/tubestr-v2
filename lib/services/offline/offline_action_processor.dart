@@ -1,6 +1,7 @@
 import '../../domain/models/offline_action.dart';
 import '../../domain/models/parent_identity.dart';
 import '../engagement/like_coordinator.dart';
+import '../engagement/reaction_coordinator.dart';
 import '../identity/identity_service.dart';
 import '../identity/parent_profile_service.dart';
 import '../offline/offline_action_store.dart';
@@ -14,12 +15,14 @@ class OfflineActionProcessor {
     required ParentProfileService parentProfileService,
     required VideoShareCoordinator videoShareCoordinator,
     required LikeCoordinator likeCoordinator,
+    required ReactionCoordinator reactionCoordinator,
     required ReportCoordinator reportCoordinator,
   }) : _store = store,
        _identityService = identityService,
        _parentProfileService = parentProfileService,
        _videoShareCoordinator = videoShareCoordinator,
        _likeCoordinator = likeCoordinator,
+       _reactionCoordinator = reactionCoordinator,
        _reportCoordinator = reportCoordinator;
 
   final OfflineActionStore _store;
@@ -27,6 +30,7 @@ class OfflineActionProcessor {
   final ParentProfileService _parentProfileService;
   final VideoShareCoordinator _videoShareCoordinator;
   final LikeCoordinator _likeCoordinator;
+  final ReactionCoordinator _reactionCoordinator;
   final ReportCoordinator _reportCoordinator;
 
   Future<int> flush() async {
@@ -69,6 +73,15 @@ class OfflineActionProcessor {
           videoId: action.payload['video_id']?.toString() ?? '',
           childProfileId: action.payload['child_profile_id']?.toString() ?? '',
           mlsGroupIdHex: action.payload['mls_group_id']?.toString() ?? '',
+          allowQueueOnFailure: false,
+        );
+      case OfflineActionType.sendReaction:
+        return _reactionCoordinator.sendRemoteReaction(
+          identity: identity,
+          videoId: action.payload['video_id']?.toString() ?? '',
+          childProfileId: action.payload['child_profile_id']?.toString() ?? '',
+          mlsGroupIdHex: action.payload['mls_group_id']?.toString() ?? '',
+          emoji: action.payload['emoji']?.toString() ?? '',
           allowQueueOnFailure: false,
         );
       case OfflineActionType.submitReport:

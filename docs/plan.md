@@ -38,7 +38,8 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Date: 2026-03-17
 - Workspace state: Flutter app bootstrapped, Drift code generated, analysis green
 - iOS app available for reference at `/home/lee/apps/tubestr-ios`
-- Current focus: launch triage around parent-key recovery/export UX, iOS/device validation, and end-to-end verification for share/report flows
+- Current focus: launch triage around parent-key recovery/export UX, iOS/device validation, end-to-end verification for share/report flows, and the calmer Parent Zone / capture-first redesign pass
+- Design critique pass complete: FrostCard addiction fixed, per-theme animations, differentiated tab personalities, ghost grid empty state, parent tab boundary
 
 ## Execution Rules
 
@@ -52,18 +53,18 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 
 ### Must Have Before Launch
 
-- [ ] Complete parent key import/export/recovery UX
-- [ ] Wire onboarding restore flow instead of leaving `onRestore` null
-- [ ] Expose full parent private-key reveal / hide / copy / share flow in Parent Zone per `docs/UIReference.md`
-- [ ] Add intentional backup/recovery messaging for the parent `nsec`
+- [-] Complete parent key import/export/recovery UX
+- [x] Wire onboarding restore flow instead of leaving `onRestore` null
+- [x] Expose full parent private-key reveal / hide / copy / share flow in Parent Zone per `docs/UIReference.md`
+- [x] Add intentional backup/recovery messaging for the parent `nsec`
 - [ ] Build iOS debug successfully and validate on real iOS hardware
-- [ ] Verify share -> relay -> receive -> decrypt -> play flow end to end on real devices
-- [ ] Verify report routing to family group, Safety HQ, and BUD-09 where applicable
+- [-] Verify share -> relay -> receive -> decrypt -> play flow end to end on real devices
+- [-] Verify report routing to family group, Safety HQ, and BUD-09 where applicable
 - [ ] Make final editor ship/no-ship decision after device validation
 
 ### Strongly Recommended
 
-- [ ] Add a fuller likes UX (for example a dedicated likes section/list) beyond the current count-only/player entry point
+- [x] Add a fuller likes UX (for example a dedicated likes section/list) beyond the current count-only/player entry point
 - [ ] Decide whether remote unlike semantics are required for launch or explicitly defer them
 - [ ] Improve remote download / retry / error / approval states and friend-family activity visibility
 - [ ] Add safety explainer/help copy that clearly tells parents how moderation and sharing protections work
@@ -73,7 +74,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 ### Can Slip Post-Launch
 
 - [ ] View counts, unless we later decide they are required for ranking or trust
-- [ ] Emoji or richer reactions beyond likes
+- [x] Emoji or richer reactions beyond likes
 - [ ] Subscription/paywall work
 - [ ] Deeper background orchestration
 
@@ -81,9 +82,42 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 
 - Parent/child identity scope changed in v2: child-key backup/recovery is not an MVP gap because children no longer have independent Nostr keys. The remaining identity blocker is the parent key story.
 - The secure-storage foundation already exists for launch-critical identity work: `IdentityService` persists the parent identity via `flutter_secure_storage`, and `ParentAuthService` hashes/stores the Parent Zone PIN there as well.
-- Current code evidence still shows the restore/export UX gap: onboarding leaves `onRestore` null, and the Flutter app does not yet appear to expose the spec's parent `KeyExportCard` reveal/copy/share flow.
-- Engagement has a real base layer today: remote likes publish/project and the player shows a count. The missing part is the fuller likes UX and a decision on unlike semantics, not basic like transport.
+- Current code evidence now covers most of the parent-key UX: onboarding can restore from pasted/scanned backup keys, the parent flow shows explicit backup messaging, and both onboarding + Parent Zone expose reveal/hide/copy/share key export cards. This line stays in progress until we validate the full recovery story on real Apple devices and decide whether sign-out/reset should also clear synced identity copies.
+- Engagement now has a fuller UX surface: the player shows a likes summary, feed cards surface engagement at a glance, playback metrics are visible, and reactions publish/project alongside likes. The remaining product decision is whether remote unlike semantics matter for launch.
 - View counts appear absent from both projection/state and UI. They should not block MVP unless product/ranking needs change.
+- Automated verification is stronger than the checklist originally implied: the in-memory two-family harness already covers invite -> welcome -> share -> sync -> download/decrypt -> like -> report -> delete propagation, and dedicated report-coordinator tests cover family-group plus Safety HQ routing. The remaining verification gap is real-device proof, especially on iOS.
+- User-facing retry/error handling is partially present today through feed status badges, player/capture-specific share/download messaging, and Parent Zone offline-queue surfaces. The remaining work is consistency and polish, not a complete lack of states.
+- Logging/diagnostics are still thin overall. The one notable exception is editor export, which already writes a diagnostics log when FFmpeg plans fail.
+- A broad redesign pass is now in progress for launch polish: Home is being made more capture/edit-led for kids, and Parent Zone is being split into a calmer control-room mode with quieter typography, clearer status triage, and less decorative overlap with the child-facing app.
+- Onboarding, Capture, and Player now have a parallel hardening/polish pass underway as part of that redesign work: friendlier bootstrap/recovery states, less technical error copy, overflow-safe parent-backup layout, calmer player download fallbacks, and tighter width handling on tablet-sized surfaces.
+
+### Design Critique Pass (2026-03-17)
+
+A holistic UI critique identified several AI-slop anti-patterns and design hierarchy issues. All have been addressed:
+
+**FrostCard addiction — resolved.** `FrostCard` was wrapping heroes, empty states, CTAs, and video cards indiscriminately. Removed from: home feed hero, home empty state, home add-friends CTA, home error state, editor hub hero, editor hub continue strip, editor hub empty state, editor hub video cards, editor hub error state. Cards now reserved for discrete data objects (profile list items in onboarding, permission rows).
+
+**Identical hero patterns — resolved.** Home feed and Editor Hub both had the same card-with-heading-description-buttons structure. Home now shows a hero only for new users (no videos); returning users see their content immediately. Editor Hub leads with a large latest-clip preview when clips exist, not a text-based hero.
+
+**Generic animated blobs — resolved.** `NookAppBackground` replaced with per-theme animation personalities:
+- Campfire: fast flicker (6s), two-frequency sine for choppiness, asymmetric placement
+- Treehouse: gentle horizontal sway (10s), counter-swinging blobs, leaf rotation
+- Blanket Fort: very slow breathe (18s), large soft blobs, low opacity
+- Starlight: 6 scattered blobs with staggered rapid opacity pulses (4s), purple/gold alternating
+
+**Home feed empty state — resolved.** Full-area ghost grid showing 4 placeholder tiles at 9:16 aspect ratio, with one accent-colored CTA tile. Single primary action. No competing hero + empty state pattern.
+
+**Parent tab boundary — resolved.** Visual separator (1px vertical line) between kid tabs and parent tab. Parent tab has distinct outline border when inactive (vs transparent for other tabs). Smaller icon size (21 vs 23) reinforces the different weight.
+
+**Minor fixes applied:**
+- Onboarding intro slide scale: 0.96 → 0.88 inactive (visible depth)
+- Onboarding intro slide opacity: 0.72 → 0.55 inactive (stronger contrast)
+- Video tile aspect ratio: 0.8 → 9/16 to match capture
+- Confetti: 48 → 120 particles, 1.5s → 2.5s, shape variety (circles/squares/rectangles)
+- Profile switcher: larger avatar (radius 16), accent border ring, bolder label text
+- KidScaffold: removed static decorative blobs (NookAppBackground handles bg)
+- Editor side toolbar: already had labels — no change needed
+- PIN keypad: already meets 44px touch targets — no change needed
 
 ## Phase 0: Bootstrap
 
@@ -143,7 +177,10 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Player route exists; real playback works only once captured/imported files are stored with valid paths.
 - Player playback now uses the actual media dimensions when available instead of forcing every clip into `16:9`, and Android debug builds prefer software video rendering to reduce emulator black-screen decode issues while we keep hardening remote playback.
 - Capture now keeps users inside one flow after recording: save -> process -> on-device scan -> next-step card with Watch, Edit, and Share actions instead of dumping them back into the tab with no guidance.
-- `nook://` deep-link handling is now wired through `app_links` into the app shell and opens Parent Zone, with Android intent-filter support. `tubestr://` and `mytube://` are still pending by choice after narrowing the current scope.
+- `nook://` deep-link handling is now wired through `app_links` into the app shell and opens Parent Zone, with Android intent-filter support. Additional custom schemes are out of scope for this launch.
+- Home now keeps the creation loop visible whether or not the child already has videos: the empty state and the first viewport both point toward Capture and Edit instead of leaving creation as a hidden secondary action.
+- Editor Hub now leans further into a studio entrance: it exposes a clearer “capture first / continue editing” path and a more instructional empty state rather than another generic card grid intro.
+- The remaining high-traffic support states are also being normalized toward the same design language: onboarding bootstrap/recovery, capture setup/share failures, and player download/report/like feedback now aim for calm, parent-readable language instead of raw technical output.
 
 ## Phase 2.5: Editor Spike
 
@@ -216,6 +253,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Home Feed now renders grouped "From Friends & Family" tiles from joined remote share projections, and the player can open remote entries once local media paths exist while showing a graceful not-downloaded state in the meantime.
 - The player's like action is now real: local videos toggle `liked` state for ranking/feed behavior, remote videos publish `kind:4546` to the family group, and incoming like events project into Drift-backed counts.
 - Home Feed local tiles now surface the liked-heart badge from the iOS reference, and Parent Zone overview now surfaces Safety HQ + pending report status so the new moderation plumbing is visible in the app shell.
+- Parent Zone visual language now diverges more intentionally from the kid-facing app for launch polish: quieter shell, calmer sidebar, triaged overview, more readable settings/connections/family sections, softer PIN entry/setup, and less raw/technical parent backup presentation.
 - Parent Zone overview now includes an initial outbound report activity list so queued/delivered moderation traffic can be verified without leaving the app.
 - The player now uses a child-friendly, feeling-based report sheet aligned to the old app's flow instead of immediately firing a hard-coded report action.
 - Sync now projects inbound `kind:4547` messages into the local report store, and Parent Zone overview surfaces a basic “Let’s Talk” section for incoming family feedback.
@@ -336,9 +374,9 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - [x] Implement Phase 1 skeleton before deeper feature work
 - [x] Finish capture recording and local file pipeline
 - [x] Add thumbnail generation for recorded/imported clips
-- [ ] Finish parent key import/export/recovery UX and backup messaging
+- [-] Finish parent key import/export/recovery UX and backup messaging
 - [ ] Build and validate on iOS hardware
-- [ ] Verify share/report flows end to end on real devices
+- [-] Verify share/report flows end to end on real devices
 - [ ] Make editor ship/no-ship call from device-validation results
 - [ ] Extend the ranking engine and richer local video model behavior into the feed/player UX
 - [-] Replace NDK/MDK placeholders with verified transport and bridge flows
@@ -347,29 +385,28 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 
 ### Blockers
 
-- [ ] Finish parent key import/export/recovery UX, including explicit `nsec` reveal/copy/share and backup messaging
-- [ ] Add sign out / reset app flow that clears identity, local app state, queued actions, and cached media cleanly
-- [ ] Keep the new dedicated onboarding permissions step and verify camera/microphone prompts no longer appear from unrelated screens
-- [ ] Relock Parent Zone immediately on tab exit and keep 4-digit PIN entry auto-submitting without an extra confirmation tap
+- [-] Finish parent key import/export/recovery UX, including explicit `nsec` reveal/copy/share and backup messaging
+- [x] Add sign out / reset app flow that clears identity, local app state, queued actions, and cached media cleanly
+- [-] Keep the new dedicated onboarding permissions step and verify camera/microphone prompts no longer appear from unrelated screens
+- [x] Relock Parent Zone immediately on tab exit and keep 4-digit PIN entry auto-submitting without an extra confirmation tap
 - [ ] Build and validate on iOS devices, especially capture, playback, editor export, and permission prompts
 - [ ] Verify `share -> relay -> receive -> decrypt -> play` on real devices
-- [ ] Verify report routing to family group, Safety HQ, and BUD-09 on real devices
-- [ ] Add clearer user-facing retry/error states for queued shares, failed downloads, blocked approvals, and queued reports
+- [-] Verify report routing to family group, Safety HQ, and BUD-09 on real devices
+- [-] Add clearer user-facing retry/error states for queued shares, failed downloads, blocked approvals, and queued reports
 
 ### Strongly Recommended For MVP
 
-- [ ] Add the onboarding restore path instead of leaving restore as a stub
-- [ ] Add key export surfaces in Parent Zone that match `docs/UIReference.md`
+- [x] Add the onboarding restore path instead of leaving restore as a stub
+- [x] Add key export surfaces in Parent Zone that match `docs/UIReference.md`
 - [ ] Add a lightweight “How Nook protects your child” / safety disclosure screen or section
-- [ ] Improve likes UX beyond the current bare count so families can understand engagement more clearly
+- [x] Improve likes UX beyond the current bare count so families can understand engagement more clearly
 - [ ] Add logging and diagnostics hooks for relay failures, export failures, download failures, and share failures
 - [ ] Polish remote download, approval, and empty/error states across Home Feed, Player, and Parent Zone
-- [ ] Finish the remaining deep-link coverage for `tubestr://` and `mytube://`
 
 ### Later / Nice To Have
 
-- [ ] Add view counts if we decide they are necessary for launch ranking or engagement UX
-- [ ] Add richer reactions beyond likes
+- [x] Add view counts that surface local playback metrics in Player and Home Feed
+- [x] Add richer reactions beyond likes
 - [ ] Ship subscription/paywall support for cloud features
 - [ ] Add broader background retry orchestration beyond the current startup/resume/manual reconnect flushes
 
@@ -380,6 +417,8 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Added a launch-triage section that separates must-have blockers from strongly recommended and post-launch items.
 - Documented the parent-only identity nuance explicitly so MVP work stays focused on parent `nsec` export/recovery rather than the retired child-key model.
 - Captured the current evidence-based launch gaps around onboarding restore, parent key export UX, iOS validation, end-to-end share/report verification, likes UX, and observability/retry hardening.
+- Landed the next engagement pass: remote reactions now publish/project with offline retry, the player shows a real likes summary plus reaction chips, and playback metrics now surface as view/completion/replay counts for local and remote playback.
+- Added a destructive Parent Zone reset flow that clears the parent identity and PIN, wipes Drift app state plus local media/cache folders, resets MDK local state, and drops the app back to onboarding.
 
 ### 2026-03-15 to 2026-03-16
 

@@ -31,4 +31,8 @@ class ParentAuthService {
     final digest = sha256.convert(utf8.encode(pin)).toString();
     return stored == digest;
   }
+
+  Future<void> clearPin() {
+    return _secureStorage.delete(key: AppConstants.parentPinStorageKey);
+  }
 }

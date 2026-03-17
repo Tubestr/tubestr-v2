@@ -8,6 +8,7 @@ import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/approval/content_scan_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
+import 'package:mytube/services/engagement/reaction_coordinator.dart';
 import 'package:mytube/services/identity/parent_profile_service.dart';
 import 'package:mytube/services/offline/offline_action_processor.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
@@ -27,7 +28,7 @@ void main() {
   );
 
   test(
-    'flush processes queued share, like, report, and profile actions',
+    'flush processes queued share, like, reaction, report, and profile actions',
     () async {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -100,6 +101,12 @@ void main() {
           nostrService: nostr,
           offlineActionStore: store,
         ),
+        reactionCoordinator: ReactionCoordinator(
+          database: database,
+          mdkService: mdk,
+          nostrService: nostr,
+          offlineActionStore: store,
+        ),
         reportCoordinator: ReportCoordinator(
           database: database,
           mdkService: mdk,
@@ -130,6 +137,15 @@ void main() {
         },
       );
       await store.enqueue(
+        type: OfflineActionType.sendReaction,
+        payload: const <String, dynamic>{
+          'video_id': 'remote-1',
+          'child_profile_id': 'child-1',
+          'mls_group_id': 'family-group',
+          'emoji': '🎉',
+        },
+      );
+      await store.enqueue(
         type: OfflineActionType.submitReport,
         payload: const <String, dynamic>{
           'video_id': 'remote-1',
@@ -145,10 +161,10 @@ void main() {
       final flushed = await processor.flush();
       final remaining = await store.load();
 
-      expect(flushed, 4);
+      expect(flushed, 5);
       expect(remaining, isEmpty);
       expect(nostr.lastPublishedDisplayName, 'Lee & Emma');
-      expect(nostr.publishedEventJsons, hasLength(3));
+      expect(nostr.publishedEventJsons, hasLength(4));
     },
   );
 }

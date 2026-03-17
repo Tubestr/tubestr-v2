@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -113,25 +112,27 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   Widget build(BuildContext context) {
     final tab = ref.watch(appShellTabIndexProvider);
-    final palette = ref.watch(activeThemeProvider).palette;
+    final theme = ref.watch(activeThemeProvider);
+    final palette = theme.palette;
     final bottomPad = MediaQuery.of(context).padding.bottom;
+    const tabChildren = [
+      HomeFeedContent(),
+      CaptureContent(),
+      EditorHubContent(),
+      ParentZoneContent(),
+    ];
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // Themed background (hidden behind capture camera)
-          Positioned.fill(child: NookAppBackground(palette: palette)),
+          Positioned.fill(child: NookAppBackground(palette: palette, theme: theme)),
 
           // Tab content
           IndexedStack(
             index: tab,
-            children: const [
-              HomeFeedContent(),
-              CaptureContent(),
-              EditorHubContent(),
-              ParentZoneContent(),
-            ],
+            children: tabChildren,
           ),
 
           // Custom bottom tab bar
@@ -167,44 +168,59 @@ class _CustomTabBar extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   static const _tabs = [
-    (icon: Icons.home_rounded, label: 'Home'),
-    (icon: Icons.videocam_rounded, label: 'Capture'),
-    (icon: Icons.auto_awesome, label: 'Editor'),
-    (icon: Icons.shield_rounded, label: 'Parent Zone'),
+    (icon: Icons.home_rounded, label: 'Home', kind: _TabKind.standard),
+    (icon: Icons.videocam_rounded, label: 'Capture', kind: _TabKind.capture),
+    (icon: Icons.auto_awesome, label: 'Studio', kind: _TabKind.standard),
+    (icon: Icons.shield_rounded, label: 'Parent', kind: _TabKind.control),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.78),
-            border: Border(
-              top: BorderSide(color: palette.panelBorder, width: 0.5),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          palette.accent.withValues(alpha: 0.04),
+          Colors.white.withValues(alpha: 0.98),
+        ),
+        border: Border(top: BorderSide(color: palette.panelBorder, width: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: palette.ink.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, -4),
           ),
-          padding: EdgeInsets.only(bottom: bottomPadding),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding + 8),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
           child: Row(
             children: [
               for (var i = 0; i < _tabs.length; i++) ...[
-                if (i > 0)
-                  SizedBox(
-                    height: 28,
-                    child: VerticalDivider(
+                if (i == 3) ...[
+                  // Visual separator before parent tab
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
                       width: 1,
-                      thickness: 0.5,
+                      height: 28,
                       color: palette.panelBorder,
                     ),
                   ),
+                  const SizedBox(width: 4),
+                ],
                 Expanded(
                   child: _TabButton(
                     icon: _tabs[i].icon,
                     label: _tabs[i].label,
+                    kind: _tabs[i].kind,
                     isActive: i == currentIndex,
-                    accentColor: palette.accent,
+                    palette: palette,
                     onTap: () {
+                      if (i == currentIndex) {
+                        return;
+                      }
                       HapticFeedback.selectionClick();
                       onTap(i);
                     },
@@ -219,43 +235,106 @@ class _CustomTabBar extends StatelessWidget {
   }
 }
 
+enum _TabKind { standard, capture, control }
+
 class _TabButton extends StatelessWidget {
   const _TabButton({
     required this.icon,
     required this.label,
+    required this.kind,
     required this.isActive,
-    required this.accentColor,
+    required this.palette,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final _TabKind kind;
   final bool isActive;
-  final Color accentColor;
+  final KidPalette palette;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? accentColor : Colors.grey.shade500;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                color: color,
+    final inactiveColor = switch (kind) {
+      _TabKind.capture => palette.mutedInk,
+      _TabKind.control => palette.ink.withValues(alpha: 0.78),
+      _TabKind.standard => palette.mutedInk,
+    };
+    final activeBackground = switch (kind) {
+      _TabKind.capture => Colors.white.withValues(alpha: 0.92),
+      _TabKind.control => palette.ink,
+      _TabKind.standard => Colors.white.withValues(alpha: 0.92),
+    };
+    final color = isActive
+        ? switch (kind) {
+            _TabKind.capture => palette.accent,
+            _TabKind.control => Colors.white,
+            _TabKind.standard => palette.ink,
+          }
+        : inactiveColor;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            constraints: const BoxConstraints(minHeight: 58),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? activeBackground
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isActive
+                    ? (kind == _TabKind.control
+                          ? Colors.transparent
+                          : palette.panelBorder)
+                    : kind == _TabKind.control
+                    ? palette.ink.withValues(alpha: 0.18)
+                    : Colors.transparent,
+                width: (!isActive && kind == _TabKind.control) ? 1.5 : 1.0,
               ),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color:
+                            (kind == _TabKind.capture
+                                    ? palette.accent
+                                    : palette.ink)
+                                .withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: kind == _TabKind.control ? 21 : 23),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                    color: color,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -235,6 +235,21 @@ class SyncCoordinator {
           projected: true,
           reason: 'projected:like',
         );
+      case MarmotKinds.reaction:
+        final message = ReactionMessage.fromJson(
+          jsonDecode(processed.content) as Map<String, dynamic>,
+        );
+        await _database.upsertReaction(
+          videoId: message.videoId,
+          childProfileId: message.childProfileId,
+          parentPubkey: message.by,
+          emoji: message.emoji,
+          createdAt: DateTime.fromMillisecondsSinceEpoch(message.ts * 1000),
+        );
+        return const SyncProjectionResult(
+          projected: true,
+          reason: 'projected:reaction',
+        );
       case MarmotKinds.report:
         final message = ReportMessage.fromJson(
           jsonDecode(processed.content) as Map<String, dynamic>,

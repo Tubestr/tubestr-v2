@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -13,6 +14,7 @@ import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/marmot/invite_transport_models.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../shared_ui/components/qr_scanner_sheet.dart';
+import '../../../shared_ui/motion/app_motion.dart';
 import '../../../services/mdk/mdk_service.dart';
 import 'models/parent_zone_models.dart';
 import 'widgets/parent_zone_connections_section.dart';
@@ -55,6 +57,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   bool _isGeneratingInvitePacket = false;
   bool _isCreatingWelcome = false;
   bool _isAcceptingWelcome = false;
+  bool _isResettingApp = false;
   bool _approvalRequired = false;
   Uri? _queuedDeepLinkUri;
   Timer? _pendingWelcomePollTimer;
@@ -118,12 +121,14 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       return;
     }
     if (ok) {
+      await HapticFeedback.mediumImpact();
       setState(() {
         _isUnlocked = true;
         _pinError = null;
       });
       unawaited(_consumeQueuedDeepLinkIfPossible());
     } else {
+      await HapticFeedback.heavyImpact();
       setState(() {
         _pinEntry = '';
         _pinError = 'Incorrect PIN';
@@ -140,6 +145,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     if (!mounted) {
       return;
     }
+    await HapticFeedback.mediumImpact();
     setState(() {
       _isUnlocked = true;
       _needsPinSetup = false;
@@ -247,9 +253,13 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         return;
       }
       setState(() => _isAcceptingWelcome = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We couldn\'t finish joining that family space yet. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -367,7 +377,11 @@ ${result.payload}
       }
       setState(() => _isGeneratingInvitePacket = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not create invite: $error')),
+        const SnackBar(
+          content: Text(
+            'We couldn\'t create an invite just yet. Please try again.',
+          ),
+        ),
       );
     }
   }
@@ -446,7 +460,11 @@ ${result.payload}
         ref.read(pendingDeepLinkProvider.notifier).state = null;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not process invite: $error')),
+        const SnackBar(
+          content: Text(
+            'We couldn\'t use that invite yet. Double-check it and try again.',
+          ),
+        ),
       );
     }
   }
@@ -569,7 +587,13 @@ ${result.payload}
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(SnackBar(content: Text('$error')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We couldn\'t publish your parent profile just yet. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -714,6 +738,86 @@ ${result.payload}
     );
   }
 
+  Future<void> _resetApp() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Sign out & reset app?'),
+          content: const Text(
+            'This will remove the parent account from this device, clear the Parent Zone PIN, wipe local videos and cached shares, and reset Nook back to onboarding. Make sure your recovery key is saved first.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Reset app'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _isResettingApp = true);
+    try {
+      await ref.read(syncCoordinatorProvider).stop();
+      await ref.read(appResetServiceProvider).resetApp();
+
+      ref.read(selectedProfileIdProvider.notifier).state = null;
+      ref.read(appShellTabIndexProvider.notifier).state = 0;
+      ref.read(pendingDeepLinkProvider.notifier).state = null;
+
+      ref.invalidate(syncCoordinatorProvider);
+      ref.invalidate(syncRevisionProvider);
+      ref.invalidate(parentIdentityProvider);
+      ref.invalidate(parentDisplayNameProvider);
+      ref.invalidate(profilesProvider);
+      ref.invalidate(videosForSelectedProfileProvider);
+      ref.invalidate(pendingApprovalVideosProvider);
+      ref.invalidate(remoteSharesProvider);
+      ref.invalidate(reportsProvider);
+      ref.invalidate(offlineActionsProvider);
+      ref.invalidate(shareHistoryProvider);
+      ref.invalidate(safetyHqStatusProvider);
+      ref.invalidate(mdkGroupSummariesProvider);
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isResettingApp = false;
+        _isUnlocked = false;
+        _checkingPin = false;
+        _needsPinSetup = false;
+        _pinEntry = '';
+        _pinError = null;
+        _newPin = '';
+        _confirmPin = '';
+        _sidebarOpen = false;
+      });
+      await HapticFeedback.heavyImpact();
+    } catch (error) {
+      ref.invalidate(syncCoordinatorProvider);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isResettingApp = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We couldn\'t finish resetting this device yet. Please try again.',
+          ),
+        ),
+      );
+    }
+  }
+
   Future<void> _manageGroup(MdkGroupSummary group) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -777,8 +881,126 @@ ${result.payload}
         onPublishBlossomServers: _publishBlossomServers,
         onUpdatePin: _updatePin,
         onProvisionSafetyHq: _provisionSafetyHq,
+        onResetApp: _resetApp,
       ),
     };
+  }
+
+  ThemeData _buildParentZoneTheme(BuildContext context, KidPalette palette) {
+    final base = Theme.of(context);
+    final shell = Color.alphaBlend(
+      palette.accent.withValues(alpha: 0.035),
+      const Color(0xFFF6F1E9),
+    );
+    final panel = Color.alphaBlend(
+      palette.accent.withValues(alpha: 0.045),
+      const Color(0xFFFFFCF8),
+    );
+    final panelBorder = Color.alphaBlend(
+      palette.ink.withValues(alpha: 0.08),
+      const Color(0xFFD7CDC0),
+    );
+    final textTheme = GoogleFonts.nunitoTextTheme(base.textTheme).copyWith(
+      displaySmall: GoogleFonts.nunito(
+        fontSize: 34,
+        fontWeight: FontWeight.w800,
+        color: palette.ink,
+      ),
+      headlineMedium: GoogleFonts.nunito(
+        fontSize: 28,
+        fontWeight: FontWeight.w800,
+        color: palette.ink,
+      ),
+      titleLarge: GoogleFonts.nunito(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: palette.ink,
+      ),
+      titleMedium: GoogleFonts.nunito(
+        fontSize: 17,
+        fontWeight: FontWeight.w800,
+        color: palette.ink,
+      ),
+      titleSmall: GoogleFonts.nunito(
+        fontSize: 15,
+        fontWeight: FontWeight.w800,
+        color: palette.ink,
+      ),
+      bodyLarge: GoogleFonts.nunito(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: palette.ink,
+      ),
+      bodyMedium: GoogleFonts.nunito(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: palette.ink,
+      ),
+      bodySmall: GoogleFonts.nunito(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: palette.mutedInk,
+      ),
+      labelLarge: GoogleFonts.nunito(
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+        color: Colors.white,
+      ),
+      labelMedium: GoogleFonts.nunito(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        color: palette.mutedInk,
+      ),
+    );
+
+    return base.copyWith(
+      scaffoldBackgroundColor: shell,
+      textTheme: textTheme,
+      cardTheme: CardThemeData(
+        color: panel,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: panelBorder),
+        ),
+      ),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        fillColor: Colors.white.withValues(alpha: 0.92),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: panelBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: panelBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: palette.ink.withValues(alpha: 0.3)),
+        ),
+      ),
+      dividerColor: panelBorder,
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: palette.ink,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: palette.ink,
+          side: BorderSide(color: panelBorder),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      ),
+    );
   }
 
   @override
@@ -812,106 +1034,294 @@ ${result.payload}
         _lockParentZone();
       });
     }
+    if (activeTab != 3) {
+      return const SizedBox.expand();
+    }
 
     final palette = ref.watch(activeThemeProvider).palette;
+    final parentZoneTheme = _buildParentZoneTheme(context, palette);
+    final parentLabel = ref.watch(parentDisplayNameProvider).valueOrNull;
     if (_checkingPin) {
-      return const Center(child: CircularProgressIndicator());
+      return Theme(
+        data: parentZoneTheme,
+        child: const Center(child: CircularProgressIndicator()),
+      );
     }
     if (!_isUnlocked) {
-      return _needsPinSetup
-          ? ParentZonePinSetupView(
-              palette: palette,
-              pinError: _pinError,
-              onNewPinChanged: (value) => _newPin = value,
-              onConfirmPinChanged: (value) => _confirmPin = value,
-              onSavePin: _saveNewPin,
-            )
-          : ParentZonePinEntryView(
-              palette: palette,
-              pinEntry: _pinEntry,
-              pinError: _pinError,
-              onDigit: (digit) {
-                if (_pinEntry.length >= 4) {
-                  return;
-                }
-                final nextEntry = '$_pinEntry$digit';
-                setState(() {
-                  _pinEntry = nextEntry;
-                  _pinError = null;
-                });
-                if (nextEntry.length == 4) {
-                  unawaited(_verifyPin());
-                }
-              },
-              onDelete: () {
-                if (_pinEntry.isNotEmpty) {
-                  setState(() {
-                    _pinEntry = _pinEntry.substring(0, _pinEntry.length - 1);
-                  });
-                }
-              },
-            );
+      return Theme(
+        data: parentZoneTheme,
+        child: Stack(
+          children: [
+            Positioned.fill(child: _ParentZoneBackground(palette: palette)),
+            _needsPinSetup
+                ? ParentZonePinSetupView(
+                    palette: palette,
+                    pinError: _pinError,
+                    onNewPinChanged: (value) => _newPin = value,
+                    onConfirmPinChanged: (value) => _confirmPin = value,
+                    onSavePin: _saveNewPin,
+                  )
+                : ParentZonePinEntryView(
+                    palette: palette,
+                    pinEntry: _pinEntry,
+                    pinError: _pinError,
+                    onDigit: (digit) {
+                      if (_pinEntry.length >= 4) {
+                        return;
+                      }
+                      final nextEntry = '$_pinEntry$digit';
+                      setState(() {
+                        _pinEntry = nextEntry;
+                        _pinError = null;
+                      });
+                      if (nextEntry.length == 4) {
+                        unawaited(_verifyPin());
+                      }
+                    },
+                    onDelete: () {
+                      if (_pinEntry.isNotEmpty) {
+                        setState(() {
+                          _pinEntry = _pinEntry.substring(
+                            0,
+                            _pinEntry.length - 1,
+                          );
+                        });
+                      }
+                    },
+                  ),
+          ],
+        ),
+      );
     }
 
-    return Stack(
-      children: [
-        SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.menu_rounded),
-                      onPressed: () => setState(() => _sidebarOpen = true),
-                    ),
-                    Text(
-                      _section.label,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+    return Theme(
+      data: parentZoneTheme,
+      child: Stack(
+        children: [
+          Positioned.fill(child: _ParentZoneBackground(palette: palette)),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ParentHeaderButton(
+                        icon: Icons.menu_rounded,
+                        tooltip: 'Open sections',
+                        onPressed: () async {
+                          await HapticFeedback.selectionClick();
+                          setState(() => _sidebarOpen = true);
+                        },
                       ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Parent Zone',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    letterSpacing: 0.8,
+                                    color: palette.mutedInk,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(_section.label),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Divider(
+                    height: 1,
+                    color: palette.ink.withValues(alpha: 0.08),
+                  ),
+                ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.duration(
+                      context,
+                      AppMotion.layoutChange,
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.lock_outline_rounded),
-                      tooltip: 'Lock',
-                      onPressed: () => setState(() => _isUnlocked = false),
+                    switchInCurve: AppMotion.easeOutQuint,
+                    switchOutCurve: Curves.easeOut,
+                    transitionBuilder: (child, animation) {
+                      final offsetAnimation =
+                          Tween<Offset>(
+                            begin: AppMotion.offset(
+                              context,
+                              const Offset(0.02, 0),
+                            ),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: AppMotion.easeOutQuint,
+                            ),
+                          );
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: offsetAnimation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey(_section),
+                      child: _buildSectionContent(),
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_sidebarOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () async {
+                  await HapticFeedback.selectionClick();
+                  setState(() => _sidebarOpen = false);
+                },
+                child: ColoredBox(color: Colors.black.withValues(alpha: 0.28)),
+              ),
+            ),
+          AnimatedPositioned(
+            duration: AppMotion.duration(context, AppMotion.layoutChange),
+            curve: AppMotion.easeOutQuint,
+            left: _sidebarOpen ? 0 : -300,
+            top: 0,
+            bottom: 0,
+            width: 300,
+            child: ParentZoneSidebar(
+              palette: palette,
+              parentLabel: (parentLabel == null || parentLabel.trim().isEmpty)
+                  ? 'Family controls'
+                  : parentLabel.trim(),
+              accountHint: _needsPinSetup
+                  ? 'PIN setup required'
+                  : 'Protected by parent PIN',
+              selected: _section,
+              onSelect: (section) async {
+                await HapticFeedback.selectionClick();
+                setState(() {
+                  _section = section;
+                  _sidebarOpen = false;
+                });
+              },
+            ),
+          ),
+          if (_isResettingApp)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.28),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentZoneBackground extends StatelessWidget {
+  const _ParentZoneBackground({required this.palette});
+
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color.alphaBlend(
+              palette.accent.withValues(alpha: 0.03),
+              const Color(0xFFF7F3EC),
+            ),
+            Color.alphaBlend(
+              palette.accentSecondary.withValues(alpha: 0.04),
+              const Color(0xFFF0EAE2),
+            ),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -80,
+            right: -40,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    palette.accent.withValues(alpha: 0.08),
+                    Colors.transparent,
                   ],
                 ),
               ),
-              Expanded(child: _buildSectionContent()),
-            ],
-          ),
-        ),
-        if (_sidebarOpen)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => setState(() => _sidebarOpen = false),
-              child: ColoredBox(color: Colors.black.withValues(alpha: 0.4)),
             ),
           ),
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          left: _sidebarOpen ? 0 : -280,
-          top: 0,
-          bottom: 0,
-          width: 280,
-          child: ParentZoneSidebar(
-            palette: palette,
-            parentNpub:
-                ref.watch(parentIdentityProvider).valueOrNull?.npub ?? '',
-            selected: _section,
-            onSelect: (section) => setState(() {
-              _section = section;
-              _sidebarOpen = false;
-            }),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: palette.ink.withValues(alpha: 0.03)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentHeaderButton extends StatelessWidget {
+  const _ParentHeaderButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconColor =
+        Theme.of(context).textTheme.titleMedium?.color ??
+        const Color(0xFF2F291E);
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onPressed,
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: Icon(icon, color: iconColor),
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -983,7 +1393,13 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
         return;
       }
       setState(() => _working = false);
-      messenger.showSnackBar(SnackBar(content: Text('$error')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We couldn\'t delete that shared video just yet. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -1017,7 +1433,13 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
         return;
       }
       setState(() => _working = false);
-      messenger.showSnackBar(SnackBar(content: Text('$error')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We couldn\'t remove that member just yet. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -1045,7 +1467,11 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
             if (snapshot.hasError) {
               return SizedBox(
                 height: 320,
-                child: Center(child: Text('Error: ${snapshot.error}')),
+                child: const Center(
+                  child: Text(
+                    'Moderation details need another moment to load.',
+                  ),
+                ),
               );
             }
 
@@ -1055,6 +1481,14 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
               child: ListView(
                 shrinkWrap: true,
                 children: [
+                  Text(
+                    'Moderation Controls',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      letterSpacing: 0.8,
+                      color: palette.mutedInk,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     widget.group.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -1069,61 +1503,72 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                     ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Members',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  if (data.members.isEmpty)
-                    Text(
-                      'No member details available yet.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    )
-                  else
-                    for (final member in data.members)
-                      _MemberTile(
-                        memberPublicKeyHex: member,
-                        currentIdentityHex: identity?.publicKeyHex,
-                        working: _working,
-                        onRemove: () => _removeMember(member),
-                      ),
-                  const Divider(height: 28),
-                  Text(
-                    'Shared Videos',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  if (data.shares.isEmpty)
-                    Text(
-                      'No shared videos from this family yet.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    )
-                  else
-                    for (final share in data.shares.take(8))
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          share.status == 'deleted'
-                              ? Icons.delete_outline_rounded
-                              : Icons.play_circle_outline_rounded,
-                          color: share.status == 'deleted'
-                              ? palette.warning
-                              : palette.accentSecondary,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.76),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Members',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        title: Text(share.title),
-                        subtitle: Text(
-                          '${share.displayName} · ${share.status}',
+                        const SizedBox(height: 8),
+                        if (data.members.isEmpty)
+                          Text(
+                            'No member details available yet.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          )
+                        else
+                          for (final member in data.members)
+                            _MemberTile(
+                              memberPublicKeyHex: member,
+                              currentIdentityHex: identity?.publicKeyHex,
+                              working: _working,
+                              onRemove: () => _removeMember(member),
+                            ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.76),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Shared Videos',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        trailing: share.status == 'deleted'
-                            ? const Text('Deleted')
-                            : FilledButton.tonal(
-                                onPressed: _working
-                                    ? null
-                                    : () => _deleteVideo(share),
-                                child: Text(_working ? 'Working…' : 'Delete'),
-                              ),
-                      ),
-                  const SizedBox(height: 8),
+                        const SizedBox(height: 8),
+                        if (data.shares.isEmpty)
+                          Text(
+                            'No shared videos from this family yet.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          )
+                        else
+                          for (final share in data.shares.take(8))
+                            _ModerationVideoRow(
+                              share: share,
+                              palette: palette,
+                              working: _working,
+                              onDelete: share.status == 'deleted'
+                                  ? null
+                                  : () => _deleteVideo(share),
+                            ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Text(
                     'Removing a member does not delete their past content automatically.',
                     style: Theme.of(
@@ -1171,30 +1616,127 @@ class _MemberTile extends ConsumerWidget {
               .valueOrNull;
     final displayKey = formatPublicKeyLabel(memberPublicKeyHex);
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        isCurrentIdentity
-            ? Icons.verified_user_rounded
-            : Icons.person_outline_rounded,
-        color: isCurrentIdentity ? palette.success : palette.accent,
-      ),
-      title: Text(
-        isCurrentIdentity
-            ? 'You'
-            : (profile?.displayName.trim().isNotEmpty ?? false)
-            ? profile!.displayName
-            : formatCompactPublicKeyLabel(memberPublicKeyHex),
-      ),
-      subtitle: Text(
-        isCurrentIdentity ? 'Current parent identity' : displayKey,
-      ),
-      trailing: isCurrentIdentity
-          ? null
-          : FilledButton.tonal(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: (isCurrentIdentity ? palette.success : palette.accent)
+                  .withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isCurrentIdentity
+                  ? Icons.verified_user_rounded
+                  : Icons.person_outline_rounded,
+              color: isCurrentIdentity ? palette.success : palette.accent,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCurrentIdentity
+                      ? 'You'
+                      : (profile?.displayName.trim().isNotEmpty ?? false)
+                      ? profile!.displayName
+                      : formatCompactPublicKeyLabel(memberPublicKeyHex),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isCurrentIdentity ? 'Current parent identity' : displayKey,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          if (!isCurrentIdentity)
+            FilledButton.tonal(
               onPressed: working ? null : onRemove,
               child: Text(working ? 'Working…' : 'Remove'),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModerationVideoRow extends StatelessWidget {
+  const _ModerationVideoRow({
+    required this.share,
+    required this.palette,
+    required this.working,
+    required this.onDelete,
+  });
+
+  final RemoteShareProjection share;
+  final KidPalette palette;
+  final bool working;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final deleted = share.status == 'deleted';
+    final tone = deleted ? palette.warning : palette.accentSecondary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: tone.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              deleted
+                  ? Icons.delete_outline_rounded
+                  : Icons.play_circle_outline_rounded,
+              color: tone,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  share.title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${share.displayName} · ${share.status}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          if (deleted)
+            Text('Deleted', style: Theme.of(context).textTheme.bodySmall)
+          else
+            FilledButton.tonal(
+              onPressed: working ? null : onDelete,
+              child: Text(working ? 'Working…' : 'Delete'),
+            ),
+        ],
+      ),
     );
   }
 }

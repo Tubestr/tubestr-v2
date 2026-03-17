@@ -28,11 +28,7 @@ class VideoMeta {
   final int createdAt;
 
   Map<String, dynamic> toJson() {
-    return {
-      'title': title,
-      'dur': durationSeconds,
-      'created_at': createdAt,
-    };
+    return {'title': title, 'dur': durationSeconds, 'created_at': createdAt};
   }
 
   factory VideoMeta.fromJson(Map<String, dynamic> json) {
@@ -93,19 +89,13 @@ class BlobDescriptor {
 }
 
 class MediaDescriptor {
-  const MediaDescriptor({
-    required this.algorithm,
-    required this.epoch,
-  });
+  const MediaDescriptor({required this.algorithm, required this.epoch});
 
   final String algorithm;
   final String epoch;
 
   Map<String, dynamic> toJson() {
-    return {
-      'alg': algorithm,
-      'epoch': epoch,
-    };
+    return {'alg': algorithm, 'epoch': epoch};
   }
 
   factory MediaDescriptor.fromJson(Map<String, dynamic> json) {
@@ -117,26 +107,22 @@ class MediaDescriptor {
 }
 
 class PolicyDescriptor {
-  const PolicyDescriptor({
-    required this.version,
-    this.expiresAt,
-  });
+  const PolicyDescriptor({required this.version, this.expiresAt});
 
   final int version;
   final int? expiresAt;
 
   Map<String, dynamic> toJson() {
-    return {
-      'version': version,
-      'expires_at': expiresAt,
-    };
+    return {'version': version, 'expires_at': expiresAt};
   }
 
   factory PolicyDescriptor.fromJson(Map<String, dynamic> json) {
     final rawExpiresAt = json['expires_at'];
     return PolicyDescriptor(
       version: _requiredInt(json, 'version'),
-      expiresAt: rawExpiresAt == null ? null : _coerceInt(rawExpiresAt, 'expires_at'),
+      expiresAt: rawExpiresAt == null
+          ? null
+          : _coerceInt(rawExpiresAt, 'expires_at'),
     );
   }
 }
@@ -203,9 +189,7 @@ class VideoShareMessage {
   }
 
   factory VideoShareMessage.decode(String raw) {
-    return VideoShareMessage.fromJson(
-      jsonDecode(raw) as Map<String, dynamic>,
-    );
+    return VideoShareMessage.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 }
 
@@ -289,6 +273,46 @@ class LikeMessage {
     return LikeMessage(
       videoId: _requiredString(json, 'video_id'),
       childProfileId: _requiredString(json, 'child_profile_id'),
+      by: _requiredString(json, 'by'),
+      ts: _requiredInt(json, 'ts'),
+    );
+  }
+}
+
+class ReactionMessage {
+  static const type = 'mytube/reaction';
+
+  const ReactionMessage({
+    required this.videoId,
+    required this.childProfileId,
+    required this.emoji,
+    required this.by,
+    required this.ts,
+  });
+
+  final String videoId;
+  final String childProfileId;
+  final String emoji;
+  final String by;
+  final int ts;
+
+  Map<String, dynamic> toJson() {
+    return {
+      't': type,
+      'video_id': videoId,
+      'child_profile_id': childProfileId,
+      'emoji': emoji,
+      'by': by,
+      'ts': ts,
+    };
+  }
+
+  factory ReactionMessage.fromJson(Map<String, dynamic> json) {
+    _requireType(json, type);
+    return ReactionMessage(
+      videoId: _requiredString(json, 'video_id'),
+      childProfileId: _requiredString(json, 'child_profile_id'),
+      emoji: _requiredString(json, 'emoji'),
       by: _requiredString(json, 'by'),
       ts: _requiredInt(json, 'ts'),
     );

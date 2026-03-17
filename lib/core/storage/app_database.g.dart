@@ -3657,6 +3657,852 @@ class LikesCompanion extends UpdateCompanion<Like> {
   }
 }
 
+class $ReactionsTable extends Reactions
+    with TableInfo<$ReactionsTable, Reaction> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _videoIdMeta = const VerificationMeta(
+    'videoId',
+  );
+  @override
+  late final GeneratedColumn<String> videoId = GeneratedColumn<String>(
+    'video_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _childProfileIdMeta = const VerificationMeta(
+    'childProfileId',
+  );
+  @override
+  late final GeneratedColumn<String> childProfileId = GeneratedColumn<String>(
+    'child_profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentPubkeyMeta = const VerificationMeta(
+    'parentPubkey',
+  );
+  @override
+  late final GeneratedColumn<String> parentPubkey = GeneratedColumn<String>(
+    'parent_pubkey',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emojiMeta = const VerificationMeta('emoji');
+  @override
+  late final GeneratedColumn<String> emoji = GeneratedColumn<String>(
+    'emoji',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    videoId,
+    childProfileId,
+    parentPubkey,
+    emoji,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Reaction> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('video_id')) {
+      context.handle(
+        _videoIdMeta,
+        videoId.isAcceptableOrUnknown(data['video_id']!, _videoIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_videoIdMeta);
+    }
+    if (data.containsKey('child_profile_id')) {
+      context.handle(
+        _childProfileIdMeta,
+        childProfileId.isAcceptableOrUnknown(
+          data['child_profile_id']!,
+          _childProfileIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_childProfileIdMeta);
+    }
+    if (data.containsKey('parent_pubkey')) {
+      context.handle(
+        _parentPubkeyMeta,
+        parentPubkey.isAcceptableOrUnknown(
+          data['parent_pubkey']!,
+          _parentPubkeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_parentPubkeyMeta);
+    }
+    if (data.containsKey('emoji')) {
+      context.handle(
+        _emojiMeta,
+        emoji.isAcceptableOrUnknown(data['emoji']!, _emojiMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_emojiMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Reaction map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Reaction(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      videoId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}video_id'],
+      )!,
+      childProfileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_profile_id'],
+      )!,
+      parentPubkey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_pubkey'],
+      )!,
+      emoji: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emoji'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReactionsTable createAlias(String alias) {
+    return $ReactionsTable(attachedDatabase, alias);
+  }
+}
+
+class Reaction extends DataClass implements Insertable<Reaction> {
+  final int id;
+  final String videoId;
+  final String childProfileId;
+  final String parentPubkey;
+  final String emoji;
+  final DateTime createdAt;
+  const Reaction({
+    required this.id,
+    required this.videoId,
+    required this.childProfileId,
+    required this.parentPubkey,
+    required this.emoji,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['video_id'] = Variable<String>(videoId);
+    map['child_profile_id'] = Variable<String>(childProfileId);
+    map['parent_pubkey'] = Variable<String>(parentPubkey);
+    map['emoji'] = Variable<String>(emoji);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ReactionsCompanion toCompanion(bool nullToAbsent) {
+    return ReactionsCompanion(
+      id: Value(id),
+      videoId: Value(videoId),
+      childProfileId: Value(childProfileId),
+      parentPubkey: Value(parentPubkey),
+      emoji: Value(emoji),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Reaction.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Reaction(
+      id: serializer.fromJson<int>(json['id']),
+      videoId: serializer.fromJson<String>(json['videoId']),
+      childProfileId: serializer.fromJson<String>(json['childProfileId']),
+      parentPubkey: serializer.fromJson<String>(json['parentPubkey']),
+      emoji: serializer.fromJson<String>(json['emoji']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'videoId': serializer.toJson<String>(videoId),
+      'childProfileId': serializer.toJson<String>(childProfileId),
+      'parentPubkey': serializer.toJson<String>(parentPubkey),
+      'emoji': serializer.toJson<String>(emoji),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Reaction copyWith({
+    int? id,
+    String? videoId,
+    String? childProfileId,
+    String? parentPubkey,
+    String? emoji,
+    DateTime? createdAt,
+  }) => Reaction(
+    id: id ?? this.id,
+    videoId: videoId ?? this.videoId,
+    childProfileId: childProfileId ?? this.childProfileId,
+    parentPubkey: parentPubkey ?? this.parentPubkey,
+    emoji: emoji ?? this.emoji,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  Reaction copyWithCompanion(ReactionsCompanion data) {
+    return Reaction(
+      id: data.id.present ? data.id.value : this.id,
+      videoId: data.videoId.present ? data.videoId.value : this.videoId,
+      childProfileId: data.childProfileId.present
+          ? data.childProfileId.value
+          : this.childProfileId,
+      parentPubkey: data.parentPubkey.present
+          ? data.parentPubkey.value
+          : this.parentPubkey,
+      emoji: data.emoji.present ? data.emoji.value : this.emoji,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Reaction(')
+          ..write('id: $id, ')
+          ..write('videoId: $videoId, ')
+          ..write('childProfileId: $childProfileId, ')
+          ..write('parentPubkey: $parentPubkey, ')
+          ..write('emoji: $emoji, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, videoId, childProfileId, parentPubkey, emoji, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Reaction &&
+          other.id == this.id &&
+          other.videoId == this.videoId &&
+          other.childProfileId == this.childProfileId &&
+          other.parentPubkey == this.parentPubkey &&
+          other.emoji == this.emoji &&
+          other.createdAt == this.createdAt);
+}
+
+class ReactionsCompanion extends UpdateCompanion<Reaction> {
+  final Value<int> id;
+  final Value<String> videoId;
+  final Value<String> childProfileId;
+  final Value<String> parentPubkey;
+  final Value<String> emoji;
+  final Value<DateTime> createdAt;
+  const ReactionsCompanion({
+    this.id = const Value.absent(),
+    this.videoId = const Value.absent(),
+    this.childProfileId = const Value.absent(),
+    this.parentPubkey = const Value.absent(),
+    this.emoji = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ReactionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String videoId,
+    required String childProfileId,
+    required String parentPubkey,
+    required String emoji,
+    required DateTime createdAt,
+  }) : videoId = Value(videoId),
+       childProfileId = Value(childProfileId),
+       parentPubkey = Value(parentPubkey),
+       emoji = Value(emoji),
+       createdAt = Value(createdAt);
+  static Insertable<Reaction> custom({
+    Expression<int>? id,
+    Expression<String>? videoId,
+    Expression<String>? childProfileId,
+    Expression<String>? parentPubkey,
+    Expression<String>? emoji,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (videoId != null) 'video_id': videoId,
+      if (childProfileId != null) 'child_profile_id': childProfileId,
+      if (parentPubkey != null) 'parent_pubkey': parentPubkey,
+      if (emoji != null) 'emoji': emoji,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ReactionsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? videoId,
+    Value<String>? childProfileId,
+    Value<String>? parentPubkey,
+    Value<String>? emoji,
+    Value<DateTime>? createdAt,
+  }) {
+    return ReactionsCompanion(
+      id: id ?? this.id,
+      videoId: videoId ?? this.videoId,
+      childProfileId: childProfileId ?? this.childProfileId,
+      parentPubkey: parentPubkey ?? this.parentPubkey,
+      emoji: emoji ?? this.emoji,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (videoId.present) {
+      map['video_id'] = Variable<String>(videoId.value);
+    }
+    if (childProfileId.present) {
+      map['child_profile_id'] = Variable<String>(childProfileId.value);
+    }
+    if (parentPubkey.present) {
+      map['parent_pubkey'] = Variable<String>(parentPubkey.value);
+    }
+    if (emoji.present) {
+      map['emoji'] = Variable<String>(emoji.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReactionsCompanion(')
+          ..write('id: $id, ')
+          ..write('videoId: $videoId, ')
+          ..write('childProfileId: $childProfileId, ')
+          ..write('parentPubkey: $parentPubkey, ')
+          ..write('emoji: $emoji, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RemotePlaybackMetricsTable extends RemotePlaybackMetrics
+    with TableInfo<$RemotePlaybackMetricsTable, RemotePlaybackMetric> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RemotePlaybackMetricsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _remoteShareIdMeta = const VerificationMeta(
+    'remoteShareId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteShareId = GeneratedColumn<String>(
+    'remote_share_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES share_records (remote_share_id)',
+    ),
+  );
+  static const VerificationMeta _videoIdMeta = const VerificationMeta(
+    'videoId',
+  );
+  @override
+  late final GeneratedColumn<String> videoId = GeneratedColumn<String>(
+    'video_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastPlayedAtMeta = const VerificationMeta(
+    'lastPlayedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastPlayedAt = GeneratedColumn<DateTime>(
+    'last_played_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _playCountMeta = const VerificationMeta(
+    'playCount',
+  );
+  @override
+  late final GeneratedColumn<int> playCount = GeneratedColumn<int>(
+    'play_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _completionRateMeta = const VerificationMeta(
+    'completionRate',
+  );
+  @override
+  late final GeneratedColumn<double> completionRate = GeneratedColumn<double>(
+    'completion_rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _replayRateMeta = const VerificationMeta(
+    'replayRate',
+  );
+  @override
+  late final GeneratedColumn<double> replayRate = GeneratedColumn<double>(
+    'replay_rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    remoteShareId,
+    videoId,
+    lastPlayedAt,
+    playCount,
+    completionRate,
+    replayRate,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'remote_playback_metrics';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RemotePlaybackMetric> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('remote_share_id')) {
+      context.handle(
+        _remoteShareIdMeta,
+        remoteShareId.isAcceptableOrUnknown(
+          data['remote_share_id']!,
+          _remoteShareIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteShareIdMeta);
+    }
+    if (data.containsKey('video_id')) {
+      context.handle(
+        _videoIdMeta,
+        videoId.isAcceptableOrUnknown(data['video_id']!, _videoIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_videoIdMeta);
+    }
+    if (data.containsKey('last_played_at')) {
+      context.handle(
+        _lastPlayedAtMeta,
+        lastPlayedAt.isAcceptableOrUnknown(
+          data['last_played_at']!,
+          _lastPlayedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('play_count')) {
+      context.handle(
+        _playCountMeta,
+        playCount.isAcceptableOrUnknown(data['play_count']!, _playCountMeta),
+      );
+    }
+    if (data.containsKey('completion_rate')) {
+      context.handle(
+        _completionRateMeta,
+        completionRate.isAcceptableOrUnknown(
+          data['completion_rate']!,
+          _completionRateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('replay_rate')) {
+      context.handle(
+        _replayRateMeta,
+        replayRate.isAcceptableOrUnknown(data['replay_rate']!, _replayRateMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {remoteShareId};
+  @override
+  RemotePlaybackMetric map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RemotePlaybackMetric(
+      remoteShareId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_share_id'],
+      )!,
+      videoId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}video_id'],
+      )!,
+      lastPlayedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_played_at'],
+      ),
+      playCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}play_count'],
+      )!,
+      completionRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}completion_rate'],
+      )!,
+      replayRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}replay_rate'],
+      )!,
+    );
+  }
+
+  @override
+  $RemotePlaybackMetricsTable createAlias(String alias) {
+    return $RemotePlaybackMetricsTable(attachedDatabase, alias);
+  }
+}
+
+class RemotePlaybackMetric extends DataClass
+    implements Insertable<RemotePlaybackMetric> {
+  final String remoteShareId;
+  final String videoId;
+  final DateTime? lastPlayedAt;
+  final int playCount;
+  final double completionRate;
+  final double replayRate;
+  const RemotePlaybackMetric({
+    required this.remoteShareId,
+    required this.videoId,
+    this.lastPlayedAt,
+    required this.playCount,
+    required this.completionRate,
+    required this.replayRate,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['remote_share_id'] = Variable<String>(remoteShareId);
+    map['video_id'] = Variable<String>(videoId);
+    if (!nullToAbsent || lastPlayedAt != null) {
+      map['last_played_at'] = Variable<DateTime>(lastPlayedAt);
+    }
+    map['play_count'] = Variable<int>(playCount);
+    map['completion_rate'] = Variable<double>(completionRate);
+    map['replay_rate'] = Variable<double>(replayRate);
+    return map;
+  }
+
+  RemotePlaybackMetricsCompanion toCompanion(bool nullToAbsent) {
+    return RemotePlaybackMetricsCompanion(
+      remoteShareId: Value(remoteShareId),
+      videoId: Value(videoId),
+      lastPlayedAt: lastPlayedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPlayedAt),
+      playCount: Value(playCount),
+      completionRate: Value(completionRate),
+      replayRate: Value(replayRate),
+    );
+  }
+
+  factory RemotePlaybackMetric.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RemotePlaybackMetric(
+      remoteShareId: serializer.fromJson<String>(json['remoteShareId']),
+      videoId: serializer.fromJson<String>(json['videoId']),
+      lastPlayedAt: serializer.fromJson<DateTime?>(json['lastPlayedAt']),
+      playCount: serializer.fromJson<int>(json['playCount']),
+      completionRate: serializer.fromJson<double>(json['completionRate']),
+      replayRate: serializer.fromJson<double>(json['replayRate']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'remoteShareId': serializer.toJson<String>(remoteShareId),
+      'videoId': serializer.toJson<String>(videoId),
+      'lastPlayedAt': serializer.toJson<DateTime?>(lastPlayedAt),
+      'playCount': serializer.toJson<int>(playCount),
+      'completionRate': serializer.toJson<double>(completionRate),
+      'replayRate': serializer.toJson<double>(replayRate),
+    };
+  }
+
+  RemotePlaybackMetric copyWith({
+    String? remoteShareId,
+    String? videoId,
+    Value<DateTime?> lastPlayedAt = const Value.absent(),
+    int? playCount,
+    double? completionRate,
+    double? replayRate,
+  }) => RemotePlaybackMetric(
+    remoteShareId: remoteShareId ?? this.remoteShareId,
+    videoId: videoId ?? this.videoId,
+    lastPlayedAt: lastPlayedAt.present ? lastPlayedAt.value : this.lastPlayedAt,
+    playCount: playCount ?? this.playCount,
+    completionRate: completionRate ?? this.completionRate,
+    replayRate: replayRate ?? this.replayRate,
+  );
+  RemotePlaybackMetric copyWithCompanion(RemotePlaybackMetricsCompanion data) {
+    return RemotePlaybackMetric(
+      remoteShareId: data.remoteShareId.present
+          ? data.remoteShareId.value
+          : this.remoteShareId,
+      videoId: data.videoId.present ? data.videoId.value : this.videoId,
+      lastPlayedAt: data.lastPlayedAt.present
+          ? data.lastPlayedAt.value
+          : this.lastPlayedAt,
+      playCount: data.playCount.present ? data.playCount.value : this.playCount,
+      completionRate: data.completionRate.present
+          ? data.completionRate.value
+          : this.completionRate,
+      replayRate: data.replayRate.present
+          ? data.replayRate.value
+          : this.replayRate,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemotePlaybackMetric(')
+          ..write('remoteShareId: $remoteShareId, ')
+          ..write('videoId: $videoId, ')
+          ..write('lastPlayedAt: $lastPlayedAt, ')
+          ..write('playCount: $playCount, ')
+          ..write('completionRate: $completionRate, ')
+          ..write('replayRate: $replayRate')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    remoteShareId,
+    videoId,
+    lastPlayedAt,
+    playCount,
+    completionRate,
+    replayRate,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RemotePlaybackMetric &&
+          other.remoteShareId == this.remoteShareId &&
+          other.videoId == this.videoId &&
+          other.lastPlayedAt == this.lastPlayedAt &&
+          other.playCount == this.playCount &&
+          other.completionRate == this.completionRate &&
+          other.replayRate == this.replayRate);
+}
+
+class RemotePlaybackMetricsCompanion
+    extends UpdateCompanion<RemotePlaybackMetric> {
+  final Value<String> remoteShareId;
+  final Value<String> videoId;
+  final Value<DateTime?> lastPlayedAt;
+  final Value<int> playCount;
+  final Value<double> completionRate;
+  final Value<double> replayRate;
+  final Value<int> rowid;
+  const RemotePlaybackMetricsCompanion({
+    this.remoteShareId = const Value.absent(),
+    this.videoId = const Value.absent(),
+    this.lastPlayedAt = const Value.absent(),
+    this.playCount = const Value.absent(),
+    this.completionRate = const Value.absent(),
+    this.replayRate = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RemotePlaybackMetricsCompanion.insert({
+    required String remoteShareId,
+    required String videoId,
+    this.lastPlayedAt = const Value.absent(),
+    this.playCount = const Value.absent(),
+    this.completionRate = const Value.absent(),
+    this.replayRate = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : remoteShareId = Value(remoteShareId),
+       videoId = Value(videoId);
+  static Insertable<RemotePlaybackMetric> custom({
+    Expression<String>? remoteShareId,
+    Expression<String>? videoId,
+    Expression<DateTime>? lastPlayedAt,
+    Expression<int>? playCount,
+    Expression<double>? completionRate,
+    Expression<double>? replayRate,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (remoteShareId != null) 'remote_share_id': remoteShareId,
+      if (videoId != null) 'video_id': videoId,
+      if (lastPlayedAt != null) 'last_played_at': lastPlayedAt,
+      if (playCount != null) 'play_count': playCount,
+      if (completionRate != null) 'completion_rate': completionRate,
+      if (replayRate != null) 'replay_rate': replayRate,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RemotePlaybackMetricsCompanion copyWith({
+    Value<String>? remoteShareId,
+    Value<String>? videoId,
+    Value<DateTime?>? lastPlayedAt,
+    Value<int>? playCount,
+    Value<double>? completionRate,
+    Value<double>? replayRate,
+    Value<int>? rowid,
+  }) {
+    return RemotePlaybackMetricsCompanion(
+      remoteShareId: remoteShareId ?? this.remoteShareId,
+      videoId: videoId ?? this.videoId,
+      lastPlayedAt: lastPlayedAt ?? this.lastPlayedAt,
+      playCount: playCount ?? this.playCount,
+      completionRate: completionRate ?? this.completionRate,
+      replayRate: replayRate ?? this.replayRate,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (remoteShareId.present) {
+      map['remote_share_id'] = Variable<String>(remoteShareId.value);
+    }
+    if (videoId.present) {
+      map['video_id'] = Variable<String>(videoId.value);
+    }
+    if (lastPlayedAt.present) {
+      map['last_played_at'] = Variable<DateTime>(lastPlayedAt.value);
+    }
+    if (playCount.present) {
+      map['play_count'] = Variable<int>(playCount.value);
+    }
+    if (completionRate.present) {
+      map['completion_rate'] = Variable<double>(completionRate.value);
+    }
+    if (replayRate.present) {
+      map['replay_rate'] = Variable<double>(replayRate.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemotePlaybackMetricsCompanion(')
+          ..write('remoteShareId: $remoteShareId, ')
+          ..write('videoId: $videoId, ')
+          ..write('lastPlayedAt: $lastPlayedAt, ')
+          ..write('playCount: $playCount, ')
+          ..write('completionRate: $completionRate, ')
+          ..write('replayRate: $replayRate, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -5334,6 +6180,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RemoteAssetsTable remoteAssets = $RemoteAssetsTable(this);
   late final $ShareRecordsTable shareRecords = $ShareRecordsTable(this);
   late final $LikesTable likes = $LikesTable(this);
+  late final $ReactionsTable reactions = $ReactionsTable(this);
+  late final $RemotePlaybackMetricsTable remotePlaybackMetrics =
+      $RemotePlaybackMetricsTable(this);
   late final $ReportsTable reports = $ReportsTable(this);
   late final $ModerationAuditLogsTable moderationAuditLogs =
       $ModerationAuditLogsTable(this);
@@ -5349,6 +6198,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     remoteAssets,
     shareRecords,
     likes,
+    reactions,
+    remotePlaybackMetrics,
     reports,
     moderationAuditLogs,
     appSettings,
@@ -7788,6 +8639,448 @@ typedef $$LikesTableProcessedTableManager =
       Like,
       PrefetchHooks Function()
     >;
+typedef $$ReactionsTableCreateCompanionBuilder =
+    ReactionsCompanion Function({
+      Value<int> id,
+      required String videoId,
+      required String childProfileId,
+      required String parentPubkey,
+      required String emoji,
+      required DateTime createdAt,
+    });
+typedef $$ReactionsTableUpdateCompanionBuilder =
+    ReactionsCompanion Function({
+      Value<int> id,
+      Value<String> videoId,
+      Value<String> childProfileId,
+      Value<String> parentPubkey,
+      Value<String> emoji,
+      Value<DateTime> createdAt,
+    });
+
+class $$ReactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ReactionsTable> {
+  $$ReactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get videoId => $composableBuilder(
+    column: $table.videoId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childProfileId => $composableBuilder(
+    column: $table.childProfileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentPubkey => $composableBuilder(
+    column: $table.parentPubkey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReactionsTable> {
+  $$ReactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get videoId => $composableBuilder(
+    column: $table.videoId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childProfileId => $composableBuilder(
+    column: $table.childProfileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parentPubkey => $composableBuilder(
+    column: $table.parentPubkey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReactionsTable> {
+  $$ReactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get videoId =>
+      $composableBuilder(column: $table.videoId, builder: (column) => column);
+
+  GeneratedColumn<String> get childProfileId => $composableBuilder(
+    column: $table.childProfileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get parentPubkey => $composableBuilder(
+    column: $table.parentPubkey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emoji =>
+      $composableBuilder(column: $table.emoji, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ReactionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReactionsTable,
+          Reaction,
+          $$ReactionsTableFilterComposer,
+          $$ReactionsTableOrderingComposer,
+          $$ReactionsTableAnnotationComposer,
+          $$ReactionsTableCreateCompanionBuilder,
+          $$ReactionsTableUpdateCompanionBuilder,
+          (Reaction, BaseReferences<_$AppDatabase, $ReactionsTable, Reaction>),
+          Reaction,
+          PrefetchHooks Function()
+        > {
+  $$ReactionsTableTableManager(_$AppDatabase db, $ReactionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReactionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReactionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> videoId = const Value.absent(),
+                Value<String> childProfileId = const Value.absent(),
+                Value<String> parentPubkey = const Value.absent(),
+                Value<String> emoji = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ReactionsCompanion(
+                id: id,
+                videoId: videoId,
+                childProfileId: childProfileId,
+                parentPubkey: parentPubkey,
+                emoji: emoji,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String videoId,
+                required String childProfileId,
+                required String parentPubkey,
+                required String emoji,
+                required DateTime createdAt,
+              }) => ReactionsCompanion.insert(
+                id: id,
+                videoId: videoId,
+                childProfileId: childProfileId,
+                parentPubkey: parentPubkey,
+                emoji: emoji,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReactionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReactionsTable,
+      Reaction,
+      $$ReactionsTableFilterComposer,
+      $$ReactionsTableOrderingComposer,
+      $$ReactionsTableAnnotationComposer,
+      $$ReactionsTableCreateCompanionBuilder,
+      $$ReactionsTableUpdateCompanionBuilder,
+      (Reaction, BaseReferences<_$AppDatabase, $ReactionsTable, Reaction>),
+      Reaction,
+      PrefetchHooks Function()
+    >;
+typedef $$RemotePlaybackMetricsTableCreateCompanionBuilder =
+    RemotePlaybackMetricsCompanion Function({
+      required String remoteShareId,
+      required String videoId,
+      Value<DateTime?> lastPlayedAt,
+      Value<int> playCount,
+      Value<double> completionRate,
+      Value<double> replayRate,
+      Value<int> rowid,
+    });
+typedef $$RemotePlaybackMetricsTableUpdateCompanionBuilder =
+    RemotePlaybackMetricsCompanion Function({
+      Value<String> remoteShareId,
+      Value<String> videoId,
+      Value<DateTime?> lastPlayedAt,
+      Value<int> playCount,
+      Value<double> completionRate,
+      Value<double> replayRate,
+      Value<int> rowid,
+    });
+
+class $$RemotePlaybackMetricsTableFilterComposer
+    extends Composer<_$AppDatabase, $RemotePlaybackMetricsTable> {
+  $$RemotePlaybackMetricsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get videoId => $composableBuilder(
+    column: $table.videoId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastPlayedAt => $composableBuilder(
+    column: $table.lastPlayedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playCount => $composableBuilder(
+    column: $table.playCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get completionRate => $composableBuilder(
+    column: $table.completionRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get replayRate => $composableBuilder(
+    column: $table.replayRate,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RemotePlaybackMetricsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RemotePlaybackMetricsTable> {
+  $$RemotePlaybackMetricsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get videoId => $composableBuilder(
+    column: $table.videoId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastPlayedAt => $composableBuilder(
+    column: $table.lastPlayedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get playCount => $composableBuilder(
+    column: $table.playCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get completionRate => $composableBuilder(
+    column: $table.completionRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get replayRate => $composableBuilder(
+    column: $table.replayRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RemotePlaybackMetricsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RemotePlaybackMetricsTable> {
+  $$RemotePlaybackMetricsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get videoId =>
+      $composableBuilder(column: $table.videoId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastPlayedAt => $composableBuilder(
+    column: $table.lastPlayedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get playCount =>
+      $composableBuilder(column: $table.playCount, builder: (column) => column);
+
+  GeneratedColumn<double> get completionRate => $composableBuilder(
+    column: $table.completionRate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get replayRate => $composableBuilder(
+    column: $table.replayRate,
+    builder: (column) => column,
+  );
+}
+
+class $$RemotePlaybackMetricsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RemotePlaybackMetricsTable,
+          RemotePlaybackMetric,
+          $$RemotePlaybackMetricsTableFilterComposer,
+          $$RemotePlaybackMetricsTableOrderingComposer,
+          $$RemotePlaybackMetricsTableAnnotationComposer,
+          $$RemotePlaybackMetricsTableCreateCompanionBuilder,
+          $$RemotePlaybackMetricsTableUpdateCompanionBuilder,
+          (
+            RemotePlaybackMetric,
+            BaseReferences<
+              _$AppDatabase,
+              $RemotePlaybackMetricsTable,
+              RemotePlaybackMetric
+            >,
+          ),
+          RemotePlaybackMetric,
+          PrefetchHooks Function()
+        > {
+  $$RemotePlaybackMetricsTableTableManager(
+    _$AppDatabase db,
+    $RemotePlaybackMetricsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemotePlaybackMetricsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RemotePlaybackMetricsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RemotePlaybackMetricsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> remoteShareId = const Value.absent(),
+                Value<String> videoId = const Value.absent(),
+                Value<DateTime?> lastPlayedAt = const Value.absent(),
+                Value<int> playCount = const Value.absent(),
+                Value<double> completionRate = const Value.absent(),
+                Value<double> replayRate = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RemotePlaybackMetricsCompanion(
+                remoteShareId: remoteShareId,
+                videoId: videoId,
+                lastPlayedAt: lastPlayedAt,
+                playCount: playCount,
+                completionRate: completionRate,
+                replayRate: replayRate,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String remoteShareId,
+                required String videoId,
+                Value<DateTime?> lastPlayedAt = const Value.absent(),
+                Value<int> playCount = const Value.absent(),
+                Value<double> completionRate = const Value.absent(),
+                Value<double> replayRate = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RemotePlaybackMetricsCompanion.insert(
+                remoteShareId: remoteShareId,
+                videoId: videoId,
+                lastPlayedAt: lastPlayedAt,
+                playCount: playCount,
+                completionRate: completionRate,
+                replayRate: replayRate,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RemotePlaybackMetricsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RemotePlaybackMetricsTable,
+      RemotePlaybackMetric,
+      $$RemotePlaybackMetricsTableFilterComposer,
+      $$RemotePlaybackMetricsTableOrderingComposer,
+      $$RemotePlaybackMetricsTableAnnotationComposer,
+      $$RemotePlaybackMetricsTableCreateCompanionBuilder,
+      $$RemotePlaybackMetricsTableUpdateCompanionBuilder,
+      (
+        RemotePlaybackMetric,
+        BaseReferences<
+          _$AppDatabase,
+          $RemotePlaybackMetricsTable,
+          RemotePlaybackMetric
+        >,
+      ),
+      RemotePlaybackMetric,
+      PrefetchHooks Function()
+    >;
 typedef $$ReportsTableCreateCompanionBuilder =
     ReportsCompanion Function({
       required String id,
@@ -8641,6 +9934,10 @@ class $AppDatabaseManager {
       $$ShareRecordsTableTableManager(_db, _db.shareRecords);
   $$LikesTableTableManager get likes =>
       $$LikesTableTableManager(_db, _db.likes);
+  $$ReactionsTableTableManager get reactions =>
+      $$ReactionsTableTableManager(_db, _db.reactions);
+  $$RemotePlaybackMetricsTableTableManager get remotePlaybackMetrics =>
+      $$RemotePlaybackMetricsTableTableManager(_db, _db.remotePlaybackMetrics);
   $$ReportsTableTableManager get reports =>
       $$ReportsTableTableManager(_db, _db.reports);
   $$ModerationAuditLogsTableTableManager get moderationAuditLogs =>

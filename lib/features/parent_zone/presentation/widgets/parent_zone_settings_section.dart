@@ -28,6 +28,7 @@ class ParentZoneSettingsSection extends ConsumerWidget {
     required this.onPublishBlossomServers,
     required this.onUpdatePin,
     required this.onProvisionSafetyHq,
+    required this.onResetApp,
   });
 
   final TextEditingController displayNameController;
@@ -48,6 +49,7 @@ class ParentZoneSettingsSection extends ConsumerWidget {
   final Future<void> Function(List<String> servers) onPublishBlossomServers;
   final VoidCallback onUpdatePin;
   final Future<void> Function() onProvisionSafetyHq;
+  final Future<void> Function() onResetApp;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -61,8 +63,34 @@ class ParentZoneSettingsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
+                'Settings & Safety',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Adjust the parent profile, connection health, media servers, and safety controls from one calmer workspace.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
                 'Parent Profile',
                 style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose the name other families will see when you connect or share.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -101,6 +129,13 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                 'Approvals & Scanning',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
+              const SizedBox(height: 4),
+              Text(
+                'Decide how much parent review happens before a clip can leave the device.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+              ),
               const SizedBox(height: 12),
               SwitchListTile.adaptive(
                 value: approvalRequired,
@@ -124,15 +159,32 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Offline Queue',
+                    'Connection Health',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
                   Text(
                     queuedActions.isEmpty
-                        ? 'Everything has synced.'
-                        : '${queuedActions.length} action(s) are waiting for a relay connection.',
-                    style: Theme.of(context).textTheme.bodySmall,
+                        ? 'Sharing and reporting are connected right now.'
+                        : 'Some actions are waiting for a relay connection before they can finish.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                  ),
+                  const SizedBox(height: 12),
+                  _InlineStatus(
+                    icon: queuedActions.isEmpty
+                        ? Icons.cloud_done_rounded
+                        : Icons.cloud_off_rounded,
+                    color: queuedActions.isEmpty
+                        ? palette.success
+                        : palette.warning,
+                    title: queuedActions.isEmpty
+                        ? 'Everything has synced'
+                        : '${queuedActions.length} queued action(s)',
+                    detail: queuedActions.isEmpty
+                        ? 'No retries needed.'
+                        : 'Retry when you want to push waiting work back through.',
                   ),
                   const SizedBox(height: 12),
                   FilledButton.tonal(
@@ -158,33 +210,33 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Relays',
+                    'Relay Access',
                     style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'These relay addresses carry invites, reports, and family updates.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
                   const SizedBox(height: 12),
                   for (final relay in relays)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Icon(Icons.circle, size: 6, color: palette.success),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              relay,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 18),
-                            onPressed: () async {
-                              await onRemoveRelay(relay);
-                              onRefresh();
-                            },
-                          ),
-                        ],
-                      ),
+                    _ServerRow(
+                      icon: Icons.circle,
+                      color: palette.success,
+                      value: relay,
+                      onRemove: () async {
+                        await onRemoveRelay(relay);
+                        onRefresh();
+                      },
                     ),
+                  if (relays.isEmpty)
+                    Text(
+                      'No custom relays saved yet.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: relayController,
                     decoration: const InputDecoration(
@@ -236,30 +288,24 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Blossom Servers',
+                    'Media Servers',
                     style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Choose where encrypted media uploads can live for family delivery.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
                   const SizedBox(height: 12),
                   for (final server in servers)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.cloud_done_rounded,
-                            size: 16,
-                            color: palette.accent,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              server,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
+                    _ServerRow(
+                      icon: Icons.cloud_done_rounded,
+                      color: palette.accent,
+                      value: server,
                     ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: blossomController,
                     decoration: const InputDecoration(
@@ -285,7 +331,7 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                             : () async {
                                 await onPublishBlossomServers(servers);
                               },
-                        child: const Text('Publish kind:10063'),
+                        child: const Text('Publish server list'),
                       ),
                     ],
                   ),
@@ -306,13 +352,22 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                     'Safety HQ',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'This is the app-managed moderation inbox for higher-risk reports.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                  ),
                   const SizedBox(height: 12),
                   safetyStatus.when(
                     data: (status) => _SafetyStatusBody(status: status),
                     loading: () => const LinearProgressIndicator(minHeight: 2),
                     error: (error, _) => Text(
-                      '$error',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      'Safety HQ needs another moment to connect.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: palette.mutedInk,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -333,13 +388,20 @@ class ParentZoneSettingsSection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Parent PIN',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: pinManagementController,
+                  Text(
+                    'Parent PIN',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Update the four-digit code that protects the parent workspace.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: pinManagementController,
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
@@ -352,6 +414,44 @@ class ParentZoneSettingsSection extends ConsumerWidget {
               FilledButton(
                 onPressed: onUpdatePin,
                 child: const Text('Update PIN'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Reset This Device',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Sign out and wipe this device\'s local Nook data, including cached media, queued actions, and the parent PIN.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+              ),
+              const SizedBox(height: 12),
+              _InlineStatus(
+                icon: Icons.warning_amber_rounded,
+                color: palette.danger,
+                title: 'This cannot be undone on this device',
+                detail:
+                    'Make sure your parent recovery key is saved somewhere safe before you continue.',
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  foregroundColor: palette.danger,
+                  backgroundColor: palette.danger.withValues(alpha: 0.10),
+                ),
+                onPressed: () async {
+                  await onResetApp();
+                },
+                child: const Text('Sign out & reset app'),
               ),
             ],
           ),
@@ -377,21 +477,115 @@ class _SafetyStatusBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lines = <String>[
-      'Status: ${status.label}',
-      if (status.groupId != null && status.groupId!.isNotEmpty)
-        'Group: ${status.groupId!}',
-      if (status.lastSyncAt != null) 'Updated: ${status.lastSyncAt!.toLocal()}',
-    ];
+    final palette = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final line in lines)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(line, style: Theme.of(context).textTheme.bodySmall),
+        _InlineStatus(
+          icon: status.isJoined
+              ? Icons.shield_rounded
+              : Icons.shield_outlined,
+          color: status.isJoined ? Colors.green : Colors.orange,
+          title: 'Status: ${status.label}',
+          detail: status.lastSyncAt == null
+              ? 'No recent update yet.'
+              : 'Last updated ${status.lastSyncAt!.toLocal()}',
+        ),
+        if (status.groupId != null && status.groupId!.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            'Group ID',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: palette.onSurface.withValues(alpha: 0.6),
+            ),
           ),
+          const SizedBox(height: 4),
+          Text(status.groupId!, style: Theme.of(context).textTheme.bodySmall),
+        ],
       ],
+    );
+  }
+}
+
+class _InlineStatus extends StatelessWidget {
+  const _InlineStatus({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 3),
+              Text(detail, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ServerRow extends StatelessWidget {
+  const _ServerRow({
+    required this.icon,
+    required this.color,
+    required this.value,
+    this.onRemove,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String value;
+  final Future<void> Function()? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 8),
+          Expanded(child: Text(value, style: Theme.of(context).textTheme.bodySmall)),
+          if (onRemove != null)
+            IconButton(
+              icon: const Icon(Icons.close_rounded, size: 18),
+              onPressed: () async {
+                await onRemove!();
+              },
+            ),
+        ],
+      ),
     );
   }
 }

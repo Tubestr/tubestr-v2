@@ -32,7 +32,7 @@ class _ConfettiViewState extends State<ConfettiView>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2500),
     );
     if (widget.play) {
       _controller.forward();
@@ -85,20 +85,18 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final pieceCount = 48;
+    const pieceCount = 120;
     for (var index = 0; index < pieceCount; index++) {
       final seed = index + 1;
       final startX = (size.width * ((seed * 37) % 100) / 100).clamp(
         16.0,
         size.width - 16,
       );
-      final drift = (((seed * 17) % 24) - 12) * progress * 3;
+      final drift = (((seed * 17) % 48) - 24) * progress * 4;
       final startY = -24.0 - (seed % 8) * 12.0;
-      final endY = size.height * 0.72 + (seed % 10) * 10.0;
+      final endY = size.height * 0.85 + (seed % 10) * 10.0;
       final y = lerpDouble(startY, endY, progress)!;
       final rotation = progress * math.pi * ((seed % 5) + 1);
-      final width = 8.0 + (seed % 4) * 2.0;
-      final height = 10.0 + (seed % 3) * 3.0;
       final color = colors[index % colors.length].withValues(
         alpha: (1 - progress * 0.35).clamp(0.0, 1.0),
       );
@@ -107,13 +105,36 @@ class _ConfettiPainter extends CustomPainter {
       canvas.save();
       canvas.translate(startX + drift, y);
       canvas.rotate(rotation);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset.zero, width: width, height: height),
-          const Radius.circular(3),
-        ),
-        paint,
-      );
+
+      // Three shape varieties: circle, square, elongated rectangle
+      final shapeKind = seed % 3;
+      if (shapeKind == 0) {
+        // Circle
+        final radius = 4.0 + (seed % 4) * 1.5;
+        canvas.drawCircle(Offset.zero, radius, paint);
+      } else if (shapeKind == 1) {
+        // Square
+        final side = 7.0 + (seed % 4) * 2.0;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: side, height: side),
+            const Radius.circular(2),
+          ),
+          paint,
+        );
+      } else {
+        // Elongated rectangle
+        final width = 5.0 + (seed % 3) * 2.0;
+        final height = 14.0 + (seed % 4) * 3.0;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: width, height: height),
+            const Radius.circular(3),
+          ),
+          paint,
+        );
+      }
+
       canvas.restore();
     }
   }

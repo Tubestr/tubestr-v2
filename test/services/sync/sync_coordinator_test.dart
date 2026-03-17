@@ -105,137 +105,187 @@ void main() {
     },
   );
 
-  test('projectProcessedMessage stores likes for remote engagement updates', () async {
-    final database = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(database.close);
+  test(
+    'projectProcessedMessage stores likes for remote engagement updates',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
 
-    final coordinator = SyncCoordinator(
-      database: database,
-      mdkService: MdkService(),
-    );
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: MdkService(),
+      );
 
-    final result = await coordinator.projectProcessedMessage(
-      const MdkProcessedMessage(
-        outcome: MdkMessageOutcome.applicationMessage,
-        mlsGroupIdHex: 'abcd1234',
-        messageEventIdHex: 'rumor-event-2',
-        wrapperEventIdHex: 'wrapper-event-2',
-        pubkeyHex: 'sender-pubkey',
-        kind: 4546,
-        content:
-            '{"t":"mytube/like","video_id":"video-1","child_profile_id":"child-1","by":"sender-pubkey","ts":1710460800}',
-        createdAt: 1710460800,
-        state: 'processed',
-      ),
-    );
+      final result = await coordinator.projectProcessedMessage(
+        const MdkProcessedMessage(
+          outcome: MdkMessageOutcome.applicationMessage,
+          mlsGroupIdHex: 'abcd1234',
+          messageEventIdHex: 'rumor-event-2',
+          wrapperEventIdHex: 'wrapper-event-2',
+          pubkeyHex: 'sender-pubkey',
+          kind: 4546,
+          content:
+              '{"t":"mytube/like","video_id":"video-1","child_profile_id":"child-1","by":"sender-pubkey","ts":1710460800}',
+          createdAt: 1710460800,
+          state: 'processed',
+        ),
+      );
 
-    final likeCount = await database.watchLikeCountForVideo('video-1').first;
-    final hasLike = await database
-        .watchLikeForVideoByParentAndChild(
-          videoId: 'video-1',
-          childProfileId: 'child-1',
-          parentPubkey: 'sender-pubkey',
-        )
-        .first;
+      final likeCount = await database.watchLikeCountForVideo('video-1').first;
+      final hasLike = await database
+          .watchLikeForVideoByParentAndChild(
+            videoId: 'video-1',
+            childProfileId: 'child-1',
+            parentPubkey: 'sender-pubkey',
+          )
+          .first;
 
-    expect(result.projected, isTrue);
-    expect(result.reason, 'projected:like');
-    expect(likeCount, 1);
-    expect(hasLike, isTrue);
-  });
+      expect(result.projected, isTrue);
+      expect(result.reason, 'projected:like');
+      expect(likeCount, 1);
+      expect(hasLike, isTrue);
+    },
+  );
 
-  test('projectProcessedMessage stores inbound reports for parent review', () async {
-    final database = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(database.close);
+  test(
+    'projectProcessedMessage stores reactions for remote engagement updates',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
 
-    final coordinator = SyncCoordinator(
-      database: database,
-      mdkService: MdkService(),
-      identityService: _FakeIdentityService(identity: identity, database: database),
-    );
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: MdkService(),
+      );
 
-    final result = await coordinator.projectProcessedMessage(
-      const MdkProcessedMessage(
-        outcome: MdkMessageOutcome.applicationMessage,
-        mlsGroupIdHex: 'abcd1234',
-        messageEventIdHex: 'rumor-event-3',
-        wrapperEventIdHex: 'wrapper-event-3',
-        pubkeyHex: 'remote-parent',
-        kind: 4547,
-        content:
-            '{"t":"mytube/report","report_id":"report-1","video_id":"video-1","subject_child_id":"child-1","blob_hash":"blob-1","reason":"inappropriate","note":"Needs a check-in","level":2,"recipient_type":"parents","reporter_child_id":"child-2","by":"remote-parent","ts":1710460800}',
-        createdAt: 1710460800,
-        state: 'processed',
-      ),
-    );
+      final result = await coordinator.projectProcessedMessage(
+        const MdkProcessedMessage(
+          outcome: MdkMessageOutcome.applicationMessage,
+          mlsGroupIdHex: 'abcd1234',
+          messageEventIdHex: 'rumor-event-2b',
+          wrapperEventIdHex: 'wrapper-event-2b',
+          pubkeyHex: 'sender-pubkey',
+          kind: 4548,
+          content:
+              '{"t":"mytube/reaction","video_id":"video-1","child_profile_id":"child-1","emoji":"🎉","by":"sender-pubkey","ts":1710460800}',
+          createdAt: 1710460800,
+          state: 'processed',
+        ),
+      );
 
-    final reports = await database.watchReports().first;
+      final reactions = await database.watchReactionsForVideo('video-1').first;
 
-    expect(result.projected, isTrue);
-    expect(result.reason, 'projected:report');
-    expect(reports, hasLength(1));
-    expect(reports.single.id, 'report-1');
-    expect(reports.single.isOutbound, isFalse);
-    expect(reports.single.status, 'received');
-    expect(reports.single.reason, 'inappropriate');
-  });
+      expect(result.projected, isTrue);
+      expect(result.reason, 'projected:reaction');
+      expect(reactions, hasLength(1));
+      expect(reactions.single.emoji, '🎉');
+    },
+  );
 
-  test('projectProcessedMessage purges cached media when a video is deleted', () async {
-    final database = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(database.close);
+  test(
+    'projectProcessedMessage stores inbound reports for parent review',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
 
-    await database.upsertRemoteShareProjection(
-      videoId: 'video-1',
-      mlsGroupId: 'abcd1234',
-      senderParentKey: 'sender-pubkey',
-      childProfileId: 'child-1',
-      childDisplayName: 'Emma',
-      blobHash: 'blob-1',
-      thumbHash: 'thumb-1',
-      epoch: 'epoch-1',
-      mime: 'video/mp4',
-      metadataJson: '{}',
-      localMediaPath: '/tmp/video.mp4',
-      localThumbPath: '/tmp/video.jpg',
-      status: 'downloaded',
-    );
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: MdkService(),
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
 
-    final coordinator = SyncCoordinator(
-      database: database,
-      mdkService: MdkService(),
-      identityService: _FakeIdentityService(identity: identity, database: database),
-    );
+      final result = await coordinator.projectProcessedMessage(
+        const MdkProcessedMessage(
+          outcome: MdkMessageOutcome.applicationMessage,
+          mlsGroupIdHex: 'abcd1234',
+          messageEventIdHex: 'rumor-event-3',
+          wrapperEventIdHex: 'wrapper-event-3',
+          pubkeyHex: 'remote-parent',
+          kind: 4547,
+          content:
+              '{"t":"mytube/report","report_id":"report-1","video_id":"video-1","subject_child_id":"child-1","blob_hash":"blob-1","reason":"inappropriate","note":"Needs a check-in","level":2,"recipient_type":"parents","reporter_child_id":"child-2","by":"remote-parent","ts":1710460800}',
+          createdAt: 1710460800,
+          state: 'processed',
+        ),
+      );
 
-    final result = await coordinator.projectProcessedMessage(
-      const MdkProcessedMessage(
-        outcome: MdkMessageOutcome.applicationMessage,
-        mlsGroupIdHex: 'abcd1234',
-        messageEventIdHex: 'rumor-event-4',
-        wrapperEventIdHex: 'wrapper-event-4',
-        pubkeyHex: 'sender-pubkey',
-        kind: 4545,
-        content:
-            '{"t":"mytube/video_delete","video_id":"video-1","blob_hash":"blob-1","reason":"removed","by":"sender-pubkey","ts":1710460800}',
-        createdAt: 1710460800,
-        state: 'processed',
-      ),
-    );
+      final reports = await database.watchReports().first;
 
-    final projection = await database.getRemoteShareProjectionByRemoteShareId(
-      buildRemoteShareId(
-        senderParentKey: 'sender-pubkey',
-        mlsGroupId: 'abcd1234',
+      expect(result.projected, isTrue);
+      expect(result.reason, 'projected:report');
+      expect(reports, hasLength(1));
+      expect(reports.single.id, 'report-1');
+      expect(reports.single.isOutbound, isFalse);
+      expect(reports.single.status, 'received');
+      expect(reports.single.reason, 'inappropriate');
+    },
+  );
+
+  test(
+    'projectProcessedMessage purges cached media when a video is deleted',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.upsertRemoteShareProjection(
         videoId: 'video-1',
-      ),
-    );
+        mlsGroupId: 'abcd1234',
+        senderParentKey: 'sender-pubkey',
+        childProfileId: 'child-1',
+        childDisplayName: 'Emma',
+        blobHash: 'blob-1',
+        thumbHash: 'thumb-1',
+        epoch: 'epoch-1',
+        mime: 'video/mp4',
+        metadataJson: '{}',
+        localMediaPath: '/tmp/video.mp4',
+        localThumbPath: '/tmp/video.jpg',
+        status: 'downloaded',
+      );
 
-    expect(result.projected, isTrue);
-    expect(result.reason, 'projected:video_delete');
-    expect(projection, isNotNull);
-    expect(projection!.status, 'deleted');
-    expect(projection.localMediaPath, isNull);
-    expect(projection.localThumbPath, isNull);
-  });
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: MdkService(),
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
+
+      final result = await coordinator.projectProcessedMessage(
+        const MdkProcessedMessage(
+          outcome: MdkMessageOutcome.applicationMessage,
+          mlsGroupIdHex: 'abcd1234',
+          messageEventIdHex: 'rumor-event-4',
+          wrapperEventIdHex: 'wrapper-event-4',
+          pubkeyHex: 'sender-pubkey',
+          kind: 4545,
+          content:
+              '{"t":"mytube/video_delete","video_id":"video-1","blob_hash":"blob-1","reason":"removed","by":"sender-pubkey","ts":1710460800}',
+          createdAt: 1710460800,
+          state: 'processed',
+        ),
+      );
+
+      final projection = await database.getRemoteShareProjectionByRemoteShareId(
+        buildRemoteShareId(
+          senderParentKey: 'sender-pubkey',
+          mlsGroupId: 'abcd1234',
+          videoId: 'video-1',
+        ),
+      );
+
+      expect(result.projected, isTrue);
+      expect(result.reason, 'projected:video_delete');
+      expect(projection, isNotNull);
+      expect(projection!.status, 'deleted');
+      expect(projection.localMediaPath, isNull);
+      expect(projection.localThumbPath, isNull);
+    },
+  );
 
   test(
     'refreshSubscriptions picks up newly joined groups for relay sync',

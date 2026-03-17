@@ -121,6 +121,28 @@ class Likes extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
+class Reactions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get videoId => text()();
+  TextColumn get childProfileId => text()();
+  TextColumn get parentPubkey => text()();
+  TextColumn get emoji => text()();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+class RemotePlaybackMetrics extends Table {
+  TextColumn get remoteShareId =>
+      text().references(ShareRecords, #remoteShareId)();
+  TextColumn get videoId => text()();
+  DateTimeColumn get lastPlayedAt => dateTime().nullable()();
+  IntColumn get playCount => integer().withDefault(const Constant(0))();
+  RealColumn get completionRate => real().withDefault(const Constant(0))();
+  RealColumn get replayRate => real().withDefault(const Constant(0))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {remoteShareId};
+}
+
 class Reports extends Table {
   TextColumn get id => text()();
   TextColumn get videoId => text()();
@@ -170,6 +192,8 @@ class AppSettings extends Table {
     RemoteAssets,
     ShareRecords,
     Likes,
+    Reactions,
+    RemotePlaybackMetrics,
     Reports,
     ModerationAuditLogs,
     AppSettings,
@@ -181,7 +205,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 3) {
+        await m.createTable(reactions);
+        await m.createTable(remotePlaybackMetrics);
+      }
+    },
+  );
 
   Stream<List<Profile>> watchProfiles() {
     return (select(
@@ -283,6 +317,13 @@ class AppDatabase extends _$AppDatabase {
     return query.watchSingle().map((row) => row.read(likes.id.count()) ?? 0);
   }
 
+  Stream<List<Like>> watchLikesForVideo(String videoId) {
+    return (select(likes)
+          ..where((tbl) => tbl.videoId.equals(videoId))
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
+        .watch();
+  }
+
   Stream<bool> watchLikeForVideoByParentAndChild({
     required String videoId,
     required String childProfileId,
@@ -298,6 +339,40 @@ class AppDatabase extends _$AppDatabase {
           ..limit(1))
         .watchSingleOrNull()
         .map((row) => row != null);
+  }
+
+  Stream<List<Reaction>> watchReactionsForVideo(String videoId) {
+    return (select(reactions)
+          ..where((tbl) => tbl.videoId.equals(videoId))
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
+        .watch();
+  }
+
+  Stream<List<String>> watchReactionsForVideoByParentAndChild({
+    required String videoId,
+    required String childProfileId,
+    required String parentPubkey,
+  }) {
+    return (select(reactions)..where(
+          (tbl) =>
+              tbl.videoId.equals(videoId) &
+              tbl.childProfileId.equals(childProfileId) &
+              tbl.parentPubkey.equals(parentPubkey),
+        ))
+        .watch()
+        .map(
+          (rows) =>
+              rows.map((row) => row.emoji).toSet().toList(growable: false),
+        );
+  }
+
+  Stream<RemotePlaybackMetric?> watchRemotePlaybackMetrics(
+    String remoteShareId,
+  ) {
+    return (select(remotePlaybackMetrics)
+          ..where((tbl) => tbl.remoteShareId.equals(remoteShareId))
+          ..limit(1))
+        .watchSingleOrNull();
   }
 
   Future<void> upsertProfile({
@@ -442,6 +517,22 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future<void> clearAllData() {
+    return transaction(() async {
+      await delete(remotePlaybackMetrics).go();
+      await delete(shareRecords).go();
+      await delete(remoteAssets).go();
+      await delete(likes).go();
+      await delete(reactions).go();
+      await delete(reports).go();
+      await delete(moderationAuditLogs).go();
+      await delete(profileGroups).go();
+      await delete(localVideos).go();
+      await delete(profiles).go();
+      await delete(appSettings).go();
+    });
+  }
+
   Future<void> addModerationAuditLog({
     String? videoId,
     String? mlsGroupId,
@@ -544,6 +635,41 @@ class AppDatabase extends _$AppDatabase {
   }) {
     return (update(localVideos)..where((tbl) => tbl.id.equals(videoId))).write(
       LocalVideosCompanion(liked: Value(liked)),
+    );
+  }
+
+  Future<void> recordLocalPlaybackSession({
+    required String videoId,
+    required double completionRatio,
+    required bool replayed,
+    DateTime? playedAt,
+  }) async {
+    final existing = await (select(
+      localVideos,
+    )..where((tbl) => tbl.id.equals(videoId))).getSingleOrNull();
+    if (existing == null) {
+      return;
+    }
+
+    await (update(localVideos)..where((tbl) => tbl.id.equals(videoId))).write(
+      LocalVideosCompanion(
+        lastPlayedAt: Value(playedAt ?? DateTime.now()),
+        playCount: Value(existing.playCount + 1),
+        completionRate: Value(
+          _rollingAverage(
+            previousAverage: existing.completionRate,
+            previousCount: existing.playCount,
+            nextValue: completionRatio.clamp(0.0, 1.0),
+          ),
+        ),
+        replayRate: Value(
+          _rollingAverage(
+            previousAverage: existing.replayRate,
+            previousCount: existing.playCount,
+            nextValue: replayed ? 1.0 : 0.0,
+          ),
+        ),
+      ),
     );
   }
 
@@ -665,19 +791,15 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> clearRemoteMediaCachePath({required String remoteShareId}) {
-    return (update(
-      remoteAssets,
-    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
-      const RemoteAssetsCompanion(localMediaPath: Value(null)),
-    );
+    return (update(remoteAssets)
+          ..where((tbl) => tbl.remoteShareId.equals(remoteShareId)))
+        .write(const RemoteAssetsCompanion(localMediaPath: Value(null)));
   }
 
   Future<void> clearRemoteThumbCachePath({required String remoteShareId}) {
-    return (update(
-      remoteAssets,
-    )..where((tbl) => tbl.remoteShareId.equals(remoteShareId))).write(
-      const RemoteAssetsCompanion(localThumbPath: Value(null)),
-    );
+    return (update(remoteAssets)
+          ..where((tbl) => tbl.remoteShareId.equals(remoteShareId)))
+        .write(const RemoteAssetsCompanion(localThumbPath: Value(null)));
   }
 
   Future<void> updateRemoteShareStatus({
@@ -751,6 +873,80 @@ class AppDatabase extends _$AppDatabase {
 
     await (update(likes)..where((tbl) => tbl.id.equals(existing.id))).write(
       LikesCompanion(createdAt: Value(createdAt ?? DateTime.now())),
+    );
+  }
+
+  Future<void> upsertReaction({
+    required String videoId,
+    required String childProfileId,
+    required String parentPubkey,
+    required String emoji,
+    DateTime? createdAt,
+  }) async {
+    final existing =
+        await (select(reactions)
+              ..where(
+                (tbl) =>
+                    tbl.videoId.equals(videoId) &
+                    tbl.childProfileId.equals(childProfileId) &
+                    tbl.parentPubkey.equals(parentPubkey) &
+                    tbl.emoji.equals(emoji),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+
+    if (existing == null) {
+      await into(reactions).insert(
+        ReactionsCompanion.insert(
+          videoId: videoId,
+          childProfileId: childProfileId,
+          parentPubkey: parentPubkey,
+          emoji: emoji,
+          createdAt: createdAt ?? DateTime.now(),
+        ),
+      );
+      return;
+    }
+
+    await (update(reactions)..where((tbl) => tbl.id.equals(existing.id))).write(
+      ReactionsCompanion(createdAt: Value(createdAt ?? DateTime.now())),
+    );
+  }
+
+  Future<void> recordRemotePlaybackSession({
+    required String remoteShareId,
+    required String videoId,
+    required double completionRatio,
+    required bool replayed,
+    DateTime? playedAt,
+  }) async {
+    final existing =
+        await (select(remotePlaybackMetrics)
+              ..where((tbl) => tbl.remoteShareId.equals(remoteShareId)))
+            .getSingleOrNull();
+    final previousCount = existing?.playCount ?? 0;
+
+    await into(remotePlaybackMetrics).insertOnConflictUpdate(
+      RemotePlaybackMetricsCompanion(
+        remoteShareId: Value(remoteShareId),
+        videoId: Value(videoId),
+        lastPlayedAt: Value(playedAt ?? DateTime.now()),
+        playCount: Value(previousCount + 1),
+        completionRate: Value(
+          _rollingAverage(
+            previousAverage: existing?.completionRate ?? 0,
+            previousCount: previousCount,
+            nextValue: completionRatio.clamp(0.0, 1.0),
+          ),
+        ),
+        replayRate: Value(
+          _rollingAverage(
+            previousAverage: existing?.replayRate ?? 0,
+            previousCount: previousCount,
+            nextValue: replayed ? 1.0 : 0.0,
+          ),
+        ),
+      ),
     );
   }
 
@@ -852,4 +1048,15 @@ LazyDatabase _openConnection() {
     final file = File(p.join(root.path, 'mytube.sqlite'));
     return NativeDatabase.createInBackground(file);
   });
+}
+
+double _rollingAverage({
+  required double previousAverage,
+  required int previousCount,
+  required double nextValue,
+}) {
+  if (previousCount <= 0) {
+    return nextValue;
+  }
+  return ((previousAverage * previousCount) + nextValue) / (previousCount + 1);
 }

@@ -20,11 +20,17 @@ class IdentityService {
   final AppDatabase _database;
   final Uuid _uuid = const Uuid();
   static final RegExp _hexKeyPattern = RegExp(r'^[0-9a-fA-F]{64}$');
+  static const IOSOptions _syncedAppleOptions = IOSOptions(
+    synchronizable: true,
+    accessibility: KeychainAccessibility.first_unlock,
+  );
+  static const AppleOptions _syncedMacOptions = MacOsOptions(
+    synchronizable: true,
+    accessibility: KeychainAccessibility.first_unlock,
+  );
 
   Future<ParentIdentity?> loadIdentity() async {
-    final raw = await _secureStorage.read(
-      key: AppConstants.parentIdentityStorageKey,
-    );
+    final raw = await _readParentIdentityRaw();
     if (raw == null || raw.isEmpty) {
       return null;
     }
@@ -41,26 +47,25 @@ class IdentityService {
       createdAtIso: DateTime.now().toUtc().toIso8601String(),
     );
 
-    await _secureStorage.write(
-      key: AppConstants.parentIdentityStorageKey,
-      value: identity.encode(),
-    );
+    await _persistParentIdentity(identity);
     await _database.putSetting(AppConstants.safetyJoinQueuedKey, 'true');
     return identity;
   }
 
   Future<ParentIdentity> importParentIdentity(String rawInput) async {
     final identity = parseImportedIdentity(rawInput);
-    await _secureStorage.write(
-      key: AppConstants.parentIdentityStorageKey,
-      value: identity.encode(),
-    );
+    await _persistParentIdentity(identity);
     await _database.putSetting(AppConstants.safetyJoinQueuedKey, 'true');
     return identity;
   }
 
   Future<void> clearIdentity() async {
     await _secureStorage.delete(key: AppConstants.parentIdentityStorageKey);
+    await _secureStorage.delete(
+      key: AppConstants.parentIdentityStorageKey,
+      iOptions: _syncedAppleOptions,
+      mOptions: _syncedMacOptions,
+    );
   }
 
   Future<void> createChildProfile({
@@ -121,6 +126,44 @@ class IdentityService {
 
     throw const FormatException(
       'Enter a valid `nsec1...` or 64-character hex private key.',
+    );
+  }
+
+  Future<String?> _readParentIdentityRaw() async {
+    final synced = await _secureStorage.read(
+      key: AppConstants.parentIdentityStorageKey,
+      iOptions: _syncedAppleOptions,
+      mOptions: _syncedMacOptions,
+    );
+    if (synced != null && synced.isNotEmpty) {
+      return synced;
+    }
+
+    final local = await _secureStorage.read(
+      key: AppConstants.parentIdentityStorageKey,
+    );
+    if (local != null && local.isNotEmpty) {
+      await _secureStorage.write(
+        key: AppConstants.parentIdentityStorageKey,
+        value: local,
+        iOptions: _syncedAppleOptions,
+        mOptions: _syncedMacOptions,
+      );
+    }
+    return local;
+  }
+
+  Future<void> _persistParentIdentity(ParentIdentity identity) async {
+    final encoded = identity.encode();
+    await _secureStorage.write(
+      key: AppConstants.parentIdentityStorageKey,
+      value: encoded,
+    );
+    await _secureStorage.write(
+      key: AppConstants.parentIdentityStorageKey,
+      value: encoded,
+      iOptions: _syncedAppleOptions,
+      mOptions: _syncedMacOptions,
     );
   }
 }
