@@ -35,10 +35,10 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 
 ## Status Snapshot
 
-- Date: 2026-03-15
+- Date: 2026-03-17
 - Workspace state: Flutter app bootstrapped, Drift code generated, analysis green
 - iOS app available for reference at `/home/lee/apps/tubestr-ios`
-- Current focus: tighten the capture -> scan -> edit -> share media loop, especially aspect-ratio correctness and streamlined next-step UX
+- Current focus: launch triage around parent-key recovery/export UX, iOS/device validation, and end-to-end verification for share/report flows
 
 ## Execution Rules
 
@@ -47,6 +47,43 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - Record key implementation notes and deviations under the phase they affect.
 - Prefer vertical slices that leave the app runnable after each major checkpoint.
 - Treat `docs/UIReference.md` as the required source of truth for screen structure, tablet-first layout, onboarding flow, and shared component behavior whenever UI work is in scope.
+
+## Launch Triage (2026-03-17)
+
+### Must Have Before Launch
+
+- [ ] Complete parent key import/export/recovery UX
+- [ ] Wire onboarding restore flow instead of leaving `onRestore` null
+- [ ] Expose full parent private-key reveal / hide / copy / share flow in Parent Zone per `docs/UIReference.md`
+- [ ] Add intentional backup/recovery messaging for the parent `nsec`
+- [ ] Build iOS debug successfully and validate on real iOS hardware
+- [ ] Verify share -> relay -> receive -> decrypt -> play flow end to end on real devices
+- [ ] Verify report routing to family group, Safety HQ, and BUD-09 where applicable
+- [ ] Make final editor ship/no-ship decision after device validation
+
+### Strongly Recommended
+
+- [ ] Add a fuller likes UX (for example a dedicated likes section/list) beyond the current count-only/player entry point
+- [ ] Decide whether remote unlike semantics are required for launch or explicitly defer them
+- [ ] Improve remote download / retry / error / approval states and friend-family activity visibility
+- [ ] Add safety explainer/help copy that clearly tells parents how moderation and sharing protections work
+- [ ] Add logging/error reporting hooks for launch diagnostics
+- [ ] Harden retry/background behavior beyond the current startup/resume/manual reconnect paths
+
+### Can Slip Post-Launch
+
+- [ ] View counts, unless we later decide they are required for ranking or trust
+- [ ] Emoji or richer reactions beyond likes
+- [ ] Subscription/paywall work
+- [ ] Deeper background orchestration
+
+### Notes
+
+- Parent/child identity scope changed in v2: child-key backup/recovery is not an MVP gap because children no longer have independent Nostr keys. The remaining identity blocker is the parent key story.
+- The secure-storage foundation already exists for launch-critical identity work: `IdentityService` persists the parent identity via `flutter_secure_storage`, and `ParentAuthService` hashes/stores the Parent Zone PIN there as well.
+- Current code evidence still shows the restore/export UX gap: onboarding leaves `onRestore` null, and the Flutter app does not yet appear to expose the spec's parent `KeyExportCard` reveal/copy/share flow.
+- Engagement has a real base layer today: remote likes publish/project and the player shows a count. The missing part is the fuller likes UX and a decision on unlike semantics, not basic like transport.
+- View counts appear absent from both projection/state and UI. They should not block MVP unless product/ranking needs change.
 
 ## Phase 0: Bootstrap
 
@@ -278,6 +315,10 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - [x] Ensure child profiles never create or require Nostr keys
 - [x] Keep MDK SQLite isolated from app DB access
 
+### Notes
+
+- Recovery/export hardening should stay framed around the parent key only. Do not reintroduce child-key recovery requirements unless the product model changes again.
+
 ### QA and Verification
 
 - [x] `flutter analyze`
@@ -295,10 +336,50 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - [x] Implement Phase 1 skeleton before deeper feature work
 - [x] Finish capture recording and local file pipeline
 - [x] Add thumbnail generation for recorded/imported clips
+- [ ] Finish parent key import/export/recovery UX and backup messaging
+- [ ] Build and validate on iOS hardware
+- [ ] Verify share/report flows end to end on real devices
+- [ ] Make editor ship/no-ship call from device-validation results
 - [ ] Extend the ranking engine and richer local video model behavior into the feed/player UX
 - [-] Replace NDK/MDK placeholders with verified transport and bridge flows
 
+## Launch Gap Checklist
+
+### Blockers
+
+- [ ] Finish parent key import/export/recovery UX, including explicit `nsec` reveal/copy/share and backup messaging
+- [ ] Add sign out / reset app flow that clears identity, local app state, queued actions, and cached media cleanly
+- [ ] Keep the new dedicated onboarding permissions step and verify camera/microphone prompts no longer appear from unrelated screens
+- [ ] Relock Parent Zone immediately on tab exit and keep 4-digit PIN entry auto-submitting without an extra confirmation tap
+- [ ] Build and validate on iOS devices, especially capture, playback, editor export, and permission prompts
+- [ ] Verify `share -> relay -> receive -> decrypt -> play` on real devices
+- [ ] Verify report routing to family group, Safety HQ, and BUD-09 on real devices
+- [ ] Add clearer user-facing retry/error states for queued shares, failed downloads, blocked approvals, and queued reports
+
+### Strongly Recommended For MVP
+
+- [ ] Add the onboarding restore path instead of leaving restore as a stub
+- [ ] Add key export surfaces in Parent Zone that match `docs/UIReference.md`
+- [ ] Add a lightweight “How Nook protects your child” / safety disclosure screen or section
+- [ ] Improve likes UX beyond the current bare count so families can understand engagement more clearly
+- [ ] Add logging and diagnostics hooks for relay failures, export failures, download failures, and share failures
+- [ ] Polish remote download, approval, and empty/error states across Home Feed, Player, and Parent Zone
+- [ ] Finish the remaining deep-link coverage for `tubestr://` and `mytube://`
+
+### Later / Nice To Have
+
+- [ ] Add view counts if we decide they are necessary for launch ranking or engagement UX
+- [ ] Add richer reactions beyond likes
+- [ ] Ship subscription/paywall support for cloud features
+- [ ] Add broader background retry orchestration beyond the current startup/resume/manual reconnect flushes
+
 ## Implementation Log
+
+### 2026-03-17
+
+- Added a launch-triage section that separates must-have blockers from strongly recommended and post-launch items.
+- Documented the parent-only identity nuance explicitly so MVP work stays focused on parent `nsec` export/recovery rather than the retired child-key model.
+- Captured the current evidence-based launch gaps around onboarding restore, parent key export UX, iOS validation, end-to-end share/report verification, likes UX, and observability/retry hardening.
 
 ### 2026-03-15 to 2026-03-16
 

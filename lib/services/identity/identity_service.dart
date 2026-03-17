@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ndk/shared/nips/nip01/bip340.dart' as bip340;
+import 'package:ndk/shared/nips/nip01/helpers.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/constants.dart';
@@ -17,6 +19,7 @@ class IdentityService {
   final FlutterSecureStorage _secureStorage;
   final AppDatabase _database;
   final Uuid _uuid = const Uuid();
+  static final RegExp _hexKeyPattern = RegExp(r'^[0-9a-fA-F]{64}$');
 
   Future<ParentIdentity?> loadIdentity() async {
     final raw = await _secureStorage.read(
@@ -38,6 +41,16 @@ class IdentityService {
       createdAtIso: DateTime.now().toUtc().toIso8601String(),
     );
 
+    await _secureStorage.write(
+      key: AppConstants.parentIdentityStorageKey,
+      value: identity.encode(),
+    );
+    await _database.putSetting(AppConstants.safetyJoinQueuedKey, 'true');
+    return identity;
+  }
+
+  Future<ParentIdentity> importParentIdentity(String rawInput) async {
+    final identity = parseImportedIdentity(rawInput);
     await _secureStorage.write(
       key: AppConstants.parentIdentityStorageKey,
       value: identity.encode(),
@@ -68,5 +81,46 @@ class IdentityService {
         mlsGroupId: inheritedGroupId,
       );
     }
+  }
+
+  @visibleForTesting
+  static ParentIdentity parseImportedIdentity(
+    String rawInput, {
+    DateTime? createdAt,
+  }) {
+    final privateKeyHex = _decodeImportedPrivateKeyHex(rawInput);
+    final publicKeyHex = bip340.Bip340.getPublicKey(privateKeyHex);
+    final timestamp = (createdAt ?? DateTime.now()).toUtc().toIso8601String();
+    return ParentIdentity(
+      publicKeyHex: publicKeyHex,
+      privateKeyHex: privateKeyHex,
+      npub: Helpers.encodeBech32(publicKeyHex, 'npub'),
+      nsec: Helpers.encodeBech32(privateKeyHex, 'nsec'),
+      createdAtIso: timestamp,
+    );
+  }
+
+  static String _decodeImportedPrivateKeyHex(String rawInput) {
+    final normalized = rawInput
+        .trim()
+        .replaceFirst(RegExp(r'^nostr:', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\s+'), '');
+    if (normalized.isEmpty) {
+      throw const FormatException('Enter your parent private key to continue.');
+    }
+    if (_hexKeyPattern.hasMatch(normalized)) {
+      return normalized.toLowerCase();
+    }
+
+    final decoded = Helpers.decodeBech32(normalized.toLowerCase());
+    final privateKeyHex = decoded.first;
+    final hrp = decoded.length > 1 ? decoded[1] : '';
+    if (hrp == 'nsec' && _hexKeyPattern.hasMatch(privateKeyHex)) {
+      return privateKeyHex.toLowerCase();
+    }
+
+    throw const FormatException(
+      'Enter a valid `nsec1...` or 64-character hex private key.',
+    );
   }
 }

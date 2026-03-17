@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:camera/camera.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/theme/theme_descriptor.dart';
@@ -72,7 +73,7 @@ class _ErrorScreen extends StatelessWidget {
 // Onboarding — multi-step flow matching v1 design
 // ---------------------------------------------------------------------------
 
-enum _Step { intro, roleSelect, parentKey, childProfiles, complete }
+enum _Step { intro, roleSelect, parentKey, childProfiles, permissions, complete }
 
 class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({super.key, required this.identity});
@@ -90,6 +91,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   ThemeDescriptor _childTheme = ThemeDescriptor.campfire;
   bool _busy = false;
   bool _showCelebration = false;
+  String? _permissionError;
   int _introPage = 0;
   final _introController = PageController();
 
@@ -144,6 +146,42 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     _nameController.clear();
     if (!mounted) return;
     setState(() => _busy = false);
+  }
+
+  Future<void> _requestPermissions() async {
+    setState(() {
+      _busy = true;
+      _permissionError = null;
+    });
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isNotEmpty) {
+        final controller = CameraController(
+          cameras.first,
+          ResolutionPreset.low,
+          enableAudio: true,
+        );
+        try {
+          await controller.initialize();
+        } finally {
+          await controller.dispose();
+        }
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() => _busy = false);
+      _finish();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busy = false;
+        _permissionError =
+            'We could not get camera and microphone access yet. You can try again now or allow them later in Settings.';
+      });
+    }
   }
 
   void _finish() {
@@ -233,7 +271,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                   busy: _busy,
                   onThemeChanged: (t) => setState(() => _childTheme = t),
                   onAdd: _addChild,
-                  onFinish: profiles.isNotEmpty ? _finish : null,
+                  onFinish: profiles.isNotEmpty
+                      ? () => _nextStep(_Step.permissions)
+                      : null,
+                ),
+                _Step.permissions => _PermissionsStep(
+                  key: const ValueKey('permissions'),
+                  palette: palette,
+                  busy: _busy,
+                  error: _permissionError,
+                  onAllow: _requestPermissions,
+                  onSkip: _finish,
                 ),
                 _Step.complete => _CompleteStep(
                   key: const ValueKey('complete'),
@@ -772,7 +820,170 @@ class _ChildProfilesStep extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Step 5 — Complete
+// Step 5 — Permissions
+// ---------------------------------------------------------------------------
+
+class _PermissionsStep extends StatelessWidget {
+  const _PermissionsStep({
+    super.key,
+    required this.palette,
+    required this.busy,
+    required this.error,
+    required this.onAllow,
+    required this.onSkip,
+  });
+
+  final KidPalette palette;
+  final bool busy;
+  final String? error;
+  final VoidCallback onAllow;
+  final VoidCallback onSkip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: palette.accent.withValues(alpha: 0.12),
+            ),
+            child: Icon(
+              Icons.perm_camera_mic_rounded,
+              size: 40,
+              color: palette.accent,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Allow Camera & Mic',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Nook uses the camera for recording videos and scanning family invites, and the microphone for video sound.',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
+          ),
+          const SizedBox(height: 24),
+          FrostCard(
+            child: Column(
+              children: [
+                _PermissionRow(
+                  icon: Icons.videocam_rounded,
+                  title: 'Camera',
+                  detail: 'Record clips and scan invite QR codes.',
+                  palette: palette,
+                ),
+                const SizedBox(height: 12),
+                _PermissionRow(
+                  icon: Icons.mic_rounded,
+                  title: 'Microphone',
+                  detail: 'Capture audio while recording videos.',
+                  palette: palette,
+                ),
+              ],
+            ),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: palette.danger, fontSize: 13),
+            ),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: busy ? null : onAllow,
+              icon: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_circle_outline_rounded),
+              label: Text(busy ? 'Requesting Access...' : 'Allow Access'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: busy ? null : onSkip,
+            child: const Text('Skip for now'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionRow extends StatelessWidget {
+  const _PermissionRow({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.palette,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: palette.accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: palette.accent),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                detail,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Step 6 — Complete
 // ---------------------------------------------------------------------------
 
 class _CompleteStep extends StatelessWidget {

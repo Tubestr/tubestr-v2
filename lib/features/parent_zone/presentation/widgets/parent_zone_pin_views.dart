@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
@@ -50,6 +51,7 @@ class ParentZonePinSetupView extends StatelessWidget {
                   obscureText: true,
                   keyboardType: TextInputType.number,
                   maxLength: 4,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(
                     labelText: 'New PIN (4 digits)',
                     counterText: '',
@@ -61,6 +63,7 @@ class ParentZonePinSetupView extends StatelessWidget {
                   obscureText: true,
                   keyboardType: TextInputType.number,
                   maxLength: 4,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(
                     labelText: 'Confirm PIN',
                     counterText: '',
@@ -99,7 +102,6 @@ class ParentZonePinEntryView extends StatelessWidget {
     required this.pinError,
     required this.onDigit,
     required this.onDelete,
-    required this.onSubmit,
   });
 
   final KidPalette palette;
@@ -107,7 +109,6 @@ class ParentZonePinEntryView extends StatelessWidget {
   final String? pinError;
   final ValueChanged<String> onDigit;
   final VoidCallback onDelete;
-  final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +142,6 @@ class ParentZonePinEntryView extends StatelessWidget {
                 child: PinKeypad(
                   onDigit: onDigit,
                   onDelete: onDelete,
-                  onSubmit: onSubmit,
                 ),
               ),
             ],

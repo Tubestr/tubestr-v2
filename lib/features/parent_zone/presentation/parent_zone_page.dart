@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -13,6 +12,7 @@ import '../../../core/nostr/nostr_key_format.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/marmot/invite_transport_models.dart';
 import '../../../domain/models/remote_share_projection.dart';
+import '../../../shared_ui/components/qr_scanner_sheet.dart';
 import '../../../services/mdk/mdk_service.dart';
 import 'models/parent_zone_models.dart';
 import 'widgets/parent_zone_connections_section.dart';
@@ -146,6 +146,18 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       _pinError = null;
     });
     unawaited(_consumeQueuedDeepLinkIfPossible());
+  }
+
+  void _lockParentZone() {
+    if (!mounted || _needsPinSetup) {
+      return;
+    }
+    setState(() {
+      _isUnlocked = false;
+      _sidebarOpen = false;
+      _pinEntry = '';
+      _pinError = null;
+    });
   }
 
   Future<ParentZoneMdkDebugState> _loadMdkDebugState() async {
@@ -316,7 +328,9 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const _QrScannerSheet(),
+      builder: (_) => const QrScannerSheet(
+        instructions: 'Point the camera at a family invite QR code.',
+      ),
     );
   }
 
@@ -777,6 +791,7 @@ ${result.payload}
         _mdkDebugFuture = _loadMdkDebugState();
       });
     });
+    final activeTab = ref.watch(appShellTabIndexProvider);
     final pendingDeepLink = ref.watch(pendingDeepLinkProvider);
     if (pendingDeepLink != null &&
         pendingDeepLink.scheme.toLowerCase() ==
@@ -787,6 +802,14 @@ ${result.payload}
           return;
         }
         _queueDeepLink(pendingDeepLink);
+      });
+    }
+    if (activeTab != 3 &&
+        !_checkingPin &&
+        !_needsPinSetup &&
+        (_isUnlocked || _sidebarOpen || _pinEntry.isNotEmpty)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _lockParentZone();
       });
     }
 
@@ -811,10 +834,14 @@ ${result.payload}
                 if (_pinEntry.length >= 4) {
                   return;
                 }
+                final nextEntry = '$_pinEntry$digit';
                 setState(() {
-                  _pinEntry += digit;
+                  _pinEntry = nextEntry;
                   _pinError = null;
                 });
+                if (nextEntry.length == 4) {
+                  unawaited(_verifyPin());
+                }
               },
               onDelete: () {
                 if (_pinEntry.isNotEmpty) {
@@ -823,7 +850,6 @@ ${result.payload}
                   });
                 }
               },
-              onSubmit: _verifyPin,
             );
     }
 
@@ -886,70 +912,6 @@ ${result.payload}
           ),
         ),
       ],
-    );
-  }
-}
-
-class _QrScannerSheet extends StatefulWidget {
-  const _QrScannerSheet();
-
-  @override
-  State<_QrScannerSheet> createState() => _QrScannerSheetState();
-}
-
-class _QrScannerSheetState extends State<_QrScannerSheet> {
-  final MobileScannerController _controller = MobileScannerController();
-  bool _hasScanned = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.75,
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Text('Scan QR', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: MobileScanner(
-                    controller: _controller,
-                    onDetect: (capture) {
-                      if (_hasScanned || capture.barcodes.isEmpty) {
-                        return;
-                      }
-                      final value = capture.barcodes.first.rawValue;
-                      if (value == null || value.isEmpty) {
-                        return;
-                      }
-                      _hasScanned = true;
-                      Navigator.of(context).pop(value);
-                    },
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Text(
-                'Point the camera at a family invite QR code.',
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

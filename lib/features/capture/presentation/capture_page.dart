@@ -47,12 +47,13 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   // Zoom
   double _currentZoom = 1.0;
   double _baseZoom = 1.0;
+  bool _cameraInitStarted = false;
+  bool _cameraDisposeStarted = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initCameras();
   }
 
   @override
@@ -65,15 +66,24 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final isActiveTab = ref.read(appShellTabIndexProvider) == 1;
     if (_controller == null || !_controller!.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
       _controller?.dispose();
+      _controller = null;
     } else if (state == AppLifecycleState.resumed) {
+      if (!isActiveTab || _cameras.isEmpty) {
+        return;
+      }
       _initCamera(_cameras[_cameraIndex]);
     }
   }
 
   Future<void> _initCameras() async {
+    if (_cameraInitStarted) {
+      return;
+    }
+    _cameraInitStarted = true;
     try {
       _cameras = await availableCameras();
       if (_cameras.isNotEmpty) {
@@ -81,6 +91,8 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       }
     } catch (e) {
       if (mounted) setState(() => _errorMessage = '$e');
+    } finally {
+      _cameraInitStarted = false;
     }
   }
 
@@ -106,6 +118,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       _controller = ctrl;
       _currentZoom = 1.0;
       _errorMessage = null;
+      _cameraDisposeStarted = false;
     });
   }
 
@@ -289,6 +302,39 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
 
   @override
   Widget build(BuildContext context) {
+    final activeTab = ref.watch(appShellTabIndexProvider);
+    if (activeTab == 1 &&
+        !_cameraInitStarted &&
+        _controller == null &&
+        _cameras.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_initCameras());
+        }
+      });
+    }
+    if (activeTab != 1 &&
+        _controller != null &&
+        !_isRecording &&
+        !_cameraDisposeStarted) {
+      _cameraDisposeStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final controller = _controller;
+        if (!mounted || controller == null || _isRecording) {
+          _cameraDisposeStarted = false;
+          return;
+        }
+        await controller.dispose();
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _controller = null;
+          _currentZoom = 1.0;
+          _cameraDisposeStarted = false;
+        });
+      });
+    }
     final palette = ref.watch(activeThemeProvider).palette;
     final topPad = MediaQuery.of(context).padding.top;
     final bottomPad = MediaQuery.of(context).padding.bottom;

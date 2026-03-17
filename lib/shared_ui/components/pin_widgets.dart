@@ -35,24 +35,22 @@ class PinDots extends StatelessWidget {
   }
 }
 
-/// 3×4 numeric keypad: 1-9, ⌫, 0, OK.
+/// 3×4 numeric keypad: 1-9, ⌫, 0.
 class PinKeypad extends StatelessWidget {
   const PinKeypad({
     super.key,
     required this.onDigit,
     required this.onDelete,
-    required this.onSubmit,
   });
 
   final ValueChanged<String> onDigit;
   final VoidCallback onDelete;
-  final VoidCallback onSubmit;
 
   static const _keys = [
     '1', '2', '3',
     '4', '5', '6',
     '7', '8', '9',
-    '⌫', '0', 'OK',
+    '', '0', '⌫',
   ];
 
   @override
@@ -70,24 +68,13 @@ class PinKeypad extends StatelessWidget {
       itemCount: _keys.length,
       itemBuilder: (context, i) {
         final key = _keys[i];
+        if (key.isEmpty) {
+          return const SizedBox.shrink();
+        }
         if (key == '⌫') {
           return _KeypadButton(
             onTap: onDelete,
             child: Icon(Icons.backspace_outlined, color: accent),
-          );
-        }
-        if (key == 'OK') {
-          return _KeypadButton(
-            color: accent.withValues(alpha: 0.12),
-            onTap: onSubmit,
-            child: Text(
-              'OK',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: accent,
-              ),
-            ),
           );
         }
         return _KeypadButton(
@@ -106,17 +93,17 @@ class _KeypadButton extends StatelessWidget {
   const _KeypadButton({
     required this.onTap,
     required this.child,
-    this.color,
   });
 
   final VoidCallback onTap;
   final Widget child;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color ?? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
