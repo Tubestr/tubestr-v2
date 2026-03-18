@@ -79,31 +79,40 @@ class _NookAppBackgroundState extends State<NookAppBackground>
 
     // Opacity also flickers slightly.
     double opacity(double phase) {
-      return 0.08 + 0.06 * sin(t * pi * 3.7 + phase).abs();
+      return 0.12 + 0.08 * sin(t * pi * 3.7 + phase).abs();
     }
+
+    final driftX = 18.0 * sin(t * pi * 2.2);
+    final driftY = 12.0 * cos(t * pi * 1.7);
 
     return [
       // Top-left warm blob
       Positioned(
-        top: -80,
-        left: -60,
-        child: Transform.scale(
-          scale: flicker(0.0),
-          child: _RadialBlob(
-            color: p.accent.withValues(alpha: opacity(0.0)),
-            size: 300,
+        top: -90 + driftY,
+        left: -72 + driftX,
+        child: Transform.translate(
+          offset: Offset(driftX * 0.5, driftY),
+          child: Transform.scale(
+            scale: flicker(0.0),
+            child: _RadialBlob(
+              color: p.accent.withValues(alpha: opacity(0.0)),
+              size: 340,
+            ),
           ),
         ),
       ),
       // Bottom-right secondary warmth
       Positioned(
-        bottom: -60,
-        right: -50,
-        child: Transform.scale(
-          scale: flicker(2.1),
-          child: _RadialBlob(
-            color: p.accentSecondary.withValues(alpha: opacity(2.1)),
-            size: 260,
+        bottom: -70 - driftY,
+        right: -58 - driftX,
+        child: Transform.translate(
+          offset: Offset(-driftX * 0.55, -driftY * 0.8),
+          child: Transform.scale(
+            scale: flicker(2.1),
+            child: _RadialBlob(
+              color: p.accentSecondary.withValues(alpha: opacity(2.1)),
+              size: 300,
+            ),
           ),
         ),
       ),
@@ -114,10 +123,9 @@ class _NookAppBackgroundState extends State<NookAppBackground>
   // Treehouse — gentle pendulum sway + subtle rotation
   // ---------------------------------------------------------------------------
   List<Widget> _treehouseBlobs(double t, Size size, KidPalette p) {
-    // Horizontal displacement: ±30 px
-    final swayX = 30.0 * sin(t * pi * 2);
-    // Rotation: ±0.04 rad (~2.3°)
-    final rotation = 0.04 * sin(t * pi * 2);
+    final swayX = 46.0 * sin(t * pi * 2);
+    final swayY = 16.0 * cos(t * pi * 2);
+    final rotation = 0.06 * sin(t * pi * 2);
 
     return [
       // Center-left — accent (brown)
@@ -125,10 +133,13 @@ class _NookAppBackgroundState extends State<NookAppBackground>
         top: size.height * 0.25,
         left: size.width * 0.05,
         child: Transform.translate(
-          offset: Offset(swayX, 0),
+          offset: Offset(swayX, swayY),
           child: Transform.rotate(
             angle: rotation,
-            child: _RadialBlob(color: p.accent, size: 280),
+            child: _RadialBlob(
+              color: p.accent.withValues(alpha: 0.20),
+              size: 320,
+            ),
           ),
         ),
       ),
@@ -137,10 +148,13 @@ class _NookAppBackgroundState extends State<NookAppBackground>
         top: size.height * 0.35,
         right: size.width * 0.05,
         child: Transform.translate(
-          offset: Offset(-swayX, 0),
+          offset: Offset(-swayX, -swayY * 0.8),
           child: Transform.rotate(
             angle: -rotation,
-            child: _RadialBlob(color: p.accentSecondary, size: 320),
+            child: _RadialBlob(
+              color: p.accentSecondary.withValues(alpha: 0.18),
+              size: 360,
+            ),
           ),
         ),
       ),
@@ -149,10 +163,13 @@ class _NookAppBackgroundState extends State<NookAppBackground>
         top: -40,
         left: size.width * 0.40,
         child: Transform.translate(
-          offset: Offset(swayX * 0.5, 0),
+          offset: Offset(swayX * 0.6, swayY * 0.4),
           child: Transform.rotate(
             angle: rotation * 1.5,
-            child: _RadialBlob(color: p.accentSecondary, size: 160),
+            child: _RadialBlob(
+              color: p.accentSecondary.withValues(alpha: 0.16),
+              size: 190,
+            ),
           ),
         ),
       ),
@@ -165,29 +182,31 @@ class _NookAppBackgroundState extends State<NookAppBackground>
   List<Widget> _blanketFortBlobs(double t, Size size, KidPalette p) {
     final breathe = 1.0 + 0.06 * sin(t * pi * 2);
     final breatheB = 1.0 + 0.05 * cos(t * pi * 2 + 0.7);
+    final driftX = 20.0 * sin(t * pi * 1.4);
+    final driftY = 12.0 * cos(t * pi * 1.1);
 
     return [
       // Large centered primary
       Positioned(
-        top: size.height * 0.15,
-        left: size.width * 0.10,
+        top: size.height * 0.14 + driftY,
+        left: size.width * 0.08 + driftX,
         child: Transform.scale(
           scale: breathe,
           child: _RadialBlob(
-            color: p.accent.withValues(alpha: 0.08),
-            size: 420,
+            color: p.accent.withValues(alpha: 0.12),
+            size: 470,
           ),
         ),
       ),
       // Overlapping secondary — slightly offset, counter-phase
       Positioned(
-        top: size.height * 0.30,
-        left: size.width * 0.20,
+        top: size.height * 0.28 - driftY,
+        left: size.width * 0.18 - driftX * 0.6,
         child: Transform.scale(
           scale: breatheB,
           child: _RadialBlob(
-            color: p.accentSecondary.withValues(alpha: 0.07),
-            size: 380,
+            color: p.accentSecondary.withValues(alpha: 0.10),
+            size: 420,
           ),
         ),
       ),
@@ -220,19 +239,48 @@ class _NookAppBackgroundState extends State<NookAppBackground>
           child: Builder(
             builder: (context) {
               final angle = (t * pi * 2 + phase) % (pi * 2);
-              final opacityVal = 0.03 + 0.11 * ((sin(angle) + 1) / 2);
-              final scaleVal = 1.0 + 0.12 * sin(angle);
+              final opacityVal = 0.06 + 0.18 * ((sin(angle) + 1) / 2);
+              final scaleVal = 0.96 + 0.18 * ((sin(angle) + 1) / 2);
+              final drift = 8.0 * cos(angle);
               final color = isAccent ? p.accent : p.accentSecondary;
-              return Transform.scale(
-                scale: scaleVal,
-                child: _RadialBlob(
-                  color: color.withValues(alpha: opacityVal),
-                  size: sz,
+              return Transform.translate(
+                offset: Offset(drift * 0.5, -drift),
+                child: Transform.scale(
+                  scale: scaleVal,
+                  child: _RadialBlob(
+                    color: color.withValues(alpha: opacityVal),
+                    size: sz,
+                  ),
                 ),
               );
             },
           ),
         ),
+    ];
+  }
+
+  List<Widget> _ambientWashes(double t, Size size, KidPalette p) {
+    final longestSide = max(size.width, size.height);
+    final driftX = 24.0 * sin(t * pi * 2);
+    final driftY = 20.0 * cos(t * pi * 1.6);
+
+    return [
+      Positioned(
+        top: -longestSide * 0.24 + driftY,
+        left: -longestSide * 0.28 + driftX,
+        child: _RadialBlob(
+          color: p.accent.withValues(alpha: 0.08),
+          size: longestSide * 0.88,
+        ),
+      ),
+      Positioned(
+        bottom: -longestSide * 0.30 - driftY,
+        right: -longestSide * 0.18 - driftX * 0.7,
+        child: _RadialBlob(
+          color: p.accentSecondary.withValues(alpha: 0.07),
+          size: longestSide * 0.78,
+        ),
+      ),
     ];
   }
 
@@ -254,7 +302,12 @@ class _NookAppBackgroundState extends State<NookAppBackground>
               ),
             ),
             child: SizedBox.expand(
-              child: Stack(children: _buildBlobs(t, size)),
+              child: Stack(
+                children: [
+                  ..._ambientWashes(t, size, p),
+                  ..._buildBlobs(t, size),
+                ],
+              ),
             ),
           );
         },

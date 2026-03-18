@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -26,90 +27,289 @@ class HomeFeedContent extends ConsumerWidget {
       (p) => p.id == selectedProfileId,
     );
     final palette = ref.watch(activeThemeProvider).palette;
+    final videoItems = videos.valueOrNull;
+    final isFreshState =
+        videoItems != null && videoItems.isEmpty && remoteShares.isEmpty;
 
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          // Toolbar — "Nook" title + ProfileSwitcher
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
-            child: Row(
-              children: [
-                Text(
-                  'Nook',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: palette.accent,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Spacer(),
-                const ProfileSwitcherButton(),
-              ],
-            ),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: _HomeFeedMotionLayer(
+            palette: palette,
+            emphasizeMotion: isFreshState,
           ),
-
-          // Scrollable content
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                ref.invalidate(videosForSelectedProfileProvider);
-                ref.invalidate(shareRecordsProvider);
-              },
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                children: [
-                  // My Videos section — hero only shown for new users (empty state)
-                  videos.when(
-                    data: (items) {
-                      if (items.isEmpty) {
-                        return _WelcomeEmptyState(
-                          name: selectedProfile?.name ?? 'there',
-                          palette: palette,
-                        );
-                      }
-                      return _MyVideosSection(items: items, palette: palette);
-                    },
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                    error: (e, _) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your videos need another moment',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'We couldn\'t load this child\'s library just yet. Pull down to try again.',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: palette.mutedInk),
-                          ),
-                        ],
+        ),
+        SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // Toolbar — "Nook" title + ProfileSwitcher
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Nook',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: palette.accent,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // From Friends & Family
-                  if (remoteShares.isNotEmpty) ...[
-                    _SharedVideosSection(items: remoteShares, palette: palette),
-                    const SizedBox(height: 24),
+                    const Spacer(),
+                    const ProfileSwitcherButton(),
                   ],
-
-                  // Add Friends CTA
-                  _AddFriendsCta(palette: palette),
-                ],
+                ),
               ),
+
+              // Scrollable content
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(videosForSelectedProfileProvider);
+                    ref.invalidate(shareRecordsProvider);
+                  },
+                  child: isFreshState
+                      ? LayoutBuilder(
+                          builder: (context, constraints) {
+                            return SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                16,
+                                20,
+                                100,
+                              ),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight - 116,
+                                ),
+                                child: _FreshHomeState(
+                                  name: selectedProfile?.name ?? 'there',
+                                  palette: palette,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                          children: [
+                            // My Videos section — hero only shown for new users (empty state)
+                            videos.when(
+                              data: (items) {
+                                if (items.isEmpty) {
+                                  return _WelcomeEmptyState(
+                                    name: selectedProfile?.name ?? 'there',
+                                    palette: palette,
+                                  );
+                                }
+                                return _MyVideosSection(
+                                  items: items,
+                                  palette: palette,
+                                );
+                              },
+                              loading: () => const Padding(
+                                padding: EdgeInsets.all(32),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              error: (e, _) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Your videos need another moment',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'We couldn\'t load this child\'s library just yet. Pull down to try again.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(color: palette.mutedInk),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // From Friends & Family
+                            if (remoteShares.isNotEmpty) ...[
+                              _SharedVideosSection(
+                                items: remoteShares,
+                                palette: palette,
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+
+                            // Add Friends CTA
+                            _AddFriendsCta(palette: palette),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeFeedMotionLayer extends StatefulWidget {
+  const _HomeFeedMotionLayer({
+    required this.palette,
+    required this.emphasizeMotion,
+  });
+
+  final KidPalette palette;
+  final bool emphasizeMotion;
+
+  @override
+  State<_HomeFeedMotionLayer> createState() => _HomeFeedMotionLayerState();
+}
+
+class _HomeFeedMotionLayerState extends State<_HomeFeedMotionLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final localSize = Size(
+          constraints.maxWidth.isFinite ? constraints.maxWidth : 400,
+          constraints.maxHeight.isFinite ? constraints.maxHeight : 240,
+        );
+
+        return IgnorePointer(
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                final t = reduceMotion ? 0.35 : _controller.value;
+                final orbit = 26.0 * sin(t * pi * 2);
+                final float = 18.0 * cos(t * pi * 2);
+                final shimmer = 10.0 * sin(t * pi * 4);
+                final orbAlpha = widget.emphasizeMotion ? 0.24 : 0.15;
+
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: -72 + float,
+                      right: -54 - orbit * 0.4,
+                      child: Transform.scale(
+                        scale: 1.0 + 0.06 * sin(t * pi * 2),
+                        child: _HomeGlowOrb(
+                          color: widget.palette.accent.withValues(
+                            alpha: orbAlpha,
+                          ),
+                          size: widget.emphasizeMotion ? 240 : 210,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: localSize.height * 0.24 - float * 0.6,
+                      left: -92 + orbit * 0.5,
+                      child: Transform.scale(
+                        scale: 0.96 + 0.08 * cos(t * pi * 2),
+                        child: _HomeGlowOrb(
+                          color: widget.palette.accentSecondary.withValues(
+                            alpha: orbAlpha - 0.04,
+                          ),
+                          size: widget.emphasizeMotion ? 220 : 190,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 28 - float * 0.6,
+                      right: localSize.width * 0.16 + orbit * 0.2,
+                      child: Transform.scale(
+                        scale: 0.94 + 0.07 * sin(t * pi * 2 + 1.2),
+                        child: _HomeGlowOrb(
+                          color: widget.palette.accent.withValues(
+                            alpha: orbAlpha - 0.06,
+                          ),
+                          size: widget.emphasizeMotion ? 150 : 130,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 34 + shimmer,
+                      right: 54,
+                      child: _HomeGlowOrb(
+                        color: widget.palette.accentSecondary.withValues(
+                          alpha: 0.30,
+                        ),
+                        size: 34,
+                      ),
+                    ),
+                    Positioned(
+                      top: localSize.height * 0.56 - shimmer,
+                      left: 42,
+                      child: _HomeGlowOrb(
+                        color: widget.palette.accent.withValues(alpha: 0.22),
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _HomeGlowOrb extends StatelessWidget {
+  const _HomeGlowOrb({required this.color, required this.size});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withValues(alpha: 0)],
+          stops: const [0.0, 1.0],
+        ),
       ),
     );
   }
@@ -137,37 +337,18 @@ class _WelcomeEmptyState extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Greeting + headline
-        Text(
-          '$greeting, $name',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: palette.mutedInk,
-            fontWeight: FontWeight.w700,
-          ),
+        _HomeSceneHero(
+          palette: palette,
+          eyebrow: '$greeting, $name',
+          title: 'Make your first video',
+          detail:
+              'Start in Capture, then head to Edit Studio to add stickers, music, or text.',
+          emphasizeMotion: true,
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Make your first video',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w900,
-            height: 1.05,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Start in Capture, then head to Edit Studio to add stickers, music, or text.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
+        _FirstVideoPanel(palette: palette),
+        const SizedBox(height: 18),
 
-        // Ghost video grid with embedded CTA
-        _GhostVideoGrid(palette: palette),
-
-        const SizedBox(height: 20),
-
-        // Single primary action
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
@@ -184,112 +365,292 @@ class _WelcomeEmptyState extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Ghost video grid — placeholder tiles with embedded record CTA
-// ---------------------------------------------------------------------------
+class _FreshHomeState extends ConsumerWidget {
+  const _FreshHomeState({required this.name, required this.palette});
 
-class _GhostVideoGrid extends ConsumerWidget {
-  const _GhostVideoGrid({required this.palette});
-
+  final String name;
   final KidPalette palette;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 2-column grid, 4 tiles. Tile 1 (index 0) is the CTA; the rest are ghosts.
-    const cols = 2;
-    const tileCount = 4;
-    const aspectRatio = 9 / 16;
-    const spacing = 12.0;
+    final hour = DateTime.now().hour;
+    final greeting = switch (hour) {
+      < 12 => 'Good Morning',
+      < 17 => 'Good Afternoon',
+      _ => 'Good Evening',
+    };
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileWidth = (constraints.maxWidth - spacing * (cols - 1)) / cols;
-        final tileHeight = tileWidth / aspectRatio;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _HomeSceneHero(
+              palette: palette,
+              eyebrow: '$greeting, $name',
+              title: 'Your family video shelf starts here',
+              detail:
+                  'Capture a first clip or connect with a trusted family before this space fills up.',
+              emphasizeMotion: true,
+              compactTitle: true,
+            ),
+            const SizedBox(height: 18),
+            _FirstVideoPanel(palette: palette),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  ref.read(appShellTabIndexProvider.notifier).state = 1;
+                },
+                icon: const Icon(Icons.videocam_rounded),
+                label: const Text('Open Capture'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  ref.read(appShellTabIndexProvider.notifier).state = 3;
+                },
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('Connect Families'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-        final tiles = List.generate(tileCount, (i) {
-          if (i == 1) {
-            // CTA tile — accent-colored, tappable
-            return GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                ref.read(appShellTabIndexProvider.notifier).state = 1;
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: palette.accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: palette.accent.withValues(alpha: 0.40),
-                    width: 1.5,
-                  ),
+class _HomeSceneHero extends StatelessWidget {
+  const _HomeSceneHero({
+    required this.palette,
+    required this.eyebrow,
+    required this.title,
+    required this.detail,
+    required this.emphasizeMotion,
+    this.compactTitle = false,
+  });
+
+  final KidPalette palette;
+  final String eyebrow;
+  final String title;
+  final String detail;
+  final bool emphasizeMotion;
+  final bool compactTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: compactTitle ? 196 : 208,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: palette.panelBorder, width: 1.2),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.52),
+            Colors.white.withValues(alpha: 0.18),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _HomeFeedMotionLayer(
+              palette: palette,
+              emphasizeMotion: emphasizeMotion,
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.12),
+                    palette.backgroundTop.withValues(alpha: 0.34),
+                    palette.backgroundBottom.withValues(alpha: 0.62),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: palette.accent.withValues(alpha: 0.18),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.videocam_rounded,
-                        color: palette.accent,
-                        size: 26,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    eyebrow,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: palette.ink.withValues(alpha: 0.74),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    title,
+                    style:
+                        (compactTitle
+                                ? Theme.of(context).textTheme.headlineSmall
+                                : Theme.of(context).textTheme.headlineMedium)
+                            ?.copyWith(
+                              color: palette.ink,
+                              fontWeight: FontWeight.w900,
+                              height: 1.02,
+                            ),
+                  ),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    child: Text(
+                      detail,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: palette.ink.withValues(alpha: 0.82),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Record your\nfirst clip',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.accent,
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FirstVideoPanel extends StatelessWidget {
+  const _FirstVideoPanel({required this.palette});
+
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            palette.accent.withValues(alpha: 0.12),
+            palette.accentSecondary.withValues(alpha: 0.10),
+            Colors.white.withValues(alpha: 0.88),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: palette.panelBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
+                      decoration: BoxDecoration(
+                        color: palette.accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'First steps',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: palette.accent,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Capture a clip, then decorate it in Edit Studio when you\'re ready.',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: palette.ink,
+                        fontWeight: FontWeight.w800,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This shelf stays simple until your family actually starts recording.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                     ),
                   ],
                 ),
               ),
-            );
-          }
-
-          // Ghost placeholder tile
-          return Container(
-            decoration: BoxDecoration(
-              color: palette.accent.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: palette.panelBorder,
-                width: 1,
-                style: BorderStyle.none,
+              const SizedBox(width: 16),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: palette.accent.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.movie_creation_rounded,
+                  color: palette.accent,
+                  size: 32,
+                ),
               ),
-            ),
-            foregroundDecoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: palette.panelBorder, width: 1),
-            ),
-          );
-        });
-
-        return SizedBox(
-          height:
-              tileHeight * (tileCount / cols) +
-              spacing * ((tileCount / cols) - 1),
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: cols,
-              mainAxisSpacing: spacing,
-              crossAxisSpacing: spacing,
-              childAspectRatio: aspectRatio,
-            ),
-            itemCount: tileCount,
-            itemBuilder: (context, i) => tiles[i],
+            ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: const [
+              _FirstStepPill(label: 'Capture'),
+              _FirstStepPill(label: 'Edit'),
+              _FirstStepPill(label: 'Share later'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FirstStepPill extends StatelessWidget {
+  const _FirstStepPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
     );
   }
 }
