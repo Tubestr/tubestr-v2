@@ -82,3 +82,4 @@ scripts/release_android.sh --push
 - `flutter build apk --debug` currently succeeds in this environment.
 - If FRB or Rust bridge code changes, use `scripts/rebuild_android_bridge.sh` instead of `flutter run` alone.
 - Android release setup lives in `docs/android-github-releases.md`.
+- Zapstore notes live in `docs/zapstore-publishing.md`.
