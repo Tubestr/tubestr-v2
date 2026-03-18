@@ -15,21 +15,14 @@ enum FeedShelf {
 }
 
 class RankedVideo {
-  const RankedVideo({
-    required this.video,
-    required this.score,
-  });
+  const RankedVideo({required this.video, required this.score});
 
   final LocalVideo video;
   final double score;
 }
 
 class RankingResult {
-  const RankingResult({
-    required this.ranked,
-    required this.shelves,
-    this.hero,
-  });
+  const RankingResult({required this.ranked, required this.shelves, this.hero});
 
   final List<RankedVideo> ranked;
   final RankedVideo? hero;
@@ -49,19 +42,23 @@ class RankingEngine {
       return const RankingResult(ranked: [], shelves: {});
     }
 
-    final baseRanked = videos
-        .map(
-          (video) => RankedVideo(
-            video: video,
-            score: _baseScore(video, rankingState, now),
-          ),
-        )
-        .toList()
-      ..sort((left, right) => right.score.compareTo(left.score));
+    final baseRanked =
+        videos
+            .map(
+              (video) => RankedVideo(
+                video: video,
+                score: _baseScore(video, rankingState, now),
+              ),
+            )
+            .toList()
+          ..sort((left, right) => right.score.compareTo(left.score));
 
     final diversified = _applyDiversityPenalty(baseRanked);
-    final explored =
-        _injectExploreSamples(diversified, videos, rankingState.exploreRate);
+    final explored = _injectExploreSamples(
+      diversified,
+      videos,
+      rankingState.exploreRate,
+    );
 
     return RankingResult(
       ranked: explored,
@@ -69,10 +66,14 @@ class RankingEngine {
       shelves: {
         FeedShelf.forYou: explored,
         FeedShelf.recent: _sortByRecency(videos),
-        FeedShelf.action:
-            videos.where((video) => video.loudness >= 0.4).map(_zeroScore).toList(),
-        FeedShelf.favorites:
-            videos.where((video) => video.liked).map(_zeroScore).toList(),
+        FeedShelf.action: videos
+            .where((video) => video.loudness >= 0.4)
+            .map(_zeroScore)
+            .toList(),
+        FeedShelf.favorites: videos
+            .where((video) => video.liked)
+            .map(_zeroScore)
+            .toList(),
       },
     );
   }
@@ -130,9 +131,14 @@ class RankingEngine {
     final adjusted = <RankedVideo>[];
     for (final candidate in ranked) {
       final penalty = adjusted
-              .map((existing) => _diversityPenalty(existing.video, candidate.video))
-              .fold<double>(0, (current, value) => value > current ? value : current);
-      adjusted.add(RankedVideo(video: candidate.video, score: candidate.score - penalty));
+          .map((existing) => _diversityPenalty(existing.video, candidate.video))
+          .fold<double>(
+            0,
+            (current, value) => value > current ? value : current,
+          );
+      adjusted.add(
+        RankedVideo(video: candidate.video, score: candidate.score - penalty),
+      );
     }
     adjusted.sort((left, right) => right.score.compareTo(left.score));
     return adjusted;
@@ -159,10 +165,15 @@ class RankingEngine {
       return ranked;
     }
 
-    final exploreCount = (allVideos.length * exploreRate).floor().clamp(1, allVideos.length);
+    final exploreCount = (allVideos.length * exploreRate).floor().clamp(
+      1,
+      allVideos.length,
+    );
     final generator = Random(allVideos.length);
     final shuffled = [...allVideos]..shuffle(generator);
-    final exploratory = shuffled.take(exploreCount).map(
+    final exploratory = shuffled
+        .take(exploreCount)
+        .map(
           (video) => RankedVideo(
             video: video,
             score: ranked.isEmpty ? 0.5 : ranked.first.score,
@@ -180,9 +191,11 @@ class RankingEngine {
   }
 
   List<RankedVideo> _sortByRecency(List<LocalVideo> videos) {
-    final sorted = [...videos]..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+    final sorted = [...videos]
+      ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
     return sorted.map(_zeroScore).toList();
   }
 
-  RankedVideo _zeroScore(LocalVideo video) => RankedVideo(video: video, score: 0);
+  RankedVideo _zeroScore(LocalVideo video) =>
+      RankedVideo(video: video, score: 0);
 }

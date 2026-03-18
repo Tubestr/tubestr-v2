@@ -85,8 +85,9 @@ class ParentZoneOverviewSection extends ConsumerWidget {
                   ),
                   _SummaryRow(
                     icon: Icons.link_rounded,
-                    color:
-                        groupSummaries.isEmpty ? palette.warning : palette.success,
+                    color: groupSummaries.isEmpty
+                        ? palette.warning
+                        : palette.success,
                     label: 'Family spaces',
                     value: '${groupSummaries.length}',
                   ),
@@ -433,11 +434,7 @@ class _OverviewHero extends StatelessWidget {
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              overview,
-              const SizedBox(height: 16),
-              startHere,
-            ],
+            children: [overview, const SizedBox(height: 16), startHere],
           );
         },
       ),
@@ -676,7 +673,10 @@ class _InboundReportRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(helperText, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    helperText,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     '${report.recipientType} · ${report.createdAt.toLocal()}',
@@ -717,7 +717,10 @@ class _OutboundReportRow extends StatelessWidget {
             width: 10,
             height: 10,
             margin: const EdgeInsets.only(top: 4),
-            decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(

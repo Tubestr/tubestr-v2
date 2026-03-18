@@ -365,9 +365,9 @@ class ParentZoneSettingsSection extends ConsumerWidget {
                     loading: () => const LinearProgressIndicator(minHeight: 2),
                     error: (error, _) => Text(
                       'Safety HQ needs another moment to connect.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: palette.mutedInk,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -388,20 +388,20 @@ class ParentZoneSettingsSection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                  Text(
-                    'Parent PIN',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Update the four-digit code that protects the parent workspace.',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: pinManagementController,
+              Text(
+                'Parent PIN',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Update the four-digit code that protects the parent workspace.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pinManagementController,
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
@@ -482,9 +482,7 @@ class _SafetyStatusBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _InlineStatus(
-          icon: status.isJoined
-              ? Icons.shield_rounded
-              : Icons.shield_outlined,
+          icon: status.isJoined ? Icons.shield_rounded : Icons.shield_outlined,
           color: status.isJoined ? Colors.green : Colors.orange,
           title: 'Status: ${status.label}',
           detail: status.lastSyncAt == null
@@ -576,7 +574,9 @@ class _ServerRow extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 8),
-          Expanded(child: Text(value, style: Theme.of(context).textTheme.bodySmall)),
+          Expanded(
+            child: Text(value, style: Theme.of(context).textTheme.bodySmall),
+          ),
           if (onRemove != null)
             IconButton(
               icon: const Icon(Icons.close_rounded, size: 18),

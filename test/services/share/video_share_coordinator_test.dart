@@ -225,85 +225,88 @@ void main() {
     expect(groups.map((group) => group.mlsGroupIdHex), ['family-group']);
   });
 
-  test('shareLocalVideoToEligibleGroups publishes to all family groups', () async {
-    final tempDir = await Directory.systemTemp.createTemp(
-      'video-share-coordinator-multi-group-test',
-    );
-    addTearDown(() async {
-      if (tempDir.existsSync()) {
-        await tempDir.delete(recursive: true);
-      }
-    });
+  test(
+    'shareLocalVideoToEligibleGroups publishes to all family groups',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'video-share-coordinator-multi-group-test',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
 
-    final videoFile = File('${tempDir.path}/clip.mp4')
-      ..writeAsBytesSync(List<int>.from('video-bytes'.codeUnits));
-    final thumbFile = File('${tempDir.path}/thumb.jpg')
-      ..writeAsBytesSync(List<int>.from('thumb-bytes'.codeUnits));
-    final database = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(database.close);
-    await database.upsertProfile(
-      id: 'child-1',
-      name: 'Emma',
-      theme: 'campfire',
-      avatarAsset: 'avatar.png',
-    );
-    await database.saveLocalVideo(
-      videoId: 'video-1',
-      profileId: 'child-1',
-      filePath: videoFile.path,
-      thumbPath: thumbFile.path,
-      title: 'Backyard song',
-      approvalStatus: 'approved',
-    );
+      final videoFile = File('${tempDir.path}/clip.mp4')
+        ..writeAsBytesSync(List<int>.from('video-bytes'.codeUnits));
+      final thumbFile = File('${tempDir.path}/thumb.jpg')
+        ..writeAsBytesSync(List<int>.from('thumb-bytes'.codeUnits));
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'child-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'avatar.png',
+      );
+      await database.saveLocalVideo(
+        videoId: 'video-1',
+        profileId: 'child-1',
+        filePath: videoFile.path,
+        thumbPath: thumbFile.path,
+        title: 'Backyard song',
+        approvalStatus: 'approved',
+      );
 
-    final mdkService = FakeMdkService()
-      ..groupSummariesResult = [
-        fakeGroupSummary(
-          mlsGroupIdHex: 'solo-group',
-          nostrGroupIdHex: 'nostr-solo',
-          name: 'Old Family Space',
-          description: 'Only me',
-          memberCount: 1,
-        ),
-        fakeGroupSummary(
-          mlsGroupIdHex: 'family-a',
-          nostrGroupIdHex: 'nostr-family-a',
-          name: 'Lee & Sam',
-          description: 'First family',
-          memberCount: 2,
-        ),
-        fakeGroupSummary(
-          mlsGroupIdHex: 'family-b',
-          nostrGroupIdHex: 'nostr-family-b',
-          name: 'Lee & Robin',
-          description: 'Second family',
-          memberCount: 3,
-        ),
-      ];
-    final nostrService = FakeNostrService()
-      ..blossomServers = const ['https://blossom.example'];
-    final coordinator = VideoShareCoordinator(
-      database: database,
-      videoApprovalService: buildApprovalService(database),
-      blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
-      mdkService: mdkService,
-      nostrService: nostrService,
-      offlineActionStore: OfflineActionStore(database: database),
-      shareHistoryService: ShareHistoryService(database: database),
-    );
+      final mdkService = FakeMdkService()
+        ..groupSummariesResult = [
+          fakeGroupSummary(
+            mlsGroupIdHex: 'solo-group',
+            nostrGroupIdHex: 'nostr-solo',
+            name: 'Old Family Space',
+            description: 'Only me',
+            memberCount: 1,
+          ),
+          fakeGroupSummary(
+            mlsGroupIdHex: 'family-a',
+            nostrGroupIdHex: 'nostr-family-a',
+            name: 'Lee & Sam',
+            description: 'First family',
+            memberCount: 2,
+          ),
+          fakeGroupSummary(
+            mlsGroupIdHex: 'family-b',
+            nostrGroupIdHex: 'nostr-family-b',
+            name: 'Lee & Robin',
+            description: 'Second family',
+            memberCount: 3,
+          ),
+        ];
+      final nostrService = FakeNostrService()
+        ..blossomServers = const ['https://blossom.example'];
+      final coordinator = VideoShareCoordinator(
+        database: database,
+        videoApprovalService: buildApprovalService(database),
+        blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
+        mdkService: mdkService,
+        nostrService: nostrService,
+        offlineActionStore: OfflineActionStore(database: database),
+        shareHistoryService: ShareHistoryService(database: database),
+      );
 
-    final result = await coordinator.shareLocalVideoToEligibleGroups(
-      identity: identity,
-      videoId: 'video-1',
-      profileId: 'child-1',
-      childDisplayName: 'Emma',
-    );
+      final result = await coordinator.shareLocalVideoToEligibleGroups(
+        identity: identity,
+        videoId: 'video-1',
+        profileId: 'child-1',
+        childDisplayName: 'Emma',
+      );
 
-    expect(result.sharedGroupIds, ['family-a', 'family-b']);
-    expect(result.queuedGroupIds, isEmpty);
-    expect(mdkService.createdMessageGroupIds, ['family-a', 'family-b']);
-    expect(nostrService.publishedEventJsons, hasLength(2));
-  });
+      expect(result.sharedGroupIds, ['family-a', 'family-b']);
+      expect(result.queuedGroupIds, isEmpty);
+      expect(mdkService.createdMessageGroupIds, ['family-a', 'family-b']);
+      expect(nostrService.publishedEventJsons, hasLength(2));
+    },
+  );
 
   test(
     'createUploadedShareMessage mirrors uploads across configured Blossom servers',
@@ -469,7 +472,10 @@ void main() {
         expect(header.contains('/'), isFalse);
       }
       expect(nostrService.lastCreatedSignedEventKind, 24242);
-      expect(nostrService.lastCreatedSignedEventContent, 'Authorize Blossom upload');
+      expect(
+        nostrService.lastCreatedSignedEventContent,
+        'Authorize Blossom upload',
+      );
       expect(
         nostrService.lastCreatedSignedEventTags,
         containsAll(<List<String>>[

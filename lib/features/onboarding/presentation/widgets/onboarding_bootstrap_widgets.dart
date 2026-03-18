@@ -16,7 +16,9 @@ class OnboardingLoadingScreen extends ConsumerWidget {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: NookAppBackground(palette: palette, theme: theme)),
+          Positioned.fill(
+            child: NookAppBackground(palette: palette, theme: theme),
+          ),
           SafeArea(
             child: OnboardingBootstrapStatusCard(
               palette: palette,
@@ -44,7 +46,9 @@ class OnboardingErrorScreen extends ConsumerWidget {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: NookAppBackground(palette: palette, theme: theme)),
+          Positioned.fill(
+            child: NookAppBackground(palette: palette, theme: theme),
+          ),
           SafeArea(
             child: OnboardingBootstrapStatusCard(
               palette: palette,

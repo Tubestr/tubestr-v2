@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_ID="app.tubestr.mytube"
+APP_ID="app.tubestr.mobile"
 DEFAULT_NDK_HOME="/opt/android-sdk/ndk/28.2.13676358"
 DEVICE_ID="${1:-${ANDROID_DEVICE_ID:-}}"
 FRB_CODEGEN_BIN="${FRB_CODEGEN_BIN:-$HOME/.cargo/bin/flutter_rust_bridge_codegen}"

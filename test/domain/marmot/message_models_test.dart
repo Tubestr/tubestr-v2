@@ -32,14 +32,8 @@ void main() {
         filename: 'clip.jpg',
         schemeVersion: 'mip04-v2',
       ),
-      media: MediaDescriptor(
-        algorithm: 'mip04',
-        epoch: 'epoch-value',
-      ),
-      policy: PolicyDescriptor(
-        version: 2,
-        expiresAt: null,
-      ),
+      media: MediaDescriptor(algorithm: 'mip04', epoch: 'epoch-value'),
+      policy: PolicyDescriptor(version: 2, expiresAt: null),
       by: 'parent-pubkey',
       ts: 1710460800,
     );

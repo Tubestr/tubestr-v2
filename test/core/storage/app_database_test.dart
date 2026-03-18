@@ -65,7 +65,9 @@ void main() {
       downloadError: null,
     );
 
-    final remoteAsset = await database.getRemoteAssetByRemoteShareId(remoteShareId);
+    final remoteAsset = await database.getRemoteAssetByRemoteShareId(
+      remoteShareId,
+    );
     final shares = await database.watchShareRecords().first;
 
     expect(remoteAsset?.localMediaPath, '/tmp/remote.mp4');
@@ -74,68 +76,73 @@ void main() {
     expect(shares.single.downloadError, isNull);
   });
 
-  test('remote shares with the same video id stay isolated by scoped remoteShareId', () async {
-    final database = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(database.close);
+  test(
+    'remote shares with the same video id stay isolated by scoped remoteShareId',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
 
-    final firstRemoteShareId = await database.upsertRemoteShareProjection(
-      videoId: 'shared-video',
-      mlsGroupId: 'group-1',
-      senderParentKey: 'sender-1',
-      childProfileId: 'child-1',
-      childDisplayName: 'Emma',
-      blobHash: 'blob-1',
-      thumbHash: 'thumb-1',
-      epoch: '1',
-      mime: 'video/mp4',
-      metadataJson: '{"t":"mytube/video_share"}',
-    );
-    final secondRemoteShareId = await database.upsertRemoteShareProjection(
-      videoId: 'shared-video',
-      mlsGroupId: 'group-2',
-      senderParentKey: 'sender-2',
-      childProfileId: 'child-2',
-      childDisplayName: 'Noah',
-      blobHash: 'blob-2',
-      thumbHash: 'thumb-2',
-      epoch: '2',
-      mime: 'video/mp4',
-      metadataJson: '{"t":"mytube/video_share"}',
-    );
-
-    await database.updateRemoteAssetCache(
-      remoteShareId: firstRemoteShareId,
-      localMediaPath: '/tmp/one.mp4',
-      localThumbPath: '/tmp/one.jpg',
-    );
-    await database.updateRemoteShareStatus(
-      remoteShareId: firstRemoteShareId,
-      status: 'downloaded',
-    );
-
-    final first = await database.getRemoteShareProjectionByRemoteShareId(
-      firstRemoteShareId,
-    );
-    final second = await database.getRemoteShareProjectionByRemoteShareId(
-      secondRemoteShareId,
-    );
-    final allRemoteShares = await database.watchRemoteShareProjections().first;
-
-    expect(
-      firstRemoteShareId,
-      buildRemoteShareId(
-        senderParentKey: 'sender-1',
-        mlsGroupId: 'group-1',
+      final firstRemoteShareId = await database.upsertRemoteShareProjection(
         videoId: 'shared-video',
-      ),
-    );
-    expect(secondRemoteShareId, isNot(firstRemoteShareId));
-    expect(first?.status, 'downloaded');
-    expect(first?.localMediaPath, '/tmp/one.mp4');
-    expect(second?.status, 'available');
-    expect(second?.localMediaPath, isNull);
-    expect(allRemoteShares, hasLength(2));
-  });
+        mlsGroupId: 'group-1',
+        senderParentKey: 'sender-1',
+        childProfileId: 'child-1',
+        childDisplayName: 'Emma',
+        blobHash: 'blob-1',
+        thumbHash: 'thumb-1',
+        epoch: '1',
+        mime: 'video/mp4',
+        metadataJson: '{"t":"mytube/video_share"}',
+      );
+      final secondRemoteShareId = await database.upsertRemoteShareProjection(
+        videoId: 'shared-video',
+        mlsGroupId: 'group-2',
+        senderParentKey: 'sender-2',
+        childProfileId: 'child-2',
+        childDisplayName: 'Noah',
+        blobHash: 'blob-2',
+        thumbHash: 'thumb-2',
+        epoch: '2',
+        mime: 'video/mp4',
+        metadataJson: '{"t":"mytube/video_share"}',
+      );
+
+      await database.updateRemoteAssetCache(
+        remoteShareId: firstRemoteShareId,
+        localMediaPath: '/tmp/one.mp4',
+        localThumbPath: '/tmp/one.jpg',
+      );
+      await database.updateRemoteShareStatus(
+        remoteShareId: firstRemoteShareId,
+        status: 'downloaded',
+      );
+
+      final first = await database.getRemoteShareProjectionByRemoteShareId(
+        firstRemoteShareId,
+      );
+      final second = await database.getRemoteShareProjectionByRemoteShareId(
+        secondRemoteShareId,
+      );
+      final allRemoteShares = await database
+          .watchRemoteShareProjections()
+          .first;
+
+      expect(
+        firstRemoteShareId,
+        buildRemoteShareId(
+          senderParentKey: 'sender-1',
+          mlsGroupId: 'group-1',
+          videoId: 'shared-video',
+        ),
+      );
+      expect(secondRemoteShareId, isNot(firstRemoteShareId));
+      expect(first?.status, 'downloaded');
+      expect(first?.localMediaPath, '/tmp/one.mp4');
+      expect(second?.status, 'available');
+      expect(second?.localMediaPath, isNull);
+      expect(allRemoteShares, hasLength(2));
+    },
+  );
 
   test(
     'primary group helpers assign a group to profiles that do not have one',

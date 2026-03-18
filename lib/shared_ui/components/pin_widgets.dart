@@ -37,20 +37,24 @@ class PinDots extends StatelessWidget {
 
 /// 3×4 numeric keypad: 1-9, ⌫, 0.
 class PinKeypad extends StatelessWidget {
-  const PinKeypad({
-    super.key,
-    required this.onDigit,
-    required this.onDelete,
-  });
+  const PinKeypad({super.key, required this.onDigit, required this.onDelete});
 
   final ValueChanged<String> onDigit;
   final VoidCallback onDelete;
 
   static const _keys = [
-    '1', '2', '3',
-    '4', '5', '6',
-    '7', '8', '9',
-    '', '0', '⌫',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '',
+    '0',
+    '⌫',
   ];
 
   @override
@@ -90,10 +94,7 @@ class PinKeypad extends StatelessWidget {
 }
 
 class _KeypadButton extends StatelessWidget {
-  const _KeypadButton({
-    required this.onTap,
-    required this.child,
-  });
+  const _KeypadButton({required this.onTap, required this.child});
 
   final VoidCallback onTap;
   final Widget child;

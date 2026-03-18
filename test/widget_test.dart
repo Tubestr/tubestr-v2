@@ -5,9 +5,7 @@ import 'package:mytube/app.dart';
 
 void main() {
   testWidgets('app boots', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: MyTubeApp()),
-    );
+    await tester.pumpWidget(const ProviderScope(child: MyTubeApp()));
     await tester.pump();
 
     expect(find.byType(MyTubeApp), findsOneWidget);

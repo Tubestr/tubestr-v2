@@ -210,6 +210,12 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) => m.createAll(),
+      );
+
   Stream<List<Profile>> watchProfiles() {
     return (select(
       profiles,
@@ -707,7 +713,9 @@ class AppDatabase extends _$AppDatabase {
 
     double? parsedAspectRatio;
     try {
-      parsedAspectRatio = VideoShareMessage.decode(metadataJson).meta.aspectRatio;
+      parsedAspectRatio = VideoShareMessage.decode(
+        metadataJson,
+      ).meta.aspectRatio;
     } catch (_) {}
 
     await into(remoteAssets).insertOnConflictUpdate(

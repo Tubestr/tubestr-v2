@@ -8,7 +8,7 @@
 PRODUCT_NAME = mytube
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = app.tubestr.mytube
+PRODUCT_BUNDLE_IDENTIFIER = app.tubestr.mobile
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 app.tubestr. All rights reserved.

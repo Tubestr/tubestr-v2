@@ -40,8 +40,6 @@ class ContentScanSummary {
   }
 
   factory ContentScanSummary.decode(String raw) {
-    return ContentScanSummary.fromJson(
-      jsonDecode(raw) as Map<String, dynamic>,
-    );
+    return ContentScanSummary.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 }

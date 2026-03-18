@@ -46,17 +46,19 @@ class VideoShareCoordinator {
     await warmUp();
     final groups = await _mdkService.getGroupSummaries();
     final seen = <String>{};
-    return groups.where((group) {
-      final normalizedId = group.mlsGroupIdHex.trim().toLowerCase();
-      if (normalizedId.isEmpty || !seen.add(normalizedId)) {
-        return false;
-      }
-      final normalizedName = group.name.trim().toLowerCase();
-      if (normalizedName == AppConstants.safetyHqGroupName.toLowerCase()) {
-        return false;
-      }
-      return group.memberCount > 1;
-    }).toList(growable: false);
+    return groups
+        .where((group) {
+          final normalizedId = group.mlsGroupIdHex.trim().toLowerCase();
+          if (normalizedId.isEmpty || !seen.add(normalizedId)) {
+            return false;
+          }
+          final normalizedName = group.name.trim().toLowerCase();
+          if (normalizedName == AppConstants.safetyHqGroupName.toLowerCase()) {
+            return false;
+          }
+          return group.memberCount > 1;
+        })
+        .toList(growable: false);
   }
 
   Future<void> warmUp() async {
@@ -508,10 +510,10 @@ class VideoShareCoordinator {
         ['expiration', '$expiresAt'],
       ],
     );
-    final encoded = base64Url.encode(utf8.encode(eventJson)).replaceAll('=', '');
-    return BlossomUploadAuth(
-      authorizationHeaderValue: 'Nostr $encoded',
-    );
+    final encoded = base64Url
+        .encode(utf8.encode(eventJson))
+        .replaceAll('=', '');
+    return BlossomUploadAuth(authorizationHeaderValue: 'Nostr $encoded');
   }
 }
 

@@ -5,18 +5,19 @@ import 'theme_descriptor.dart';
 
 ThemeData buildAppTheme(ThemeDescriptor descriptor) {
   final palette = descriptor.palette;
-  final scheme = ColorScheme.fromSeed(
-    seedColor: palette.accent,
-    brightness: Brightness.light,
-  ).copyWith(
-    primary: palette.accent,
-    secondary: palette.accentSecondary,
-    surface: palette.panel,
-    error: palette.danger,
-    onPrimary: Colors.white,
-    onSecondary: palette.ink,
-    onSurface: palette.ink,
-  );
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: palette.accent,
+        brightness: Brightness.light,
+      ).copyWith(
+        primary: palette.accent,
+        secondary: palette.accentSecondary,
+        surface: palette.panel,
+        error: palette.danger,
+        onPrimary: Colors.white,
+        onSecondary: palette.ink,
+        onSurface: palette.ink,
+      );
 
   final baseText = GoogleFonts.nunitoTextTheme();
   final displayText = GoogleFonts.fredokaTextTheme(baseText);

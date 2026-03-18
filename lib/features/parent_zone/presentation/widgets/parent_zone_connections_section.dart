@@ -133,9 +133,7 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
             }
             if (snapshot.hasError) {
               return FrostCard(
-                child: Text(
-                  'We could not load family connections right now.',
-                ),
+                child: Text('We could not load family connections right now.'),
               );
             }
             final data = snapshot.data!;

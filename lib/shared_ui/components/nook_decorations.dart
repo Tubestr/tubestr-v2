@@ -49,12 +49,12 @@ class _NookAppBackgroundState extends State<NookAppBackground>
   }
 
   static Duration _durationForTheme(ThemeDescriptor theme) => switch (theme) {
-        ThemeDescriptor.campfire => const Duration(seconds: 6),
-        ThemeDescriptor.treehouse => const Duration(seconds: 10),
-        ThemeDescriptor.blanketFort => const Duration(seconds: 18),
-        // Starlight uses a short base cycle; individual blobs phase-offset from it.
-        ThemeDescriptor.starlight => const Duration(seconds: 4),
-      };
+    ThemeDescriptor.campfire => const Duration(seconds: 6),
+    ThemeDescriptor.treehouse => const Duration(seconds: 10),
+    ThemeDescriptor.blanketFort => const Duration(seconds: 18),
+    // Starlight uses a short base cycle; individual blobs phase-offset from it.
+    ThemeDescriptor.starlight => const Duration(seconds: 4),
+  };
 
   List<Widget> _buildBlobs(double t, Size size) {
     final p = widget.palette;
@@ -217,19 +217,21 @@ class _NookAppBackgroundState extends State<NookAppBackground>
         Positioned(
           left: size.width * lx,
           top: size.height * ty,
-          child: Builder(builder: (context) {
-            final angle = (t * pi * 2 + phase) % (pi * 2);
-            final opacityVal = 0.03 + 0.11 * ((sin(angle) + 1) / 2);
-            final scaleVal = 1.0 + 0.12 * sin(angle);
-            final color = isAccent ? p.accent : p.accentSecondary;
-            return Transform.scale(
-              scale: scaleVal,
-              child: _RadialBlob(
-                color: color.withValues(alpha: opacityVal),
-                size: sz,
-              ),
-            );
-          }),
+          child: Builder(
+            builder: (context) {
+              final angle = (t * pi * 2 + phase) % (pi * 2);
+              final opacityVal = 0.03 + 0.11 * ((sin(angle) + 1) / 2);
+              final scaleVal = 1.0 + 0.12 * sin(angle);
+              final color = isAccent ? p.accent : p.accentSecondary;
+              return Transform.scale(
+                scale: scaleVal,
+                child: _RadialBlob(
+                  color: color.withValues(alpha: opacityVal),
+                  size: sz,
+                ),
+              );
+            },
+          ),
         ),
     ];
   }
@@ -275,12 +277,7 @@ class _RadialBlob extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              color,
-              color.withValues(alpha: 0),
-            ],
-          ),
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
         ),
       ),
     );

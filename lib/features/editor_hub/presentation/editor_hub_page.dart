@@ -52,8 +52,9 @@ class EditorHubContent extends ConsumerWidget {
                       const SizedBox(height: 6),
                       Text(
                         'We couldn\'t load your clips for editing just yet. Try switching profiles or come back in a moment.',
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: palette.mutedInk),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: palette.mutedInk,
+                        ),
                       ),
                     ],
                   ),
@@ -95,9 +96,9 @@ class _Body extends StatelessWidget {
         const SizedBox(height: 24),
         Text(
           'All clips',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 12),
         _VideoGrid(items: items, palette: palette),

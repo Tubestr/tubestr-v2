@@ -45,19 +45,22 @@ void main() {
     await database.close();
   });
 
-  test('ensureProvisioned creates and stores Safety HQ group when queued', () async {
-    await service.queueJoin();
+  test(
+    'ensureProvisioned creates and stores Safety HQ group when queued',
+    () async {
+      await service.queueJoin();
 
-    final group = await service.ensureProvisioned(identity: identity);
-    final status = await service.loadStatus();
+      final group = await service.ensureProvisioned(identity: identity);
+      final status = await service.loadStatus();
 
-    expect(group, isNotNull);
-    expect(group!.name, AppConstants.safetyHqGroupName);
-    expect(status.isJoined, isTrue);
-    expect(status.isQueued, isFalse);
-    expect(status.groupId, 'safety-group');
-    expect(status.lastSyncAt, isNotNull);
-  });
+      expect(group, isNotNull);
+      expect(group!.name, AppConstants.safetyHqGroupName);
+      expect(status.isJoined, isTrue);
+      expect(status.isQueued, isFalse);
+      expect(status.groupId, 'safety-group');
+      expect(status.lastSyncAt, isNotNull);
+    },
+  );
 
   test('ensureProvisioned reuses existing Safety HQ group', () async {
     mdk.groupSummariesResult = const [

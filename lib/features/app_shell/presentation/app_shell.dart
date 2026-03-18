@@ -127,13 +127,12 @@ class _AppShellState extends ConsumerState<AppShell>
       body: Stack(
         children: [
           // Themed background (hidden behind capture camera)
-          Positioned.fill(child: NookAppBackground(palette: palette, theme: theme)),
+          Positioned.fill(
+            child: NookAppBackground(palette: palette, theme: theme),
+          ),
 
           // Tab content
-          IndexedStack(
-            index: tab,
-            children: tabChildren,
-          ),
+          IndexedStack(index: tab, children: tabChildren),
 
           // Custom bottom tab bar
           Positioned(
@@ -287,9 +286,7 @@ class _TabButton extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 58),
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
             decoration: BoxDecoration(
-              color: isActive
-                  ? activeBackground
-                  : Colors.transparent,
+              color: isActive ? activeBackground : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isActive
@@ -319,7 +316,11 @@ class _TabButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color, size: kind == _TabKind.control ? 21 : 23),
+                Icon(
+                  icon,
+                  color: color,
+                  size: kind == _TabKind.control ? 21 : 23,
+                ),
                 const SizedBox(height: 3),
                 Text(
                   label,

@@ -5,9 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 class ThumbnailService {
-  Future<String?> createVideoThumbnail({
-    required String videoPath,
-  }) async {
+  Future<String?> createVideoThumbnail({required String videoPath}) async {
     if (videoPath.isEmpty) {
       return null;
     }

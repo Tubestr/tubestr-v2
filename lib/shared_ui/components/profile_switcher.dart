@@ -89,7 +89,11 @@ class ProfileSwitcherButton extends ConsumerWidget {
             child: CircleAvatar(
               radius: 16,
               backgroundColor: palette.accent.withValues(alpha: 0.15),
-              child: Icon(Icons.person_rounded, size: 18, color: palette.accent),
+              child: Icon(
+                Icons.person_rounded,
+                size: 18,
+                color: palette.accent,
+              ),
             ),
           ),
           label: Text(

@@ -76,10 +76,7 @@ class KidScaffold extends ConsumerWidget {
       extendBody: true,
       appBar: title == null
           ? null
-          : AppBar(
-              title: Text(title!),
-              actions: actions,
-            ),
+          : AppBar(title: Text(title!), actions: actions),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       body: DecoratedBox(
@@ -160,10 +157,7 @@ class FrostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: Padding(padding: padding, child: child),
     );
   }
 }

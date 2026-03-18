@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -178,18 +180,30 @@ class MdkProcessedMessage {
 }
 
 class MdkService {
-  bool _bridgeInitialized = false;
+  Completer<void>? _initCompleter;
 
   Future<void> ensureInitialized() async {
-    if (_bridgeInitialized) {
-      return;
+    if (_initCompleter != null) {
+      return _initCompleter!.future;
     }
-
-    await MdkBridgeApi.init();
-    final root = await getApplicationSupportDirectory();
-    final dataDir = p.join(root.path, 'mdk');
-    await bridge_api.initMdkUnencrypted(dataDir: dataDir);
-    _bridgeInitialized = true;
+    _initCompleter = Completer<void>();
+    try {
+      if (Platform.isIOS || Platform.isMacOS) {
+        await MdkBridgeApi.init(
+          externalLibrary: ExternalLibrary.process(iKnowHowToUseIt: true),
+        );
+      } else {
+        await MdkBridgeApi.init();
+      }
+      final root = await getApplicationSupportDirectory();
+      final dataDir = p.join(root.path, 'mdk');
+      await bridge_api.initMdkUnencrypted(dataDir: dataDir);
+      _initCompleter!.complete();
+    } catch (e) {
+      _initCompleter!.completeError(e);
+      _initCompleter = null;
+      rethrow;
+    }
   }
 
   Future<String> bridgeVersion() async {
@@ -205,14 +219,14 @@ class MdkService {
   Future<void> resetLocalState() async {
     final root = await getApplicationSupportDirectory();
     final primaryDir = Directory(p.join(root.path, 'mdk'));
-    if (_bridgeInitialized) {
+    if (_initCompleter?.isCompleted ?? false) {
       final scratchDir = p.join(
         root.path,
         'mdk_reset_runtime_${DateTime.now().millisecondsSinceEpoch}',
       );
       await bridge_api.initMdkUnencrypted(dataDir: scratchDir);
     }
-    _bridgeInitialized = false;
+    _initCompleter = null;
     if (await primaryDir.exists()) {
       await primaryDir.delete(recursive: true);
     }

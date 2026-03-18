@@ -70,12 +70,11 @@ class FillCameraPreview extends StatelessWidget {
   }
 
   bool _isLandscape(CameraValue value) {
-    final orientation =
-        value.isRecordingVideo
-            ? value.recordingOrientation
-            : (value.previewPauseOrientation ??
-                  value.lockedCaptureOrientation ??
-                  value.deviceOrientation);
+    final orientation = value.isRecordingVideo
+        ? value.recordingOrientation
+        : (value.previewPauseOrientation ??
+              value.lockedCaptureOrientation ??
+              value.deviceOrientation);
     return orientation == DeviceOrientation.landscapeLeft ||
         orientation == DeviceOrientation.landscapeRight;
   }

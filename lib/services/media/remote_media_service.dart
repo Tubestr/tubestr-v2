@@ -10,10 +10,7 @@ import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
 
 class DownloadedBlob {
-  const DownloadedBlob({
-    required this.bytes,
-    required this.server,
-  });
+  const DownloadedBlob({required this.bytes, required this.server});
 
   final List<int> bytes;
   final String server;
@@ -26,12 +23,12 @@ class RemoteMediaService {
     required MdkService mdkService,
     required NostrService nostrService,
     Future<Directory> Function()? supportDirectoryProvider,
-  })  : _database = database,
-        _blossomClient = blossomClient,
-        _mdkService = mdkService,
-        _nostrService = nostrService,
-        _supportDirectoryProvider =
-            supportDirectoryProvider ?? getApplicationSupportDirectory;
+  }) : _database = database,
+       _blossomClient = blossomClient,
+       _mdkService = mdkService,
+       _nostrService = nostrService,
+       _supportDirectoryProvider =
+           supportDirectoryProvider ?? getApplicationSupportDirectory;
 
   final AppDatabase _database;
   final BlossomClient _blossomClient;

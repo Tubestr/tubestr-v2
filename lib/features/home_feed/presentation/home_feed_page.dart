@@ -268,16 +268,15 @@ class _GhostVideoGrid extends ConsumerWidget {
             ),
             foregroundDecoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: palette.panelBorder,
-                width: 1,
-              ),
+              border: Border.all(color: palette.panelBorder, width: 1),
             ),
           );
         });
 
         return SizedBox(
-          height: tileHeight * (tileCount / cols) + spacing * ((tileCount / cols) - 1),
+          height:
+              tileHeight * (tileCount / cols) +
+              spacing * ((tileCount / cols) - 1),
           child: GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -510,9 +509,7 @@ class _AddFriendsCta extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: palette.panelBorder),
-          ),
+          border: Border(bottom: BorderSide(color: palette.panelBorder)),
         ),
         child: Row(
           children: [

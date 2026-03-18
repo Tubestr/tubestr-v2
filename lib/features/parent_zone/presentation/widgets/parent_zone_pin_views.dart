@@ -39,7 +39,11 @@ class ParentZonePinSetupView extends StatelessWidget {
                     color: palette.accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Icon(Icons.shield_rounded, size: 28, color: palette.accent),
+                  child: Icon(
+                    Icons.shield_rounded,
+                    size: 28,
+                    color: palette.accent,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -144,7 +148,11 @@ class ParentZonePinEntryView extends StatelessWidget {
                     color: palette.accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Icon(Icons.shield_rounded, size: 28, color: palette.accent),
+                  child: Icon(
+                    Icons.shield_rounded,
+                    size: 28,
+                    color: palette.accent,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -180,10 +188,7 @@ class ParentZonePinEntryView extends StatelessWidget {
                   alignment: Alignment.center,
                   child: SizedBox(
                     width: 280,
-                    child: PinKeypad(
-                      onDigit: onDigit,
-                      onDelete: onDelete,
-                    ),
+                    child: PinKeypad(onDigit: onDigit, onDelete: onDelete),
                   ),
                 ),
               ],

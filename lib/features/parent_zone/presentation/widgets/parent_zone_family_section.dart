@@ -103,8 +103,10 @@ class ParentZoneFamilySection extends ConsumerWidget {
                               ? null
                               : () => onRejectVideo(video.id),
                           flagLabel: _flagLabel,
-                          riskColor: (riskLevel) =>
-                              _riskColor(palette: palette, riskLevel: riskLevel),
+                          riskColor: (riskLevel) => _riskColor(
+                            palette: palette,
+                            riskLevel: riskLevel,
+                          ),
                         );
                       },
                     ),
@@ -117,10 +119,7 @@ class ParentZoneFamilySection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Children',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('Children', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(
                 'Each child keeps a theme and local profile for capture, editing, and playback.',
@@ -141,8 +140,12 @@ class ParentZoneFamilySection extends ConsumerWidget {
                 for (final profile in profiles)
                   _ChildRow(
                     name: profile.name,
-                    themeLabel: ThemeDescriptorX.fromStorage(profile.theme).label,
-                    color: ThemeDescriptorX.fromStorage(profile.theme).palette.accent,
+                    themeLabel: ThemeDescriptorX.fromStorage(
+                      profile.theme,
+                    ).label,
+                    color: ThemeDescriptorX.fromStorage(
+                      profile.theme,
+                    ).palette.accent,
                     onDelete: () => onDeleteChild(profile.id),
                   ),
               const Divider(height: 28),
@@ -206,7 +209,9 @@ class ParentZoneFamilySection extends ConsumerWidget {
                     ? Icons.error_outline_rounded
                     : Icons.check_circle_rounded,
                 color: identity == null ? palette.warning : palette.success,
-                title: identity == null ? 'Parent identity missing' : 'Parent account is ready',
+                title: identity == null
+                    ? 'Parent identity missing'
+                    : 'Parent account is ready',
                 detail: identity == null
                     ? 'Create or restore the parent account before using family tools.'
                     : 'Your public parent address is ready for invites and sharing.',
@@ -230,9 +235,9 @@ class ParentZoneFamilySection extends ConsumerWidget {
                       const SizedBox(height: 6),
                       SelectableText(
                         identity.npub,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ],
                   ),
@@ -360,10 +365,7 @@ class _ApprovalCard extends StatelessWidget {
                 onPressed: onApprove,
                 child: const Text('Approve'),
               ),
-              OutlinedButton(
-                onPressed: onReject,
-                child: const Text('Reject'),
-              ),
+              OutlinedButton(onPressed: onReject, child: const Text('Reject')),
             ],
           ),
         ],

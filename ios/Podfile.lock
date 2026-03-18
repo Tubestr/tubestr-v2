@@ -1,0 +1,229 @@
+PODS:
+  - app_links (7.0.0):
+    - Flutter
+  - audio_session (0.0.1):
+    - Flutter
+  - camera_avfoundation (0.0.1):
+    - Flutter
+  - ffmpeg_kit_flutter_new_video (7.1.1):
+    - ffmpeg_kit_flutter_new_video/video (= 7.1.1)
+    - Flutter
+  - ffmpeg_kit_flutter_new_video/video (7.1.1):
+    - Flutter
+  - Flutter (1.0.0)
+  - flutter_secure_storage_darwin (10.0.0):
+    - Flutter
+    - FlutterMacOS
+  - google_mlkit_commons (0.11.1):
+    - Flutter
+    - MLKitVision (~> 10.0.0)
+  - google_mlkit_selfie_segmentation (0.10.1):
+    - Flutter
+    - google_mlkit_commons
+    - GoogleMLKit/SegmentationSelfie (~> 9.0.0)
+  - GoogleDataTransport (10.1.0):
+    - nanopb (~> 3.30910.0)
+    - PromisesObjC (~> 2.4)
+  - GoogleMLKit/MLKitCore (9.0.0):
+    - MLKitCommon (~> 14.0.0)
+  - GoogleMLKit/SegmentationSelfie (9.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitSegmentationSelfie (~> 1.0.0-beta14)
+  - GoogleToolboxForMac/Defines (4.2.1)
+  - GoogleToolboxForMac/Logger (4.2.1):
+    - GoogleToolboxForMac/Defines (= 4.2.1)
+  - "GoogleToolboxForMac/NSData+zlib (4.2.1)":
+    - GoogleToolboxForMac/Defines (= 4.2.1)
+  - GoogleUtilities/Environment (8.1.0):
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Logger (8.1.0):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Privacy (8.1.0)
+  - GoogleUtilities/UserDefaults (8.1.0):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GTMSessionFetcher/Core (3.5.0)
+  - in_app_purchase_storekit (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - integration_test (0.0.1):
+    - Flutter
+  - just_audio (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - libwebp (1.5.0):
+    - libwebp/demux (= 1.5.0)
+    - libwebp/mux (= 1.5.0)
+    - libwebp/sharpyuv (= 1.5.0)
+    - libwebp/webp (= 1.5.0)
+  - libwebp/demux (1.5.0):
+    - libwebp/webp
+  - libwebp/mux (1.5.0):
+    - libwebp/demux
+  - libwebp/sharpyuv (1.5.0)
+  - libwebp/webp (1.5.0):
+    - libwebp/sharpyuv
+  - media_kit_libs_ios_video (1.0.4):
+    - Flutter
+  - media_kit_video (0.0.1):
+    - Flutter
+  - MLImage (1.0.0-beta8)
+  - MLKitCommon (14.0.0):
+    - GoogleDataTransport (~> 10.0)
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GoogleUtilities/Logger (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+  - MLKitSegmentationCommon (1.0.0-beta14):
+    - MLKitCommon (~> 14.0)
+    - MLKitXenoCommon (= 1.0.0-beta16)
+  - MLKitSegmentationSelfie (1.0.0-beta14):
+    - MLKitSegmentationCommon (= 1.0.0-beta14)
+  - MLKitVision (10.0.0):
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+    - MLImage (= 1.0.0-beta8)
+    - MLKitCommon (~> 14.0)
+  - MLKitXenoCommon (1.0.0-beta16):
+    - MLKitCommon (~> 14.0)
+    - MLKitVision (~> 10.0)
+  - mobile_scanner (7.0.0):
+    - Flutter
+    - FlutterMacOS
+  - nanopb (3.30910.0):
+    - nanopb/decode (= 3.30910.0)
+    - nanopb/encode (= 3.30910.0)
+  - nanopb/decode (3.30910.0)
+  - nanopb/encode (3.30910.0)
+  - package_info_plus (0.4.5):
+    - Flutter
+  - PromisesObjC (2.4.0)
+  - rust_lib_mytube (0.0.1):
+    - Flutter
+  - share_plus (0.0.1):
+    - Flutter
+  - video_thumbnail (0.0.1):
+    - Flutter
+    - libwebp
+  - wakelock_plus (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - app_links (from `.symlinks/plugins/app_links/ios`)
+  - audio_session (from `.symlinks/plugins/audio_session/ios`)
+  - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
+  - ffmpeg_kit_flutter_new_video (from `.symlinks/plugins/ffmpeg_kit_flutter_new_video/ios`)
+  - Flutter (from `Flutter`)
+  - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
+  - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
+  - google_mlkit_selfie_segmentation (from `.symlinks/plugins/google_mlkit_selfie_segmentation/ios`)
+  - in_app_purchase_storekit (from `.symlinks/plugins/in_app_purchase_storekit/darwin`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+  - just_audio (from `.symlinks/plugins/just_audio/darwin`)
+  - media_kit_libs_ios_video (from `.symlinks/plugins/media_kit_libs_ios_video/ios`)
+  - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
+  - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
+  - rust_lib_mytube (from `.symlinks/plugins/rust_lib_mytube/ios`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
+  - video_thumbnail (from `.symlinks/plugins/video_thumbnail/ios`)
+  - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
+
+SPEC REPOS:
+  trunk:
+    - GoogleDataTransport
+    - GoogleMLKit
+    - GoogleToolboxForMac
+    - GoogleUtilities
+    - GTMSessionFetcher
+    - libwebp
+    - MLImage
+    - MLKitCommon
+    - MLKitSegmentationCommon
+    - MLKitSegmentationSelfie
+    - MLKitVision
+    - MLKitXenoCommon
+    - nanopb
+    - PromisesObjC
+
+EXTERNAL SOURCES:
+  app_links:
+    :path: ".symlinks/plugins/app_links/ios"
+  audio_session:
+    :path: ".symlinks/plugins/audio_session/ios"
+  camera_avfoundation:
+    :path: ".symlinks/plugins/camera_avfoundation/ios"
+  ffmpeg_kit_flutter_new_video:
+    :path: ".symlinks/plugins/ffmpeg_kit_flutter_new_video/ios"
+  Flutter:
+    :path: Flutter
+  flutter_secure_storage_darwin:
+    :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
+  google_mlkit_commons:
+    :path: ".symlinks/plugins/google_mlkit_commons/ios"
+  google_mlkit_selfie_segmentation:
+    :path: ".symlinks/plugins/google_mlkit_selfie_segmentation/ios"
+  in_app_purchase_storekit:
+    :path: ".symlinks/plugins/in_app_purchase_storekit/darwin"
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+  just_audio:
+    :path: ".symlinks/plugins/just_audio/darwin"
+  media_kit_libs_ios_video:
+    :path: ".symlinks/plugins/media_kit_libs_ios_video/ios"
+  media_kit_video:
+    :path: ".symlinks/plugins/media_kit_video/ios"
+  mobile_scanner:
+    :path: ".symlinks/plugins/mobile_scanner/darwin"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
+  rust_lib_mytube:
+    :path: ".symlinks/plugins/rust_lib_mytube/ios"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
+  video_thumbnail:
+    :path: ".symlinks/plugins/video_thumbnail/ios"
+  wakelock_plus:
+    :path: ".symlinks/plugins/wakelock_plus/ios"
+
+SPEC CHECKSUMS:
+  app_links: 6d01271b3907b0ee7325c5297c75d697c4226c4d
+  audio_session: 19e9480dbdd4e5f6c4543826b2e8b0e4ab6145fe
+  camera_avfoundation: 769d252259fa21e39ada7399c9dc9c0921af8165
+  ffmpeg_kit_flutter_new_video: 7df9b30a8a77587a897445c16800b7dc5e4aff03
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_secure_storage_darwin: 557817588b80e60213cbecb573c45c76b788018d
+  google_mlkit_commons: 1e6ef6605d7281f35baf2b355e6049b9984fd624
+  google_mlkit_selfie_segmentation: e1c74c1433e36a23ca6799d24fa66e31a38d0068
+  GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
+  GoogleMLKit: b1eee21a41c57704fe72483b15c85cb2c0cd7444
+  GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
+  GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
+  GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
+  in_app_purchase_storekit: 2342c0a5da86593124d08dd13d920f39a52b273a
+  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
+  just_audio: a42c63806f16995daf5b219ae1d679deb76e6a79
+  libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
+  media_kit_libs_ios_video: a5fe24bc7875ccd6378a0978c13185e1344651c1
+  media_kit_video: 5da63f157170e5bf303bf85453b7ef6971218a2e
+  MLImage: 0de5c6c2bf9e93b80ef752e2797f0836f03b58c0
+  MLKitCommon: 47d47b50a031d00db62f1b0efe5a1d8b09a3b2e6
+  MLKitSegmentationCommon: f634fb3c20c1d8bace22a2c026bdaa0ca17613d9
+  MLKitSegmentationSelfie: 62371f35c33d49c3e7474443677b6a0c7ac9c98b
+  MLKitVision: 39a5a812db83c4a0794445088e567f3631c11961
+  MLKitXenoCommon: 1a4268c1222a6043047af5bb9435028206c63287
+  mobile_scanner: 77265f3dc8d580810e91849d4a0811a90467ed5e
+  nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
+  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  rust_lib_mytube: 7f4b3e43ef02e90ed80d6ad1c261085d1efce7b7
+  share_plus: 8b6f8b3447e494cca5317c8c3073de39b3600d1f
+  video_thumbnail: c4e2a3c539e247d4de13cd545344fd2d26ffafd1
+  wakelock_plus: 76957ab028e12bfa4e66813c99e46637f367fc7e
+
+PODFILE CHECKSUM: bd29822c3d5baf6b44b726f00ea3293a19339ef2
+
+COCOAPODS: 1.16.2

@@ -11,7 +11,9 @@ class ParentAuthService {
   final FlutterSecureStorage _secureStorage;
 
   Future<bool> hasPin() async {
-    final value = await _secureStorage.read(key: AppConstants.parentPinStorageKey);
+    final value = await _secureStorage.read(
+      key: AppConstants.parentPinStorageKey,
+    );
     return value != null && value.isNotEmpty;
   }
 
@@ -24,7 +26,9 @@ class ParentAuthService {
   }
 
   Future<bool> verifyPin(String pin) async {
-    final stored = await _secureStorage.read(key: AppConstants.parentPinStorageKey);
+    final stored = await _secureStorage.read(
+      key: AppConstants.parentPinStorageKey,
+    );
     if (stored == null) {
       return false;
     }

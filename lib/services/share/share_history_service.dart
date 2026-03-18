@@ -5,11 +5,9 @@ import '../../core/storage/app_database.dart';
 import '../../domain/models/share_history_entry.dart';
 
 class ShareHistoryService {
-  ShareHistoryService({
-    required AppDatabase database,
-    Uuid? uuid,
-  }) : _database = database,
-       _uuid = uuid ?? const Uuid();
+  ShareHistoryService({required AppDatabase database, Uuid? uuid})
+    : _database = database,
+      _uuid = uuid ?? const Uuid();
 
   final AppDatabase _database;
   final Uuid _uuid;

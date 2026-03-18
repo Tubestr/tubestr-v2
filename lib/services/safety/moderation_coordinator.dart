@@ -28,9 +28,7 @@ class ModerationCoordinator {
   final NostrService _nostrService;
   final VideoLifecycleCoordinator _videoLifecycleCoordinator;
 
-  Future<List<String>> loadGroupMembers({
-    required String mlsGroupIdHex,
-  }) {
+  Future<List<String>> loadGroupMembers({required String mlsGroupIdHex}) {
     return _mdkService.getGroupMembers(mlsGroupIdHex: mlsGroupIdHex);
   }
 
@@ -99,10 +97,7 @@ class ModerationCoordinator {
       actionType: 'delete_video',
       actorParentKey: identity.publicKeyHex,
       subjectParentKey: projection.senderParentKey,
-      detailsJson: jsonEncode({
-        'reason': reason,
-        'blob_hash': blobHash,
-      }),
+      detailsJson: jsonEncode({'reason': reason, 'blob_hash': blobHash}),
     );
   }
 
@@ -150,7 +145,9 @@ class ModerationCoordinator {
     }
   }
 
-  Future<List<String>> _resolveReportServers(RemoteShareProjection projection) async {
+  Future<List<String>> _resolveReportServers(
+    RemoteShareProjection projection,
+  ) async {
     final shareMessage = projection.shareMessage;
     final snapshotServers = shareMessage?.blob.servers ?? const <String>[];
     if (snapshotServers.isNotEmpty) {

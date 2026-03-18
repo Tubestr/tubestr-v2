@@ -148,7 +148,10 @@ class EditorExportService {
         stagingDir: stagingDir.path,
         videoSize: scaleEditorRenderSize(baseRenderSize, attempt.renderScale),
       );
-      final renderSize = scaleEditorRenderSize(baseRenderSize, attempt.renderScale);
+      final renderSize = scaleEditorRenderSize(
+        baseRenderSize,
+        attempt.renderScale,
+      );
       final plan = await buildEditorExportPlan(
         session: attempt.session,
         outputPath: attemptOutputPath,

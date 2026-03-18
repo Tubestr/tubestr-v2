@@ -130,23 +130,26 @@ void main() {
     );
   });
 
-  test('loadIdentity migrates a legacy local-only key into synced storage', () async {
-    const privateKeyHex =
-        'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd';
-    final legacyIdentity = IdentityService.parseImportedIdentity(
-      privateKeyHex,
-      createdAt: DateTime.utc(2026, 3, 17),
-    );
-    testPlatform.buckets['local']![AppConstants.parentIdentityStorageKey] =
-        legacyIdentity.encode();
+  test(
+    'loadIdentity migrates a legacy local-only key into synced storage',
+    () async {
+      const privateKeyHex =
+          'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd';
+      final legacyIdentity = IdentityService.parseImportedIdentity(
+        privateKeyHex,
+        createdAt: DateTime.utc(2026, 3, 17),
+      );
+      testPlatform.buckets['local']![AppConstants.parentIdentityStorageKey] =
+          legacyIdentity.encode();
 
-    final loaded = await service.loadIdentity();
+      final loaded = await service.loadIdentity();
 
-    expect(loaded, isNotNull);
-    expect(loaded!.privateKeyHex, privateKeyHex);
-    expect(
-      testPlatform.buckets['synced']![AppConstants.parentIdentityStorageKey],
-      legacyIdentity.encode(),
-    );
-  });
+      expect(loaded, isNotNull);
+      expect(loaded!.privateKeyHex, privateKeyHex);
+      expect(
+        testPlatform.buckets['synced']![AppConstants.parentIdentityStorageKey],
+        legacyIdentity.encode(),
+      );
+    },
+  );
 }

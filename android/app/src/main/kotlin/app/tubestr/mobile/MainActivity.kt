@@ -1,4 +1,4 @@
-package app.tubestr.mytube
+package app.tubestr.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
