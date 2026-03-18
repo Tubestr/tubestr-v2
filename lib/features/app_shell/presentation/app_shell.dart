@@ -123,6 +123,7 @@ class _AppShellState extends ConsumerState<AppShell>
     ];
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [

@@ -302,24 +302,39 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                   label: const Text('Copy'),
                 ),
                 const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    if (shareText != null && shareText.isNotEmpty) {
-                      await SharePlus.instance.share(
-                        ShareParams(text: shareText),
-                      );
-                    } else if (payloadUri != null && payloadUri.hasScheme) {
-                      await SharePlus.instance.share(
-                        ShareParams(uri: payloadUri),
-                      );
-                    } else {
-                      await SharePlus.instance.share(
-                        ShareParams(text: payload),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.ios_share_rounded, size: 16),
-                  label: const Text('Share'),
+                Builder(
+                  builder: (context) => OutlinedButton.icon(
+                    onPressed: () async {
+                      final box = context.findRenderObject() as RenderBox?;
+                      final origin = box != null
+                          ? box.localToGlobal(Offset.zero) & box.size
+                          : null;
+                      if (shareText != null && shareText.isNotEmpty) {
+                        await SharePlus.instance.share(
+                          ShareParams(
+                            text: shareText,
+                            sharePositionOrigin: origin,
+                          ),
+                        );
+                      } else if (payloadUri != null && payloadUri.hasScheme) {
+                        await SharePlus.instance.share(
+                          ShareParams(
+                            uri: payloadUri,
+                            sharePositionOrigin: origin,
+                          ),
+                        );
+                      } else {
+                        await SharePlus.instance.share(
+                          ShareParams(
+                            text: payload,
+                            sharePositionOrigin: origin,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.ios_share_rounded, size: 16),
+                    label: const Text('Share'),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 TextButton(
