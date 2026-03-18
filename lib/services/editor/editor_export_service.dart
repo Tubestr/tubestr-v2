@@ -671,45 +671,63 @@ String _escapeFilterPath(String path) {
 Future<FfmpegExecutionResult> _defaultExecuteFfmpeg(
   List<String> arguments,
 ) async {
-  final session = await FFmpegKit.executeWithArguments(arguments);
-  final returnCode = await session.getReturnCode();
-  final logs = await session.getAllLogsAsString();
-  return FfmpegExecutionResult(
-    success: ReturnCode.isSuccess(returnCode),
-    logs: logs,
-  );
+  try {
+    final session = await FFmpegKit.executeWithArguments(arguments);
+    final returnCode = await session.getReturnCode();
+    final logs = await session.getAllLogsAsString();
+    return FfmpegExecutionResult(
+      success: ReturnCode.isSuccess(returnCode),
+      logs: logs,
+    );
+  } on MissingPluginException catch (error) {
+    return FfmpegExecutionResult(
+      success: false,
+      logs: 'FFmpeg is unavailable in this build: $error',
+    );
+  } on PlatformException catch (error) {
+    return FfmpegExecutionResult(
+      success: false,
+      logs: 'FFmpeg failed to start: ${error.message ?? error.code}',
+    );
+  }
 }
 
 Future<SourceMediaInfo?> _defaultProbeSourceMediaInfo(String path) async {
-  final session = await FFprobeKit.getMediaInformation(path);
-  final mediaInformation = session.getMediaInformation();
-  if (mediaInformation == null) {
-    return null;
-  }
-
-  ui.Size? videoSize;
-  var hasAudio = false;
-  var rotationDegrees = 0;
-  for (final stream in mediaInformation.getStreams()) {
-    if (stream.getType() == 'video') {
-      final width = stream.getWidth();
-      final height = stream.getHeight();
-      if (width != null && height != null && width > 0 && height > 0) {
-        videoSize = ui.Size(width.toDouble(), height.toDouble());
-      }
-      rotationDegrees = _parseRotationDegrees(stream);
-    } else if (stream.getType() == 'audio') {
-      hasAudio = true;
+  try {
+    final session = await FFprobeKit.getMediaInformation(path);
+    final mediaInformation = session.getMediaInformation();
+    if (mediaInformation == null) {
+      return null;
     }
-  }
-  if (videoSize == null) {
+
+    ui.Size? videoSize;
+    var hasAudio = false;
+    var rotationDegrees = 0;
+    for (final stream in mediaInformation.getStreams()) {
+      if (stream.getType() == 'video') {
+        final width = stream.getWidth();
+        final height = stream.getHeight();
+        if (width != null && height != null && width > 0 && height > 0) {
+          videoSize = ui.Size(width.toDouble(), height.toDouble());
+        }
+        rotationDegrees = _parseRotationDegrees(stream);
+      } else if (stream.getType() == 'audio') {
+        hasAudio = true;
+      }
+    }
+    if (videoSize == null) {
+      return null;
+    }
+    return SourceMediaInfo(
+      size: videoSize,
+      hasAudio: hasAudio,
+      rotationDegrees: rotationDegrees,
+    );
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
     return null;
   }
-  return SourceMediaInfo(
-    size: videoSize,
-    hasAudio: hasAudio,
-    rotationDegrees: rotationDegrees,
-  );
 }
 
 ui.Size _displayOrientedSize(SourceMediaInfo info) {

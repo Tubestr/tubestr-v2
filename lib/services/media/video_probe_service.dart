@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:ffmpeg_kit_flutter_new_video/ffprobe_kit.dart';
+import 'package:flutter/services.dart';
 
 /// Lightweight metadata about a video file obtained via ffprobe.
 class VideoProbeResult {
@@ -28,19 +29,27 @@ class VideoProbeResult {
 
 /// Probes a video file for its encoded dimensions and rotation metadata.
 Future<VideoProbeResult?> probeVideoFile(String path) async {
-  final session = await FFprobeKit.getMediaInformation(path);
-  final info = session.getMediaInformation();
-  if (info == null) return null;
+  try {
+    final session = await FFprobeKit.getMediaInformation(path);
+    final info = session.getMediaInformation();
+    if (info == null) return null;
 
-  for (final stream in info.getStreams()) {
-    if (stream.getType() != 'video') continue;
-    final width = stream.getWidth();
-    final height = stream.getHeight();
-    if (width == null || height == null || width <= 0 || height <= 0) continue;
-    return VideoProbeResult(
-      encodedSize: ui.Size(width.toDouble(), height.toDouble()),
-      rotationDegrees: _parseRotationDegrees(stream),
-    );
+    for (final stream in info.getStreams()) {
+      if (stream.getType() != 'video') continue;
+      final width = stream.getWidth();
+      final height = stream.getHeight();
+      if (width == null || height == null || width <= 0 || height <= 0) {
+        continue;
+      }
+      return VideoProbeResult(
+        encodedSize: ui.Size(width.toDouble(), height.toDouble()),
+        rotationDegrees: _parseRotationDegrees(stream),
+      );
+    }
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
+    return null;
   }
   return null;
 }
