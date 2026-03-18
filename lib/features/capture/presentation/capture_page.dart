@@ -221,6 +221,11 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       return;
     }
 
+    // Ensure selectedProfileIdProvider matches the profile we're saving with
+    if (selectedId != activeProfile.id) {
+      ref.read(selectedProfileIdProvider.notifier).state = activeProfile.id;
+    }
+
     try {
       final recording = await ctrl.stopVideoRecording();
       await ctrl.unlockCaptureOrientation();

@@ -24,9 +24,14 @@ class ParentZonePinSetupView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: 32,
+          right: 32,
+          top: 32,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+        ),
+        child: Center(
           child: FrostCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

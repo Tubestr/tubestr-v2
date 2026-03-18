@@ -32,8 +32,10 @@ class AppBootstrapPage extends ConsumerWidget {
               return OnboardingPage(identity: identity);
             }
             final selectedId = ref.watch(selectedProfileIdProvider);
-            if (selectedId == null && profiles.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
+            final profileExists = selectedId != null &&
+                profiles.any((p) => p.id == selectedId);
+            if (!profileExists && profiles.isNotEmpty) {
+              Future.microtask(() {
                 ref.read(selectedProfileIdProvider.notifier).state =
                     profiles.first.id;
               });
@@ -289,6 +291,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       if (mounted) {
         ref.invalidate(parentIdentityProvider);
         ref.invalidate(profilesProvider);
+        // Eagerly set the selected profile so it's ready before AppShell builds
+        final profiles = ref.read(profilesProvider).valueOrNull ?? const [];
+        if (profiles.isNotEmpty) {
+          ref.read(selectedProfileIdProvider.notifier).state =
+              profiles.first.id;
+        }
       }
     });
     Future.delayed(const Duration(milliseconds: 1600), () {
