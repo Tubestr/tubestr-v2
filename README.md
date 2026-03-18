@@ -50,6 +50,30 @@ Target a specific device:
 scripts/rebuild_android_bridge.sh 58281JEBF12262
 ```
 
+Set a release version in `pubspec.yaml`:
+
+```bash
+scripts/set_app_version.sh 1.0.1+18
+```
+
+Create the Android upload keystore:
+
+```bash
+scripts/create_android_keystore.sh
+```
+
+Create and publish the Android GitHub release from the current app version:
+
+```bash
+scripts/release_android.sh --publish
+```
+
+If you prefer the GitHub web UI, use:
+
+```bash
+scripts/release_android.sh --push
+```
+
 ## Notes
 
 - `docs/plan.md` is the source of truth for live progress and implementation notes.
@@ -57,3 +81,5 @@ scripts/rebuild_android_bridge.sh 58281JEBF12262
 - The generated Drift file lives at `lib/core/storage/app_database.g.dart`.
 - `flutter build apk --debug` currently succeeds in this environment.
 - If FRB or Rust bridge code changes, use `scripts/rebuild_android_bridge.sh` instead of `flutter run` alone.
+- Android release setup lives in `docs/android-github-releases.md`.
+- Zapstore notes live in `docs/zapstore-publishing.md`.
