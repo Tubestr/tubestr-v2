@@ -61,6 +61,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   late final Animation<double> _overlayFade;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<Duration>? _positionSubscription;
+  StreamSubscription<VideoParams>? _videoParamsSubscription;
   late EditorSession _session;
   double _gestureStartScale = 1;
   double _gestureStartRotation = 0;
@@ -77,6 +78,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   int? _videoWidth;
   int? _videoHeight;
   double? _probeDisplayAspectRatio;
+  VideoParams _videoParams = const VideoParams();
 
   @override
   void initState() {
@@ -131,13 +133,25 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       if (!mounted) {
         return;
       }
-      setState(() => _videoWidth = value);
+      if (value != null && value > 0) {
+        setState(() => _videoWidth = value);
+      }
     });
     _player.stream.height.listen((value) {
       if (!mounted) {
         return;
       }
-      setState(() => _videoHeight = value);
+      if (value != null && value > 0) {
+        setState(() => _videoHeight = value);
+      }
+    });
+    _videoParamsSubscription = _player.stream.videoParams.listen((value) {
+      if (!mounted) {
+        return;
+      }
+      if (_hasUsableVideoParams(value)) {
+        setState(() => _videoParams = value);
+      }
     });
     _probeAndOpen();
     unawaited(_loadUserStickers());
@@ -149,6 +163,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     unawaited(_audioPreviewService.dispose());
     unawaited(_playingSubscription?.cancel());
     unawaited(_positionSubscription?.cancel());
+    unawaited(_videoParamsSubscription?.cancel());
     _player.dispose();
     super.dispose();
   }
@@ -460,14 +475,17 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     try {
       await _audioPreviewService.stop();
       await _player.pause();
-      await _player.open(Media(widget.video.filePath), play: false);
       if (!mounted) return;
+      final preferredDisplaySize = _preferredDisplaySize();
+      final preferredRotationDegrees = _preferredRotationDegrees();
       final result = await ref
           .read(editorExportServiceProvider)
           .export(
             session: _session,
             profileId: widget.video.profileId,
             title: '${widget.video.title} Remix',
+            preferredDisplaySize: preferredDisplaySize,
+            preferredRotationDegrees: preferredRotationDegrees,
           );
       if (!mounted) return;
       ref.invalidate(videosForSelectedProfileProvider);
@@ -860,6 +878,10 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   double _resolvedVideoAspectRatio() {
+    final videoParamsAspectRatio = _videoParamsDisplayAspectRatio();
+    if (videoParamsAspectRatio != null && videoParamsAspectRatio > 0) {
+      return videoParamsAspectRatio;
+    }
     if (_probeDisplayAspectRatio != null) {
       return _probeDisplayAspectRatio!;
     }
@@ -869,6 +891,76 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       return width / height;
     }
     return 9 / 16;
+  }
+
+  bool _hasUsableVideoParams(VideoParams value) {
+    final hasDimensions =
+        (value.w != null && value.w! > 0 && value.h != null && value.h! > 0) ||
+        (value.dw != null &&
+            value.dw! > 0 &&
+            value.dh != null &&
+            value.dh! > 0);
+    final hasRotation = value.rotate != null;
+    final hasAspect = value.aspect != null && value.aspect! > 0;
+    return hasDimensions || hasRotation || hasAspect;
+  }
+
+  ui.Size _orientedSize({
+    required double width,
+    required double height,
+    required int rotationDegrees,
+  }) {
+    final normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
+    if (normalizedRotation == 90 || normalizedRotation == 270) {
+      return ui.Size(height, width);
+    }
+    return ui.Size(width, height);
+  }
+
+  ui.Size? _preferredDisplaySize() {
+    final rotation = _preferredRotationDegrees();
+    final w = _videoParams.w;
+    final h = _videoParams.h;
+    if (w != null && h != null && w > 0 && h > 0) {
+      return _orientedSize(
+        width: w.toDouble(),
+        height: h.toDouble(),
+        rotationDegrees: rotation,
+      );
+    }
+
+    if (_videoWidth != null &&
+        _videoHeight != null &&
+        _videoWidth! > 0 &&
+        _videoHeight! > 0) {
+      return ui.Size(_videoWidth!.toDouble(), _videoHeight!.toDouble());
+    }
+
+    final dw = _videoParams.dw;
+    final dh = _videoParams.dh;
+    if (dw != null && dh != null && dw > 0 && dh > 0) {
+      return _orientedSize(
+        width: dw.toDouble(),
+        height: dh.toDouble(),
+        rotationDegrees: rotation,
+      );
+    }
+
+    return null;
+  }
+
+  int _preferredRotationDegrees() {
+    return _videoParams.rotate ?? 0;
+  }
+
+  double? _videoParamsDisplayAspectRatio() {
+    final preferredDisplaySize = _preferredDisplaySize();
+    if (preferredDisplaySize != null &&
+        preferredDisplaySize.width > 0 &&
+        preferredDisplaySize.height > 0) {
+      return preferredDisplaySize.width / preferredDisplaySize.height;
+    }
+    return _videoParams.aspect;
   }
 }
 

@@ -1,6 +1,5 @@
 package app.tubestr.mobile
 
-import android.os.Build
 import android.util.Log
 import com.alexmercerind.media_kit_libs_android_video.MediaKitLibsAndroidVideoPlugin
 import com.alexmercerind.media_kit_video.MediaKitVideoPlugin
@@ -24,27 +23,16 @@ import xyz.justsoft.video_thumbnail.VideoThumbnailPlugin
 
 object AppPluginRegistrant {
     private const val TAG = "AppPluginRegistrant"
-    private const val ANDROID_16_API_LEVEL = 36
 
     fun registerWith(flutterEngine: FlutterEngine) {
         flutterEngine.plugins.add(AppLinksPlugin())
         flutterEngine.plugins.add(AudioSessionPlugin())
         flutterEngine.plugins.add(CameraAndroidCameraxPlugin())
 
-        // FFmpegKit currently crashes during startup on Android 16 / API 36.
-        // Skip registration there so the app can launch and degrade only the
-        // FFmpeg-backed editor/probe features instead of blank-screening.
-        if (Build.VERSION.SDK_INT < ANDROID_16_API_LEVEL) {
-            try {
-                flutterEngine.plugins.add(FFmpegKitFlutterPlugin())
-            } catch (throwable: Throwable) {
-                Log.e(TAG, "Error registering FFmpegKitFlutterPlugin", throwable)
-            }
-        } else {
-            Log.w(
-                TAG,
-                "Skipping FFmpegKitFlutterPlugin on Android API ${Build.VERSION.SDK_INT}",
-            )
+        try {
+            flutterEngine.plugins.add(FFmpegKitFlutterPlugin())
+        } catch (throwable: Throwable) {
+            Log.e(TAG, "Error registering FFmpegKitFlutterPlugin", throwable)
         }
 
         flutterEngine.plugins.add(FlutterAndroidLifecyclePlugin())

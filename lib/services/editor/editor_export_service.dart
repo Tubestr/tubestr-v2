@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:ffmpeg_kit_flutter_new_video/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new_video/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_video/return_code.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +15,7 @@ import '../../domain/models/editor_resources.dart';
 import '../../domain/models/editor_session.dart';
 import '../approval/video_approval_service.dart';
 import '../media/thumbnail_service.dart';
+import '../media/video_probe_service.dart';
 import 'editor_resource_catalog.dart';
 
 typedef ExecuteFfmpegWithArguments =
@@ -61,11 +61,13 @@ class SourceMediaInfo {
     required this.size,
     required this.hasAudio,
     this.rotationDegrees = 0,
+    this.displayAspectRatio,
   });
 
   final ui.Size size;
   final bool hasAudio;
   final int rotationDegrees;
+  final double? displayAspectRatio;
 }
 
 class EditorExportPlan {
@@ -110,6 +112,8 @@ class EditorExportService {
     required EditorSession session,
     required String profileId,
     required String title,
+    ui.Size? preferredDisplaySize,
+    int? preferredRotationDegrees,
   }) async {
     final root = await getApplicationSupportDirectory();
     final exportsDir = Directory(p.join(root.path, 'editor_exports'));
@@ -124,8 +128,21 @@ class EditorExportService {
     final sourceMediaInfo =
         await _probeSourceMediaInfo(session.sourcePath) ??
         const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false);
+    final effectiveSourceRotationDegrees =
+        preferredRotationDegrees ?? sourceMediaInfo.rotationDegrees;
     final baseRenderSize = normalizeEditorRenderSize(
-      _displayOrientedSize(sourceMediaInfo),
+      preferredDisplaySize ?? _displayOrientedSize(sourceMediaInfo),
+    );
+    _logProbe(
+      label: 'source',
+      path: session.sourcePath,
+      info: sourceMediaInfo,
+      extra:
+          'preferredDisplay=${preferredDisplaySize == null ? 'none' : '${preferredDisplaySize.width.toInt()}x${preferredDisplaySize.height.toInt()}'} '
+          'preferredRotation=${preferredRotationDegrees ?? 'none'} '
+          'baseRender=${baseRenderSize.width.toInt()}x${baseRenderSize.height.toInt()} '
+          'trimStart=${session.trimRange.start.inMilliseconds}ms '
+          'trimDuration=${session.trimRange.duration.inMilliseconds}ms',
     );
     final attempts = _buildExportAttempts(session);
     List<String>? appliedArguments;
@@ -160,7 +177,8 @@ class EditorExportService {
         renderSize: renderSize,
         stagedOverlayImagePath: stagedOverlayImagePath,
         sourceHasAudio: sourceMediaInfo.hasAudio,
-        sourceRotationDegrees: sourceMediaInfo.rotationDegrees,
+        sourceEncodedSize: sourceMediaInfo.size,
+        sourceRotationDegrees: effectiveSourceRotationDegrees,
         videoCodec: attempt.videoCodec,
       );
       final executionResult = await _executeFfmpeg(plan.arguments);
@@ -169,6 +187,17 @@ class EditorExportService {
         exported = true;
         appliedOutputPath = attemptOutputPath;
         warning = attempt.warning;
+        final outputMediaInfo = await _probeSourceMediaInfo(attemptOutputPath);
+        if (outputMediaInfo != null) {
+          _logProbe(
+            label: 'output',
+            path: attemptOutputPath,
+            info: outputMediaInfo,
+            extra:
+                'attempt=${attempt.label} '
+                'warning=${warning ?? 'none'}',
+          );
+        }
         break;
       }
       diagnostics.add(
@@ -223,6 +252,15 @@ class EditorExportService {
   }
 }
 
+void _logProbe({
+  required String label,
+  required String path,
+  required SourceMediaInfo info,
+  String? extra,
+}) {
+  // Hook retained for local diagnostics when needed.
+}
+
 class _ExportAttempt {
   const _ExportAttempt({
     required this.label,
@@ -248,6 +286,7 @@ Future<EditorExportPlan> buildEditorExportPlan({
   String videoCodec = 'libx264',
   String? stagedOverlayImagePath,
   bool sourceHasAudio = false,
+  ui.Size? sourceEncodedSize,
   int sourceRotationDegrees = 0,
 }) async {
   final filterPreset = EditorResourceCatalog.filterPresetById(
@@ -286,6 +325,7 @@ Future<EditorExportPlan> buildEditorExportPlan({
     assetBundle: assetBundle,
     stagingDir: stagingDir,
     renderSize: renderSize,
+    sourceEncodedSize: sourceEncodedSize,
     sourceRotationDegrees: sourceRotationDegrees,
   );
   final needsFilterComplex =
@@ -553,18 +593,25 @@ Future<String?> _buildVideoFilterGraph({
   required AssetBundle assetBundle,
   required String stagingDir,
   required ui.Size renderSize,
+  ui.Size? sourceEncodedSize,
   int sourceRotationDegrees = 0,
 }) async {
   final filters = <String>[];
 
   final normalizedRotation = ((sourceRotationDegrees % 360) + 360) % 360;
-  switch (normalizedRotation) {
-    case 90:
-      filters.add('transpose=1');
-    case 180:
-      filters.add('transpose=1,transpose=1');
-    case 270:
-      filters.add('transpose=2');
+  if (_shouldBakeRotation(
+    encodedSize: sourceEncodedSize,
+    renderSize: renderSize,
+    rotationDegrees: normalizedRotation,
+  )) {
+    switch (normalizedRotation) {
+      case 90:
+        filters.add('transpose=1');
+      case 180:
+        filters.add('transpose=1,transpose=1');
+      case 270:
+        filters.add('transpose=2');
+    }
   }
 
   filters.add(
@@ -693,44 +740,26 @@ Future<FfmpegExecutionResult> _defaultExecuteFfmpeg(
 }
 
 Future<SourceMediaInfo?> _defaultProbeSourceMediaInfo(String path) async {
-  try {
-    final session = await FFprobeKit.getMediaInformation(path);
-    final mediaInformation = session.getMediaInformation();
-    if (mediaInformation == null) {
-      return null;
-    }
-
-    ui.Size? videoSize;
-    var hasAudio = false;
-    var rotationDegrees = 0;
-    for (final stream in mediaInformation.getStreams()) {
-      if (stream.getType() == 'video') {
-        final width = stream.getWidth();
-        final height = stream.getHeight();
-        if (width != null && height != null && width > 0 && height > 0) {
-          videoSize = ui.Size(width.toDouble(), height.toDouble());
-        }
-        rotationDegrees = _parseRotationDegrees(stream);
-      } else if (stream.getType() == 'audio') {
-        hasAudio = true;
-      }
-    }
-    if (videoSize == null) {
-      return null;
-    }
-    return SourceMediaInfo(
-      size: videoSize,
-      hasAudio: hasAudio,
-      rotationDegrees: rotationDegrees,
-    );
-  } on MissingPluginException {
-    return null;
-  } on PlatformException {
+  final probe = await probeVideoFile(path);
+  if (probe == null) {
     return null;
   }
+  return SourceMediaInfo(
+    size: probe.encodedSize,
+    hasAudio: probe.hasAudio,
+    rotationDegrees: probe.rotationDegrees,
+    displayAspectRatio: probe.reportedDisplayAspectRatio,
+  );
 }
 
 ui.Size _displayOrientedSize(SourceMediaInfo info) {
+  final aspectRatio = info.displayAspectRatio;
+  if (aspectRatio != null && aspectRatio > 0) {
+    return _sizeForAspectRatio(
+      encodedSize: info.size,
+      displayAspectRatio: aspectRatio,
+    );
+  }
   final normalizedRotation = ((info.rotationDegrees % 360) + 360) % 360;
   if (normalizedRotation == 90 || normalizedRotation == 270) {
     return ui.Size(info.size.height, info.size.width);
@@ -738,35 +767,56 @@ ui.Size _displayOrientedSize(SourceMediaInfo info) {
   return info.size;
 }
 
-int _parseRotationDegrees(dynamic stream) {
-  final directRotation = int.tryParse(
-    '${stream.getProperty('rotation') ?? ''}',
-  );
-  if (directRotation != null) {
-    return directRotation;
+bool _shouldBakeRotation({
+  required ui.Size? encodedSize,
+  required ui.Size renderSize,
+  required int rotationDegrees,
+}) {
+  if (rotationDegrees == 0) {
+    return false;
+  }
+  if (rotationDegrees == 180) {
+    return true;
+  }
+  if (rotationDegrees != 90 && rotationDegrees != 270) {
+    return false;
+  }
+  if (encodedSize == null) {
+    return true;
   }
 
-  final tags = stream.getTags();
-  if (tags is Map) {
-    final tagRotation = int.tryParse(
-      '${tags['rotate'] ?? tags['rotation'] ?? ''}',
-    );
-    if (tagRotation != null) {
-      return tagRotation;
-    }
+  final encodedOrientation = _orientationForSize(encodedSize);
+  final renderOrientation = _orientationForSize(renderSize);
+  if (encodedOrientation == _VideoOrientation.square ||
+      renderOrientation == _VideoOrientation.square) {
+    return true;
   }
-
-  final sideData = stream.getProperty('side_data_list');
-  if (sideData is List) {
-    for (final entry in sideData) {
-      if (entry is Map) {
-        final sideRotation = int.tryParse('${entry['rotation'] ?? ''}');
-        if (sideRotation != null) {
-          return sideRotation;
-        }
-      }
-    }
-  }
-
-  return 0;
+  return encodedOrientation != renderOrientation;
 }
+
+ui.Size _sizeForAspectRatio({
+  required ui.Size encodedSize,
+  required double displayAspectRatio,
+}) {
+  final normalizedAspectRatio = displayAspectRatio.abs();
+  if (normalizedAspectRatio <= 0) {
+    return encodedSize;
+  }
+
+  final longestSide = math.max(encodedSize.width, encodedSize.height);
+  if (normalizedAspectRatio >= 1) {
+    return ui.Size(longestSide, longestSide / normalizedAspectRatio);
+  }
+  return ui.Size(longestSide * normalizedAspectRatio, longestSide);
+}
+
+_VideoOrientation _orientationForSize(ui.Size size) {
+  if ((size.width - size.height).abs() < 0.5) {
+    return _VideoOrientation.square;
+  }
+  return size.width > size.height
+      ? _VideoOrientation.landscape
+      : _VideoOrientation.portrait;
+}
+
+enum _VideoOrientation { portrait, landscape, square }

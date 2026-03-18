@@ -257,6 +257,7 @@ void main() {
         stagingDir: '/tmp/editor-staging',
         assetBundle: _FakeAssetBundle(),
         renderSize: const ui.Size(720, 1280),
+        sourceEncodedSize: const ui.Size(1280, 720),
         sourceRotationDegrees: 90,
       );
 
@@ -265,6 +266,33 @@ void main() {
         plan.arguments.where((value) => value.contains('transpose=1')).single,
         contains('scale=720:1280'),
       );
+    },
+  );
+
+  test(
+    'buildEditorExportPlan does not double-rotate portrait sources that already match the render orientation',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        renderSize: const ui.Size(720, 1280),
+        sourceEncodedSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 90,
+      );
+
+      final videoFilter = plan.arguments[plan.arguments.indexOf('-vf') + 1];
+      expect(videoFilter, isNot(contains('transpose=')));
+      expect(videoFilter, contains('scale=720:1280'));
     },
   );
 }

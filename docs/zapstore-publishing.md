@@ -2,15 +2,15 @@
 
 TubeStr now has a GitHub release that Zapstore can ingest directly:
 
-- Release page: `https://github.com/Tubestr/tubestr-v2/releases/tag/v1.0.0`
-- APK URL: `https://github.com/Tubestr/tubestr-v2/releases/download/v1.0.0/tubestr-v1.0.0-android.apk`
+- Release page: `https://github.com/Tubestr/tubestr-v2/releases/tag/v1.0.1`
+- APK URL: `https://github.com/Tubestr/tubestr-v2/releases/download/v1.0.1/tubestr-v1.0.1-android.apk`
 - Source repo: `https://github.com/Tubestr/tubestr-v2`
 
 ## Web publisher
 
 Open `https://publisher.zapstore.dev/` with a NIP-07 compatible Nostr extension and fill in:
 
-- APK URL: `https://github.com/Tubestr/tubestr-v2/releases/download/v1.0.0/tubestr-v1.0.0-android.apk`
+- APK URL: `https://github.com/Tubestr/tubestr-v2/releases/download/v1.0.1/tubestr-v1.0.1-android.apk`
 - App Icon URL: your hosted app icon URL
 - Source Code Repository URL: `https://github.com/Tubestr/tubestr-v2`
 - Description: short TubeStr app description
