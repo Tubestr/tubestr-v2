@@ -54,6 +54,8 @@ class RemoteShareProjection {
 
   String get title => shareMessage?.meta.title ?? 'Shared video';
 
+  double? get aspectRatio => shareMessage?.meta.aspectRatio;
+
   String get displayName => childDisplayName ?? 'Friend';
 
   bool get isDownloaded {

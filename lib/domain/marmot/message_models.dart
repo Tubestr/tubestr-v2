@@ -21,14 +21,21 @@ class VideoMeta {
     required this.title,
     required this.durationSeconds,
     required this.createdAt,
+    this.aspectRatio,
   });
 
   final String title;
   final double durationSeconds;
   final int createdAt;
+  final double? aspectRatio;
 
   Map<String, dynamic> toJson() {
-    return {'title': title, 'dur': durationSeconds, 'created_at': createdAt};
+    return {
+      'title': title,
+      'dur': durationSeconds,
+      'created_at': createdAt,
+      if (aspectRatio != null) 'ar': aspectRatio,
+    };
   }
 
   factory VideoMeta.fromJson(Map<String, dynamic> json) {
@@ -36,6 +43,7 @@ class VideoMeta {
       title: _requiredString(json, 'title'),
       durationSeconds: _requiredDouble(json, 'dur'),
       createdAt: _requiredInt(json, 'created_at'),
+      aspectRatio: (json['ar'] as num?)?.toDouble(),
     );
   }
 }

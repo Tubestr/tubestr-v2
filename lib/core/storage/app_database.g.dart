@@ -1056,6 +1056,17 @@ class $LocalVideosTable extends LocalVideos
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _aspectRatioMeta = const VerificationMeta(
+    'aspectRatio',
+  );
+  @override
+  late final GeneratedColumn<double> aspectRatio = GeneratedColumn<double>(
+    'aspect_ratio',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1082,6 +1093,7 @@ class $LocalVideosTable extends LocalVideos
     approvedByParentKey,
     scanResults,
     scanCompletedAt,
+    aspectRatio,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1258,6 +1270,15 @@ class $LocalVideosTable extends LocalVideos
         ),
       );
     }
+    if (data.containsKey('aspect_ratio')) {
+      context.handle(
+        _aspectRatioMeta,
+        aspectRatio.isAcceptableOrUnknown(
+          data['aspect_ratio']!,
+          _aspectRatioMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1367,6 +1388,10 @@ class $LocalVideosTable extends LocalVideos
         DriftSqlType.dateTime,
         data['${effectivePrefix}scan_completed_at'],
       ),
+      aspectRatio: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}aspect_ratio'],
+      ),
     );
   }
 
@@ -1406,6 +1431,7 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
   final String? approvedByParentKey;
   final String? scanResults;
   final DateTime? scanCompletedAt;
+  final double? aspectRatio;
   const LocalVideo({
     required this.id,
     required this.profileId,
@@ -1431,6 +1457,7 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     this.approvedByParentKey,
     this.scanResults,
     this.scanCompletedAt,
+    this.aspectRatio,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1481,6 +1508,9 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     if (!nullToAbsent || scanCompletedAt != null) {
       map['scan_completed_at'] = Variable<DateTime>(scanCompletedAt);
     }
+    if (!nullToAbsent || aspectRatio != null) {
+      map['aspect_ratio'] = Variable<double>(aspectRatio);
+    }
     return map;
   }
 
@@ -1524,6 +1554,9 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       scanCompletedAt: scanCompletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(scanCompletedAt),
+      aspectRatio: aspectRatio == null && nullToAbsent
+          ? const Value.absent()
+          : Value(aspectRatio),
     );
   }
 
@@ -1559,6 +1592,7 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       ),
       scanResults: serializer.fromJson<String?>(json['scanResults']),
       scanCompletedAt: serializer.fromJson<DateTime?>(json['scanCompletedAt']),
+      aspectRatio: serializer.fromJson<double?>(json['aspectRatio']),
     );
   }
   @override
@@ -1589,6 +1623,7 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       'approvedByParentKey': serializer.toJson<String?>(approvedByParentKey),
       'scanResults': serializer.toJson<String?>(scanResults),
       'scanCompletedAt': serializer.toJson<DateTime?>(scanCompletedAt),
+      'aspectRatio': serializer.toJson<double?>(aspectRatio),
     };
   }
 
@@ -1617,6 +1652,7 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     Value<String?> approvedByParentKey = const Value.absent(),
     Value<String?> scanResults = const Value.absent(),
     Value<DateTime?> scanCompletedAt = const Value.absent(),
+    Value<double?> aspectRatio = const Value.absent(),
   }) => LocalVideo(
     id: id ?? this.id,
     profileId: profileId ?? this.profileId,
@@ -1646,6 +1682,7 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     scanCompletedAt: scanCompletedAt.present
         ? scanCompletedAt.value
         : this.scanCompletedAt,
+    aspectRatio: aspectRatio.present ? aspectRatio.value : this.aspectRatio,
   );
   LocalVideo copyWithCompanion(LocalVideosCompanion data) {
     return LocalVideo(
@@ -1695,6 +1732,9 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       scanCompletedAt: data.scanCompletedAt.present
           ? data.scanCompletedAt.value
           : this.scanCompletedAt,
+      aspectRatio: data.aspectRatio.present
+          ? data.aspectRatio.value
+          : this.aspectRatio,
     );
   }
 
@@ -1724,7 +1764,8 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
           ..write('approvedAt: $approvedAt, ')
           ..write('approvedByParentKey: $approvedByParentKey, ')
           ..write('scanResults: $scanResults, ')
-          ..write('scanCompletedAt: $scanCompletedAt')
+          ..write('scanCompletedAt: $scanCompletedAt, ')
+          ..write('aspectRatio: $aspectRatio')
           ..write(')'))
         .toString();
   }
@@ -1755,6 +1796,7 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     approvedByParentKey,
     scanResults,
     scanCompletedAt,
+    aspectRatio,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1783,7 +1825,8 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
           other.approvedAt == this.approvedAt &&
           other.approvedByParentKey == this.approvedByParentKey &&
           other.scanResults == this.scanResults &&
-          other.scanCompletedAt == this.scanCompletedAt);
+          other.scanCompletedAt == this.scanCompletedAt &&
+          other.aspectRatio == this.aspectRatio);
 }
 
 class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
@@ -1811,6 +1854,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
   final Value<String?> approvedByParentKey;
   final Value<String?> scanResults;
   final Value<DateTime?> scanCompletedAt;
+  final Value<double?> aspectRatio;
   final Value<int> rowid;
   const LocalVideosCompanion({
     this.id = const Value.absent(),
@@ -1837,6 +1881,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     this.approvedByParentKey = const Value.absent(),
     this.scanResults = const Value.absent(),
     this.scanCompletedAt = const Value.absent(),
+    this.aspectRatio = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalVideosCompanion.insert({
@@ -1864,6 +1909,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     this.approvedByParentKey = const Value.absent(),
     this.scanResults = const Value.absent(),
     this.scanCompletedAt = const Value.absent(),
+    this.aspectRatio = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        profileId = Value(profileId),
@@ -1895,6 +1941,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     Expression<String>? approvedByParentKey,
     Expression<String>? scanResults,
     Expression<DateTime>? scanCompletedAt,
+    Expression<double>? aspectRatio,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1923,6 +1970,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
         'approved_by_parent_key': approvedByParentKey,
       if (scanResults != null) 'scan_results': scanResults,
       if (scanCompletedAt != null) 'scan_completed_at': scanCompletedAt,
+      if (aspectRatio != null) 'aspect_ratio': aspectRatio,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1952,6 +2000,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     Value<String?>? approvedByParentKey,
     Value<String?>? scanResults,
     Value<DateTime?>? scanCompletedAt,
+    Value<double?>? aspectRatio,
     Value<int>? rowid,
   }) {
     return LocalVideosCompanion(
@@ -1979,6 +2028,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
       approvedByParentKey: approvedByParentKey ?? this.approvedByParentKey,
       scanResults: scanResults ?? this.scanResults,
       scanCompletedAt: scanCompletedAt ?? this.scanCompletedAt,
+      aspectRatio: aspectRatio ?? this.aspectRatio,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2064,6 +2114,9 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     if (scanCompletedAt.present) {
       map['scan_completed_at'] = Variable<DateTime>(scanCompletedAt.value);
     }
+    if (aspectRatio.present) {
+      map['aspect_ratio'] = Variable<double>(aspectRatio.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2097,6 +2150,7 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
           ..write('approvedByParentKey: $approvedByParentKey, ')
           ..write('scanResults: $scanResults, ')
           ..write('scanCompletedAt: $scanCompletedAt, ')
+          ..write('aspectRatio: $aspectRatio, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2204,6 +2258,17 @@ class $RemoteAssetsTable extends RemoteAssets
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _aspectRatioMeta = const VerificationMeta(
+    'aspectRatio',
+  );
+  @override
+  late final GeneratedColumn<double> aspectRatio = GeneratedColumn<double>(
+    'aspect_ratio',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     remoteShareId,
@@ -2215,6 +2280,7 @@ class $RemoteAssetsTable extends RemoteAssets
     metadataJson,
     localMediaPath,
     localThumbPath,
+    aspectRatio,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2298,6 +2364,15 @@ class $RemoteAssetsTable extends RemoteAssets
         ),
       );
     }
+    if (data.containsKey('aspect_ratio')) {
+      context.handle(
+        _aspectRatioMeta,
+        aspectRatio.isAcceptableOrUnknown(
+          data['aspect_ratio']!,
+          _aspectRatioMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2343,6 +2418,10 @@ class $RemoteAssetsTable extends RemoteAssets
         DriftSqlType.string,
         data['${effectivePrefix}local_thumb_path'],
       ),
+      aspectRatio: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}aspect_ratio'],
+      ),
     );
   }
 
@@ -2362,6 +2441,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
   final String? metadataJson;
   final String? localMediaPath;
   final String? localThumbPath;
+  final double? aspectRatio;
   const RemoteAsset({
     required this.remoteShareId,
     required this.videoId,
@@ -2372,6 +2452,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
     this.metadataJson,
     this.localMediaPath,
     this.localThumbPath,
+    this.aspectRatio,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2399,6 +2480,9 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
     if (!nullToAbsent || localThumbPath != null) {
       map['local_thumb_path'] = Variable<String>(localThumbPath);
     }
+    if (!nullToAbsent || aspectRatio != null) {
+      map['aspect_ratio'] = Variable<double>(aspectRatio);
+    }
     return map;
   }
 
@@ -2425,6 +2509,9 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
       localThumbPath: localThumbPath == null && nullToAbsent
           ? const Value.absent()
           : Value(localThumbPath),
+      aspectRatio: aspectRatio == null && nullToAbsent
+          ? const Value.absent()
+          : Value(aspectRatio),
     );
   }
 
@@ -2443,6 +2530,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
       metadataJson: serializer.fromJson<String?>(json['metadataJson']),
       localMediaPath: serializer.fromJson<String?>(json['localMediaPath']),
       localThumbPath: serializer.fromJson<String?>(json['localThumbPath']),
+      aspectRatio: serializer.fromJson<double?>(json['aspectRatio']),
     );
   }
   @override
@@ -2458,6 +2546,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
       'metadataJson': serializer.toJson<String?>(metadataJson),
       'localMediaPath': serializer.toJson<String?>(localMediaPath),
       'localThumbPath': serializer.toJson<String?>(localThumbPath),
+      'aspectRatio': serializer.toJson<double?>(aspectRatio),
     };
   }
 
@@ -2471,6 +2560,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
     Value<String?> metadataJson = const Value.absent(),
     Value<String?> localMediaPath = const Value.absent(),
     Value<String?> localThumbPath = const Value.absent(),
+    Value<double?> aspectRatio = const Value.absent(),
   }) => RemoteAsset(
     remoteShareId: remoteShareId ?? this.remoteShareId,
     videoId: videoId ?? this.videoId,
@@ -2485,6 +2575,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
     localThumbPath: localThumbPath.present
         ? localThumbPath.value
         : this.localThumbPath,
+    aspectRatio: aspectRatio.present ? aspectRatio.value : this.aspectRatio,
   );
   RemoteAsset copyWithCompanion(RemoteAssetsCompanion data) {
     return RemoteAsset(
@@ -2505,6 +2596,9 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
       localThumbPath: data.localThumbPath.present
           ? data.localThumbPath.value
           : this.localThumbPath,
+      aspectRatio: data.aspectRatio.present
+          ? data.aspectRatio.value
+          : this.aspectRatio,
     );
   }
 
@@ -2519,7 +2613,8 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
           ..write('mime: $mime, ')
           ..write('metadataJson: $metadataJson, ')
           ..write('localMediaPath: $localMediaPath, ')
-          ..write('localThumbPath: $localThumbPath')
+          ..write('localThumbPath: $localThumbPath, ')
+          ..write('aspectRatio: $aspectRatio')
           ..write(')'))
         .toString();
   }
@@ -2535,6 +2630,7 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
     metadataJson,
     localMediaPath,
     localThumbPath,
+    aspectRatio,
   );
   @override
   bool operator ==(Object other) =>
@@ -2548,7 +2644,8 @@ class RemoteAsset extends DataClass implements Insertable<RemoteAsset> {
           other.mime == this.mime &&
           other.metadataJson == this.metadataJson &&
           other.localMediaPath == this.localMediaPath &&
-          other.localThumbPath == this.localThumbPath);
+          other.localThumbPath == this.localThumbPath &&
+          other.aspectRatio == this.aspectRatio);
 }
 
 class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
@@ -2561,6 +2658,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
   final Value<String?> metadataJson;
   final Value<String?> localMediaPath;
   final Value<String?> localThumbPath;
+  final Value<double?> aspectRatio;
   final Value<int> rowid;
   const RemoteAssetsCompanion({
     this.remoteShareId = const Value.absent(),
@@ -2572,6 +2670,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     this.metadataJson = const Value.absent(),
     this.localMediaPath = const Value.absent(),
     this.localThumbPath = const Value.absent(),
+    this.aspectRatio = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RemoteAssetsCompanion.insert({
@@ -2584,6 +2683,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     this.metadataJson = const Value.absent(),
     this.localMediaPath = const Value.absent(),
     this.localThumbPath = const Value.absent(),
+    this.aspectRatio = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : remoteShareId = Value(remoteShareId),
        videoId = Value(videoId);
@@ -2597,6 +2697,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     Expression<String>? metadataJson,
     Expression<String>? localMediaPath,
     Expression<String>? localThumbPath,
+    Expression<double>? aspectRatio,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2609,6 +2710,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
       if (metadataJson != null) 'metadata_json': metadataJson,
       if (localMediaPath != null) 'local_media_path': localMediaPath,
       if (localThumbPath != null) 'local_thumb_path': localThumbPath,
+      if (aspectRatio != null) 'aspect_ratio': aspectRatio,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2623,6 +2725,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     Value<String?>? metadataJson,
     Value<String?>? localMediaPath,
     Value<String?>? localThumbPath,
+    Value<double?>? aspectRatio,
     Value<int>? rowid,
   }) {
     return RemoteAssetsCompanion(
@@ -2635,6 +2738,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
       metadataJson: metadataJson ?? this.metadataJson,
       localMediaPath: localMediaPath ?? this.localMediaPath,
       localThumbPath: localThumbPath ?? this.localThumbPath,
+      aspectRatio: aspectRatio ?? this.aspectRatio,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2669,6 +2773,9 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
     if (localThumbPath.present) {
       map['local_thumb_path'] = Variable<String>(localThumbPath.value);
     }
+    if (aspectRatio.present) {
+      map['aspect_ratio'] = Variable<double>(aspectRatio.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2687,6 +2794,7 @@ class RemoteAssetsCompanion extends UpdateCompanion<RemoteAsset> {
           ..write('metadataJson: $metadataJson, ')
           ..write('localMediaPath: $localMediaPath, ')
           ..write('localThumbPath: $localThumbPath, ')
+          ..write('aspectRatio: $aspectRatio, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6968,6 +7076,7 @@ typedef $$LocalVideosTableCreateCompanionBuilder =
       Value<String?> approvedByParentKey,
       Value<String?> scanResults,
       Value<DateTime?> scanCompletedAt,
+      Value<double?> aspectRatio,
       Value<int> rowid,
     });
 typedef $$LocalVideosTableUpdateCompanionBuilder =
@@ -6996,6 +7105,7 @@ typedef $$LocalVideosTableUpdateCompanionBuilder =
       Value<String?> approvedByParentKey,
       Value<String?> scanResults,
       Value<DateTime?> scanCompletedAt,
+      Value<double?> aspectRatio,
       Value<int> rowid,
     });
 
@@ -7149,6 +7259,11 @@ class $$LocalVideosTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get aspectRatio => $composableBuilder(
+    column: $table.aspectRatio,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ProfilesTableFilterComposer get profileId {
     final $$ProfilesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -7297,6 +7412,11 @@ class $$LocalVideosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get aspectRatio => $composableBuilder(
+    column: $table.aspectRatio,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProfilesTableOrderingComposer get profileId {
     final $$ProfilesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7421,6 +7541,11 @@ class $$LocalVideosTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get aspectRatio => $composableBuilder(
+    column: $table.aspectRatio,
+    builder: (column) => column,
+  );
+
   $$ProfilesTableAnnotationComposer get profileId {
     final $$ProfilesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -7497,6 +7622,7 @@ class $$LocalVideosTableTableManager
                 Value<String?> approvedByParentKey = const Value.absent(),
                 Value<String?> scanResults = const Value.absent(),
                 Value<DateTime?> scanCompletedAt = const Value.absent(),
+                Value<double?> aspectRatio = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalVideosCompanion(
                 id: id,
@@ -7523,6 +7649,7 @@ class $$LocalVideosTableTableManager
                 approvedByParentKey: approvedByParentKey,
                 scanResults: scanResults,
                 scanCompletedAt: scanCompletedAt,
+                aspectRatio: aspectRatio,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7551,6 +7678,7 @@ class $$LocalVideosTableTableManager
                 Value<String?> approvedByParentKey = const Value.absent(),
                 Value<String?> scanResults = const Value.absent(),
                 Value<DateTime?> scanCompletedAt = const Value.absent(),
+                Value<double?> aspectRatio = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalVideosCompanion.insert(
                 id: id,
@@ -7577,6 +7705,7 @@ class $$LocalVideosTableTableManager
                 approvedByParentKey: approvedByParentKey,
                 scanResults: scanResults,
                 scanCompletedAt: scanCompletedAt,
+                aspectRatio: aspectRatio,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -7657,6 +7786,7 @@ typedef $$RemoteAssetsTableCreateCompanionBuilder =
       Value<String?> metadataJson,
       Value<String?> localMediaPath,
       Value<String?> localThumbPath,
+      Value<double?> aspectRatio,
       Value<int> rowid,
     });
 typedef $$RemoteAssetsTableUpdateCompanionBuilder =
@@ -7670,6 +7800,7 @@ typedef $$RemoteAssetsTableUpdateCompanionBuilder =
       Value<String?> metadataJson,
       Value<String?> localMediaPath,
       Value<String?> localThumbPath,
+      Value<double?> aspectRatio,
       Value<int> rowid,
     });
 
@@ -7755,6 +7886,11 @@ class $$RemoteAssetsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get aspectRatio => $composableBuilder(
+    column: $table.aspectRatio,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> shareRecordsRefs(
     Expression<bool> Function($$ShareRecordsTableFilterComposer f) f,
   ) {
@@ -7834,6 +7970,11 @@ class $$RemoteAssetsTableOrderingComposer
     column: $table.localThumbPath,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get aspectRatio => $composableBuilder(
+    column: $table.aspectRatio,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RemoteAssetsTableAnnotationComposer
@@ -7877,6 +8018,11 @@ class $$RemoteAssetsTableAnnotationComposer
 
   GeneratedColumn<String> get localThumbPath => $composableBuilder(
     column: $table.localThumbPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get aspectRatio => $composableBuilder(
+    column: $table.aspectRatio,
     builder: (column) => column,
   );
 
@@ -7943,6 +8089,7 @@ class $$RemoteAssetsTableTableManager
                 Value<String?> metadataJson = const Value.absent(),
                 Value<String?> localMediaPath = const Value.absent(),
                 Value<String?> localThumbPath = const Value.absent(),
+                Value<double?> aspectRatio = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RemoteAssetsCompanion(
                 remoteShareId: remoteShareId,
@@ -7954,6 +8101,7 @@ class $$RemoteAssetsTableTableManager
                 metadataJson: metadataJson,
                 localMediaPath: localMediaPath,
                 localThumbPath: localThumbPath,
+                aspectRatio: aspectRatio,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7967,6 +8115,7 @@ class $$RemoteAssetsTableTableManager
                 Value<String?> metadataJson = const Value.absent(),
                 Value<String?> localMediaPath = const Value.absent(),
                 Value<String?> localThumbPath = const Value.absent(),
+                Value<double?> aspectRatio = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RemoteAssetsCompanion.insert(
                 remoteShareId: remoteShareId,
@@ -7978,6 +8127,7 @@ class $$RemoteAssetsTableTableManager
                 metadataJson: metadataJson,
                 localMediaPath: localMediaPath,
                 localThumbPath: localThumbPath,
+                aspectRatio: aspectRatio,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

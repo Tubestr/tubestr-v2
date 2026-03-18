@@ -15,6 +15,7 @@ import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_playback_metrics.dart';
 import '../../../domain/models/video_reaction_summary.dart';
+import '../../../services/media/video_probe_service.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../../shared_ui/reporting/feeling_report_sheet.dart';
@@ -46,6 +47,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   bool _isSendingReaction = false;
   int? _videoWidth;
   int? _videoHeight;
+  double? _probeDisplayAspectRatio;
   String? _lastRemoteValidationId;
 
   // Controls visibility
@@ -145,12 +147,21 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _peakPosition = Duration.zero;
     _lastObservedPosition = Duration.zero;
     _replayDetected = false;
+    _probeDisplayAspectRatio = null;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       if (path == null || path.isEmpty) {
         await _player.stop();
         return;
       }
+      // Use ffprobe to get the true display dimensions (accounting for
+      // rotation metadata). This is the source of truth — media_kit's
+      // stream.width/height behaviour varies across backends.
+      final probe = await probeVideoFile(path);
+      if (probe != null && mounted) {
+        setState(() => _probeDisplayAspectRatio = probe.displayAspectRatio);
+      }
+      if (!mounted) return;
       await _player.open(Media(path));
     });
   }
@@ -197,7 +208,18 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final width = _videoWidth;
     final height = _videoHeight;
     if (width != null && height != null && width > 0 && height > 0) {
+      // media_kit (mpv backend on desktop, native on mobile) may or may not
+      // account for rotation in stream.width/height. Use the probe result
+      // as the source of truth when available — it always gives us the
+      // correct display dimensions regardless of backend.
+      if (_probeDisplayAspectRatio != null) {
+        return _probeDisplayAspectRatio!;
+      }
       return width / height;
+    }
+    // Probe result available before stream dimensions arrive
+    if (_probeDisplayAspectRatio != null) {
+      return _probeDisplayAspectRatio!;
     }
     return 9 / 16;
   }

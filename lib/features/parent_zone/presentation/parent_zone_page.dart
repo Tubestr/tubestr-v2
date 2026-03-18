@@ -768,6 +768,12 @@ ${result.payload}
     try {
       await ref.read(syncCoordinatorProvider).stop();
       await ref.read(appResetServiceProvider).resetApp();
+      ref.invalidate(parentIdentityProvider);
+      ref.invalidate(parentDisplayNameProvider);
+      ref.invalidate(profilesProvider);
+      await ref.read(parentIdentityProvider.future);
+      await ref.read(parentDisplayNameProvider.future);
+      await ref.read(profilesProvider.future);
 
       ref.read(selectedProfileIdProvider.notifier).state = null;
       ref.read(appShellTabIndexProvider.notifier).state = 0;
@@ -775,9 +781,6 @@ ${result.payload}
 
       ref.invalidate(syncCoordinatorProvider);
       ref.invalidate(syncRevisionProvider);
-      ref.invalidate(parentIdentityProvider);
-      ref.invalidate(parentDisplayNameProvider);
-      ref.invalidate(profilesProvider);
       ref.invalidate(videosForSelectedProfileProvider);
       ref.invalidate(pendingApprovalVideosProvider);
       ref.invalidate(remoteSharesProvider);

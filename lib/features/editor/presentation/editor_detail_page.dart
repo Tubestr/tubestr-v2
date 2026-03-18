@@ -21,6 +21,7 @@ import '../../../services/editor/editor_audio_preview_service.dart';
 import '../../../services/editor/editor_export_service.dart';
 import '../../../services/editor/editor_resource_catalog.dart';
 import '../../../services/editor/editor_sticker_library.dart';
+import '../../../services/media/video_probe_service.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/motion/app_motion.dart';
@@ -75,6 +76,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   List<EditorStickerAsset> _userStickers = const [];
   int? _videoWidth;
   int? _videoHeight;
+  double? _probeDisplayAspectRatio;
 
   @override
   void initState() {
@@ -137,7 +139,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       }
       setState(() => _videoHeight = value);
     });
-    _player.open(Media(widget.video.filePath));
+    _probeAndOpen();
     unawaited(_loadUserStickers());
   }
 
@@ -848,7 +850,19 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     });
   }
 
+  Future<void> _probeAndOpen() async {
+    final probe = await probeVideoFile(widget.video.filePath);
+    if (probe != null && mounted) {
+      setState(() => _probeDisplayAspectRatio = probe.displayAspectRatio);
+    }
+    if (!mounted) return;
+    _player.open(Media(widget.video.filePath));
+  }
+
   double _resolvedVideoAspectRatio() {
+    if (_probeDisplayAspectRatio != null) {
+      return _probeDisplayAspectRatio!;
+    }
     final width = _videoWidth;
     final height = _videoHeight;
     if (width != null && height != null && width > 0 && height > 0) {

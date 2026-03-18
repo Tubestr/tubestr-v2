@@ -83,6 +83,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant OnboardingPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.identity != null && widget.identity == null) {
+      _nameController.clear();
+      _displayNameController.clear();
+      _restoreKeyController.clear();
+      _flow = const OnboardingFlowState();
+    }
+  }
+
   void _goToStep(OnboardingStep step) {
     if (_flow.step != step) {
       HapticFeedback.selectionClick();

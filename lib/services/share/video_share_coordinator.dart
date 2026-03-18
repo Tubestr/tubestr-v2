@@ -84,6 +84,7 @@ class VideoShareCoordinator {
     required int sharedAt,
     int policyVersion = 2,
     int? expiresAt,
+    double? aspectRatio,
   }) {
     return VideoShareMessage(
       videoId: videoId,
@@ -93,6 +94,7 @@ class VideoShareCoordinator {
         title: title,
         durationSeconds: durationSeconds,
         createdAt: mediaCreatedAt,
+        aspectRatio: aspectRatio,
       ),
       blob: BlobDescriptor(
         hash: blobHash,
@@ -133,6 +135,7 @@ class VideoShareCoordinator {
     required int sharedAt,
     int policyVersion = 2,
     int? expiresAt,
+    double? aspectRatio,
   }) {
     final message = buildDraftShareMessage(
       videoId: videoId,
@@ -154,6 +157,7 @@ class VideoShareCoordinator {
       sharedAt: sharedAt,
       policyVersion: policyVersion,
       expiresAt: expiresAt,
+      aspectRatio: aspectRatio,
     );
     return jsonEncode(message.toJson());
   }
@@ -273,6 +277,7 @@ class VideoShareCoordinator {
       epoch: videoEncrypted.epoch.toString(),
       by: identity.publicKeyHex,
       sharedAt: sharedAt,
+      aspectRatio: localVideo.aspectRatio,
     );
 
     final payload = VideoShareMessage.decode(sharePayload);

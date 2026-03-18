@@ -195,6 +195,7 @@ class EditorExportService {
       videoPath: appliedOutputPath,
     );
     final exportedVideoId = _uuid.v4();
+    final exportAspectRatio = baseRenderSize.width / baseRenderSize.height;
     await _database.saveLocalVideo(
       videoId: exportedVideoId,
       profileId: profileId,
@@ -204,6 +205,7 @@ class EditorExportService {
       durationSeconds: session.trimRange.duration.inMilliseconds / 1000,
       tags: const ['edited', 'remix'],
       approvalStatus: 'pending',
+      aspectRatio: exportAspectRatio,
     );
     await _videoApprovalService.scanAndClassifyVideo(videoId: exportedVideoId);
 

@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/marmot/message_models.dart';
 import '../../domain/models/remote_share_identity.dart';
 import '../../domain/models/remote_share_projection.dart';
 
@@ -77,6 +78,7 @@ class LocalVideos extends Table {
   TextColumn get approvedByParentKey => text().nullable()();
   TextColumn get scanResults => text().nullable()();
   DateTimeColumn get scanCompletedAt => dateTime().nullable()();
+  RealColumn get aspectRatio => real().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -92,6 +94,7 @@ class RemoteAssets extends Table {
   TextColumn get metadataJson => text().nullable()();
   TextColumn get localMediaPath => text().nullable()();
   TextColumn get localThumbPath => text().nullable()();
+  RealColumn get aspectRatio => real().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {remoteShareId};
@@ -205,17 +208,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
-
-  @override
-  MigrationStrategy get migration => MigrationStrategy(
-    onUpgrade: (m, from, to) async {
-      if (from < 3) {
-        await m.createTable(reactions);
-        await m.createTable(remotePlaybackMetrics);
-      }
-    },
-  );
+  int get schemaVersion => 1;
 
   Stream<List<Profile>> watchProfiles() {
     return (select(
@@ -568,6 +561,7 @@ class AppDatabase extends _$AppDatabase {
     String? approvedByParentKey,
     String? scanResults,
     DateTime? scanCompletedAt,
+    double? aspectRatio,
   }) {
     return into(localVideos).insert(
       LocalVideosCompanion.insert(
@@ -585,6 +579,7 @@ class AppDatabase extends _$AppDatabase {
         approvedByParentKey: Value(approvedByParentKey),
         scanResults: Value(scanResults),
         scanCompletedAt: Value(scanCompletedAt),
+        aspectRatio: Value(aspectRatio),
       ),
     );
   }
@@ -710,6 +705,11 @@ class AppDatabase extends _$AppDatabase {
       videoId: videoId,
     );
 
+    double? parsedAspectRatio;
+    try {
+      parsedAspectRatio = VideoShareMessage.decode(metadataJson).meta.aspectRatio;
+    } catch (_) {}
+
     await into(remoteAssets).insertOnConflictUpdate(
       RemoteAssetsCompanion(
         remoteShareId: Value(remoteShareId),
@@ -721,6 +721,7 @@ class AppDatabase extends _$AppDatabase {
         metadataJson: Value(metadataJson),
         localMediaPath: Value(localMediaPath),
         localThumbPath: Value(localThumbPath),
+        aspectRatio: Value(parsedAspectRatio),
       ),
     );
 

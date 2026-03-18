@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../services/media/video_probe_service.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/content_scan_summary.dart';
@@ -241,6 +242,8 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
           );
         });
       }
+      final probe = await probeVideoFile(savedPath);
+      final videoAspectRatio = probe?.displayAspectRatio;
       await ref
           .read(appDatabaseProvider)
           .saveLocalVideo(
@@ -253,6 +256,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
             durationSeconds: capturedSeconds,
             tags: const ['captured'],
             approvalStatus: 'pending',
+            aspectRatio: videoAspectRatio,
           );
       if (mounted) {
         setState(() {
