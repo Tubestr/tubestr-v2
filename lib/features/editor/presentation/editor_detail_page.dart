@@ -898,7 +898,7 @@ class _MinimalHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        _FrostedCircleButton(
+        _FrostedPillButton(
           onTap: isExporting ? null : onExport,
           accentGradient: LinearGradient(
             colors: [
@@ -906,7 +906,7 @@ class _MinimalHeader extends StatelessWidget {
               palette.accentSecondary.withValues(alpha: 0.7),
             ],
           ),
-          child: isExporting
+          icon: isExporting
               ? const SizedBox(
                   width: 18,
                   height: 18,
@@ -918,8 +918,9 @@ class _MinimalHeader extends StatelessWidget {
               : const Icon(
                   Icons.file_upload_outlined,
                   color: Colors.white,
-                  size: 22,
+                  size: 20,
                 ),
+          label: isExporting ? 'Exporting' : 'Export',
         ),
       ],
     );
@@ -957,6 +958,60 @@ class _FrostedCircleButton extends StatelessWidget {
               border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
             ),
             child: Center(child: child),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FrostedPillButton extends StatelessWidget {
+  const _FrostedPillButton({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.accentGradient,
+  });
+
+  final Widget icon;
+  final String label;
+  final VoidCallback? onTap;
+  final Gradient? accentGradient;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            decoration: BoxDecoration(
+              gradient: accentGradient,
+              color: accentGradient == null
+                  ? Colors.black.withValues(alpha: 0.35)
+                  : null,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                icon,
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -596,6 +596,12 @@ class AppDatabase extends _$AppDatabase {
     )..where((tbl) => tbl.id.equals(videoId))).getSingleOrNull();
   }
 
+  Stream<LocalVideo?> watchLocalVideoById(String videoId) {
+    return (select(
+      localVideos,
+    )..where((tbl) => tbl.id.equals(videoId))).watchSingleOrNull();
+  }
+
   Future<void> updateLocalVideoModeration({
     required String videoId,
     String? approvalStatus,

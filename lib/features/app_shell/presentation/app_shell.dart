@@ -192,44 +192,39 @@ class _CustomTabBar extends StatelessWidget {
         ],
       ),
       padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding + 8),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: Row(
-            children: [
-              for (var i = 0; i < _tabs.length; i++) ...[
-                if (i == 3) ...[
-                  // Visual separator before parent tab
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Container(
-                      width: 1,
-                      height: 28,
-                      color: palette.panelBorder,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Expanded(
-                  child: _TabButton(
-                    icon: _tabs[i].icon,
-                    label: _tabs[i].label,
-                    kind: _tabs[i].kind,
-                    isActive: i == currentIndex,
-                    palette: palette,
-                    onTap: () {
-                      if (i == currentIndex) {
-                        return;
-                      }
-                      HapticFeedback.selectionClick();
-                      onTap(i);
-                    },
-                  ),
+      child: Row(
+        children: [
+          for (var i = 0; i < _tabs.length; i++) ...[
+            if (i == 3) ...[
+              // Visual separator before parent tab
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  width: 1,
+                  height: 28,
+                  color: palette.panelBorder,
                 ),
-              ],
+              ),
+              const SizedBox(width: 4),
             ],
-          ),
-        ),
+            Expanded(
+              child: _TabButton(
+                icon: _tabs[i].icon,
+                label: _tabs[i].label,
+                kind: _tabs[i].kind,
+                isActive: i == currentIndex,
+                palette: palette,
+                onTap: () {
+                  if (i == currentIndex) {
+                    return;
+                  }
+                  HapticFeedback.selectionClick();
+                  onTap(i);
+                },
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

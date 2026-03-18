@@ -445,7 +445,7 @@ class _VideoGrid extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 0.75,
+        childAspectRatio: 4 / 5,
       ),
       itemCount: items.length,
       itemBuilder: (context, i) {

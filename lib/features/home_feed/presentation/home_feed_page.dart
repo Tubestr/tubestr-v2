@@ -380,52 +380,46 @@ class _FreshHomeState extends ConsumerWidget {
       _ => 'Good Evening',
     };
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _HomeSceneHero(
-              palette: palette,
-              eyebrow: '$greeting, $name',
-              title: 'Your family video shelf starts here',
-              detail:
-                  'Capture a first clip or connect with a trusted family before this space fills up.',
-              emphasizeMotion: true,
-              compactTitle: true,
-            ),
-            const SizedBox(height: 18),
-            _FirstVideoPanel(palette: palette),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  ref.read(appShellTabIndexProvider.notifier).state = 1;
-                },
-                icon: const Icon(Icons.videocam_rounded),
-                label: const Text('Open Capture'),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  ref.read(appShellTabIndexProvider.notifier).state = 3;
-                },
-                icon: const Icon(Icons.person_add_alt_1_rounded),
-                label: const Text('Connect Families'),
-              ),
-            ),
-          ],
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _HomeSceneHero(
+          palette: palette,
+          eyebrow: '$greeting, $name',
+          title: 'Your family video shelf starts here',
+          detail:
+              'Capture a first clip or connect with a trusted family before this space fills up.',
+          emphasizeMotion: true,
+          compactTitle: true,
         ),
-      ),
+        const SizedBox(height: 18),
+        _FirstVideoPanel(palette: palette),
+        const SizedBox(height: 18),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              ref.read(appShellTabIndexProvider.notifier).state = 1;
+            },
+            icon: const Icon(Icons.videocam_rounded),
+            label: const Text('Open Capture'),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              ref.read(appShellTabIndexProvider.notifier).state = 3;
+            },
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            label: const Text('Connect Families'),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -702,7 +696,7 @@ class _MyVideosSection extends StatelessWidget {
                 crossAxisCount: cols,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 9 / 16,
+                childAspectRatio: 3 / 4,
               ),
               itemCount: items.length,
               itemBuilder: (context, i) =>

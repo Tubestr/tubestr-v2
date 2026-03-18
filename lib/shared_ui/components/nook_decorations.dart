@@ -306,6 +306,7 @@ class _NookAppBackgroundState extends State<NookAppBackground>
                 children: [
                   ..._ambientWashes(t, size, p),
                   ..._buildBlobs(t, size),
+                  ..._floatingDecorations(t, size, p),
                 ],
               ),
             ),
@@ -313,6 +314,150 @@ class _NookAppBackgroundState extends State<NookAppBackground>
         },
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Floating decorations — themed shapes that drift gently (ported from v1)
+  // ---------------------------------------------------------------------------
+  List<Widget> _floatingDecorations(double t, Size size, KidPalette p) {
+    // 8 decorations with deterministic positions and independent phase offsets.
+    // Each uses sin/cos at different frequencies to appear independent.
+    const count = 8;
+    final List<Widget> result = [];
+
+    for (int i = 0; i < count; i++) {
+      final seed = i * 137.0 + 42.0;
+      final baseX = (sin(seed) * 0.5 + 0.5) * size.width;
+      final baseY = (cos(seed * 1.3) * 0.5 + 0.5) * size.height;
+      final phase = i * 0.78;
+      final durationFactor = 1.0 + (i % 3) * 0.35;
+
+      // Float: gentle drift using unique frequency per decoration
+      final floatX = 20.0 * sin(t * pi * 2.0 / durationFactor + phase);
+      final floatY = 28.0 * cos(t * pi * 2.0 / durationFactor + phase + 1.0);
+
+      // Scale pulse: 0.85 – 1.15
+      final scaleVal = 1.0 + 0.15 * sin(t * pi * 4.0 / durationFactor + phase);
+
+      // Rotation: slow spin
+      final rotation = (t * pi * 2.0 / durationFactor + phase * 2.0) %
+          (pi * 2);
+
+      // Size varies by index
+      final decoSize = 20.0 + (i % 4) * 12.0;
+
+      result.add(
+        Positioned(
+          left: baseX + floatX - decoSize / 2,
+          top: baseY + floatY - decoSize / 2,
+          child: Transform.rotate(
+            angle: i.isEven ? rotation : -rotation,
+            child: Transform.scale(
+              scale: scaleVal,
+              child: _themedDecoration(i, decoSize, p),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return result;
+  }
+
+  Widget _themedDecoration(int index, double size, KidPalette p) {
+    const opacity = 0.38;
+    return switch (widget.theme) {
+      ThemeDescriptor.campfire => index % 3 == 0
+          ? Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    p.accent.withValues(alpha: opacity),
+                    p.accentSecondary.withValues(alpha: opacity * 0.3),
+                  ],
+                ),
+              ),
+            )
+          : Icon(
+              Icons.auto_awesome,
+              size: size * 0.8,
+              color: p.accentSecondary.withValues(alpha: opacity),
+            ),
+      ThemeDescriptor.treehouse => index % 3 == 0
+          ? Icon(
+              Icons.eco_rounded,
+              size: size,
+              color: p.accentSecondary.withValues(alpha: opacity),
+            )
+          : index % 3 == 1
+              ? Container(
+                  width: size * 0.6,
+                  height: size * 0.6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: p.accent.withValues(alpha: opacity),
+                  ),
+                )
+              : Icon(
+                  Icons.park_rounded,
+                  size: size * 0.8,
+                  color: p.accent.withValues(alpha: opacity),
+                ),
+      ThemeDescriptor.blanketFort => index % 3 == 0
+          ? Icon(
+              Icons.favorite_rounded,
+              size: size * 0.8,
+              color: p.accentSecondary.withValues(alpha: opacity),
+            )
+          : index % 3 == 1
+              ? Icon(
+                  Icons.star_rounded,
+                  size: size * 0.7,
+                  color: p.accent.withValues(alpha: opacity),
+                )
+              : Container(
+                  width: size * 1.2,
+                  height: size * 0.8,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(size * 0.3),
+                    color: p.accent.withValues(alpha: opacity * 0.6),
+                  ),
+                ),
+      ThemeDescriptor.starlight => index % 4 == 0
+          ? Icon(
+              Icons.star_rounded,
+              size: size,
+              color: p.accentSecondary.withValues(alpha: opacity),
+            )
+          : index % 4 == 1
+              ? Icon(
+                  Icons.nightlight_round,
+                  size: size * 0.9,
+                  color: p.accent.withValues(alpha: opacity * 0.8),
+                )
+              : index % 4 == 2
+                  ? Icon(
+                      Icons.auto_awesome,
+                      size: size * 0.7,
+                      color: p.accentSecondary.withValues(alpha: opacity),
+                    )
+                  : Container(
+                      width: size,
+                      height: size,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            p.accentSecondary.withValues(alpha: opacity),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+    };
   }
 }
 

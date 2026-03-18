@@ -71,9 +71,12 @@ final playerRouteStateProvider =
       final remoteShare = args.remoteShareId == null
           ? null
           : ref.watch(remoteShareByIdProvider(args.remoteShareId!)).valueOrNull;
+      // Try the profile-filtered list first; fall back to a direct DB lookup
+      // so newly-saved videos are found even if the stream hasn't re-emitted.
       final video = args.videoId == null
           ? null
-          : videos.firstWhereOrNull((item) => item.id == args.videoId);
+          : videos.firstWhereOrNull((item) => item.id == args.videoId) ??
+              ref.watch(localVideoByIdProvider(args.videoId!)).valueOrNull;
       final videoProfile = video == null
           ? null
           : profiles.firstWhereOrNull(

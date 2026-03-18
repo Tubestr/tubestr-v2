@@ -209,6 +209,11 @@ final videosForSelectedProfileProvider = StreamProvider<List<LocalVideo>>((
   return ref.watch(appDatabaseProvider).watchVideosForProfile(profileId);
 });
 
+final localVideoByIdProvider =
+    StreamProvider.family<LocalVideo?, String>((ref, videoId) {
+  return ref.watch(appDatabaseProvider).watchLocalVideoById(videoId);
+});
+
 final rankingResultProvider = Provider<RankingResult?>((ref) {
   final videos = ref.watch(videosForSelectedProfileProvider).valueOrNull;
   if (videos == null) {

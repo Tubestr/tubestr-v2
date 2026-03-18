@@ -270,6 +270,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       final scan = await ref
           .read(videoApprovalServiceProvider)
           .scanAndClassifyVideo(videoId: videoId);
+      ref.invalidate(videosForSelectedProfileProvider);
       final savedVideo = await ref
           .read(appDatabaseProvider)
           .getLocalVideoById(videoId);

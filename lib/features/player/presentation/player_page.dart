@@ -52,6 +52,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   // Controls visibility
   bool _showControls = true;
+  bool _sheetExpanded = false;
   Timer? _hideTimer;
 
   // Player state
@@ -124,13 +125,16 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _resetHideTimer();
   }
 
+  // Cache the last route state so we can record metrics in dispose without
+  // calling ref.read (which throws after the widget is unmounted).
+  PlayerRouteState? _lastRouteState;
+
   @override
   void dispose() {
-    unawaited(
-      _recordPlaybackSessionIfNeeded(
-        ref.read(playerRouteStateProvider(_routeArgs)),
-      ),
-    );
+    final lastState = _lastRouteState;
+    if (lastState != null) {
+      unawaited(_recordPlaybackSessionIfNeeded(lastState));
+    }
     _hideTimer?.cancel();
     _routeStateSubscription.close();
     for (final subscription in _playerSubscriptions) {
@@ -328,6 +332,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final mediaQuery = MediaQuery.of(context);
     final isWide = mediaQuery.size.width >= 900;
     final maxPlayerWidth = isWide ? 860.0 : mediaQuery.size.width - 28;
+    _lastRouteState = routeState;
     final video = routeState.video;
     final remoteShare = routeState.remoteShare;
     final identity = routeState.identity;
@@ -385,7 +390,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
     final showPlayerSheet =
         mediaPath != null && (remoteShare == null || remoteShare.isDownloaded);
-    final playerBottomInset = showPlayerSheet ? 190.0 : 28.0;
+    final playerBottomInset = showPlayerSheet ? 120.0 : 28.0;
 
     return Scaffold(
       backgroundColor: palette.backgroundBottom,
@@ -639,10 +644,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           onTap: () => Navigator.of(context).pop(),
                         ),
                         const Spacer(),
-                        _PlayerChromeButton(
-                          icon: _isSharingLocal
-                              ? Icons.hourglass_top_rounded
-                              : Icons.ios_share_rounded,
+                        _SharePillButton(
+                          isBusy: _isSharingLocal,
                           palette: palette,
                           onTap:
                               video == null ||
@@ -759,389 +762,474 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   duration: stateChangeDuration,
                   child: IgnorePointer(
                     ignoring: !_showControls,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        12,
-                        0,
-                        12,
-                        mediaQuery.padding.bottom + 10,
-                      ),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: isWide ? 860 : double.infinity,
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: palette.panel.withValues(alpha: 0.98),
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(color: palette.panelBorder),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: palette.ink.withValues(alpha: 0.10),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
+                    child: GestureDetector(
+                      onVerticalDragEnd: (details) {
+                        if (details.primaryVelocity == null) return;
+                        if (details.primaryVelocity! < -200) {
+                          setState(() => _sheetExpanded = true);
+                        } else if (details.primaryVelocity! > 200) {
+                          setState(() => _sheetExpanded = false);
+                        }
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          12,
+                          0,
+                          12,
+                          mediaQuery.padding.bottom + 10,
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: isWide ? 520 : double.infinity,
                             ),
-                            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                            child: AnimatedSize(
+                              duration: const Duration(milliseconds: 280),
+                              curve: AppMotion.easeOutQuart,
+                              alignment: Alignment.bottomCenter,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: palette.panel.withValues(alpha: 0.98),
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(color: palette.panelBorder),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: palette.ink.withValues(alpha: 0.10),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Expanded(
-                                      child: Column(
+                                    // Drag handle
+                                    GestureDetector(
+                                      onTap: () => setState(
+                                        () => _sheetExpanded = !_sheetExpanded,
+                                      ),
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(bottom: 8),
+                                        child: Center(
+                                          child: Container(
+                                            width: 36,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: palette.panelBorder,
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // ── Collapsed: compact transport bar ──
+                                    SliderTheme(
+                                      data: SliderThemeData(
+                                        trackHeight: 4,
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 7,
+                                        ),
+                                        activeTrackColor: palette.accent,
+                                        inactiveTrackColor: palette.panelBorder
+                                            .withValues(alpha: 0.7),
+                                        thumbColor: Colors.white,
+                                        overlayColor: palette.accent.withValues(
+                                          alpha: 0.18,
+                                        ),
+                                      ),
+                                      child: Slider(
+                                        value: scrubValue,
+                                        onChanged: _seekTo,
+                                      ),
+                                    ),
+
+                                    Row(
+                                      children: [
+                                        // Time
+                                        Text(
+                                          _formatDuration(_position),
+                                          style: TextStyle(
+                                            color: palette.mutedInk,
+                                            fontSize: 12,
+                                            fontFeatures: const [
+                                              FontFeature.tabularFigures(),
+                                            ],
+                                          ),
+                                        ),
+                                        const Spacer(),
+
+                                        // Compact play controls
+                                        IconButton(
+                                          onPressed: _rewind,
+                                          icon: const Icon(
+                                            Icons.skip_previous_rounded,
+                                            size: 26,
+                                          ),
+                                          color: palette.ink,
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 36,
+                                            minHeight: 36,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        GestureDetector(
+                                          onTap: _togglePlay,
+                                          child: Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  palette.accent,
+                                                  palette.accentSecondary,
+                                                ],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: palette.accent
+                                                      .withValues(alpha: 0.22),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              _playing
+                                                  ? Icons.pause_rounded
+                                                  : Icons.play_arrow_rounded,
+                                              size: 28,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          onPressed: () {},
+                                          icon: const Icon(
+                                            Icons.skip_next_rounded,
+                                            size: 26,
+                                          ),
+                                          color: palette.panelBorder,
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 36,
+                                            minHeight: 36,
+                                          ),
+                                        ),
+
+                                        const Spacer(),
+
+                                        // Time remaining
+                                        Text(
+                                          _formatDuration(_duration),
+                                          style: TextStyle(
+                                            color: palette.mutedInk,
+                                            fontSize: 12,
+                                            fontFeatures: const [
+                                              FontFeature.tabularFigures(),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // ── Expanded: title, like, metrics ──
+                                    if (_sheetExpanded) ...[
+                                      const SizedBox(height: 14),
+                                      Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: palette.accent.withValues(
-                                                alpha: 0.10,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                            child: Text(
-                                              remoteShare == null
-                                                  ? 'My clip'
-                                                  : 'Family share',
-                                              style: TextStyle(
-                                                color: palette.accent,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            title,
-                                            style: TextStyle(
-                                              color: palette.ink,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          if (subtitle.isNotEmpty)
-                                            Text(
-                                              subtitle,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: palette.mutedInk,
-                                                fontSize: 13,
-                                                height: 1.3,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    GestureDetector(
-                                      onTap: () async {
-                                        if (video != null) {
-                                          await HapticFeedback.selectionClick();
-                                          await ref
-                                              .read(likeCoordinatorProvider)
-                                              .setLocalVideoLiked(
-                                                videoId: video.id,
-                                                liked: !video.liked,
-                                              );
-                                          return;
-                                        }
-                                        if (remoteShare == null ||
-                                            identity == null ||
-                                            selectedProfileId == null ||
-                                            remoteLikedByViewer ||
-                                            _isSendingLike) {
-                                          return;
-                                        }
-                                        setState(() => _isSendingLike = true);
-                                        try {
-                                          await ref
-                                              .read(likeCoordinatorProvider)
-                                              .sendRemoteLike(
-                                                identity: identity,
-                                                videoId: remoteShare.videoId,
-                                                childProfileId:
-                                                    selectedProfileId,
-                                                mlsGroupIdHex:
-                                                    remoteShare.mlsGroupId,
-                                              );
-                                          ref.invalidate(
-                                            offlineActionsProvider,
-                                          );
-                                          await HapticFeedback.selectionClick();
-                                        } catch (error) {
-                                          ref.invalidate(
-                                            offlineActionsProvider,
-                                          );
-                                          if (!mounted) {
-                                            return;
-                                          }
-                                          final messenger =
-                                              ScaffoldMessenger.of(
-                                                this.context,
-                                              );
-                                          messenger.showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                _likeErrorMessage(error),
-                                              ),
-                                            ),
-                                          );
-                                        } finally {
-                                          if (mounted) {
-                                            setState(
-                                              () => _isSendingLike = false,
-                                            );
-                                          }
-                                        }
-                                      },
-                                      child: AnimatedScale(
-                                        duration: stateChangeDuration,
-                                        curve: AppMotion.easeOutQuint,
-                                        scale: isLiked ? 1.05 : 1.0,
-                                        child: AnimatedContainer(
-                                          duration: stateChangeDuration,
-                                          curve: AppMotion.easeOutQuint,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isLiked
-                                                ? const Color(0xFFFFE4E8)
-                                                : Colors.white.withValues(
-                                                    alpha: 0.78,
-                                                  ),
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                            border: Border.all(
-                                              color: isLiked
-                                                  ? const Color(0xFFFFC7D0)
-                                                  : palette.panelBorder,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              Icon(
-                                                isLiked
-                                                    ? Icons.favorite_rounded
-                                                    : Icons
-                                                          .favorite_border_rounded,
-                                                size: 28,
-                                                color: isLiked
-                                                    ? const Color(0xFFFF6B7A)
-                                                    : palette.mutedInk,
-                                              ),
-                                              if (remoteShare != null)
-                                                Padding(
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Container(
                                                   padding:
-                                                      const EdgeInsets.only(
-                                                        top: 4,
-                                                      ),
+                                                      const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: palette.accent
+                                                        .withValues(alpha: 0.10),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          999,
+                                                        ),
+                                                  ),
                                                   child: Text(
-                                                    '$remoteLikeCount',
+                                                    remoteShare == null
+                                                        ? 'My clip'
+                                                        : 'Family share',
                                                     style: TextStyle(
-                                                      color: palette.ink,
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w800,
+                                                      color: palette.accent,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w800,
                                                     ),
                                                   ),
                                                 ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                _PlaybackMetricRow(
-                                  palette: palette,
-                                  metrics: playbackMetrics,
-                                  isRemote: remoteShare != null,
-                                ),
-                                if (remoteShare != null) ...[
-                                  const SizedBox(height: 14),
-                                  _PlaybackLikeSummary(
-                                    likes: likes,
-                                    likeCount: remoteLikeCount,
-                                    palette: palette,
-                                  ),
-                                  const SizedBox(height: 14),
-                                  _ReactionSection(
-                                    palette: palette,
-                                    reactions: reactionSummaries,
-                                    selectedEmojis: viewerReactions,
-                                    isSendingReaction: _isSendingReaction,
-                                    onSelect: (emoji) async {
-                                      if (identity == null ||
-                                          selectedProfileId == null ||
-                                          _isSendingReaction ||
-                                          viewerReactions.contains(emoji)) {
-                                        return;
-                                      }
-                                      setState(() => _isSendingReaction = true);
-                                      try {
-                                        await ref
-                                            .read(reactionCoordinatorProvider)
-                                            .sendRemoteReaction(
-                                              identity: identity,
-                                              videoId: remoteShare.videoId,
-                                              childProfileId: selectedProfileId,
-                                              mlsGroupIdHex:
-                                                  remoteShare.mlsGroupId,
-                                              emoji: emoji,
-                                            );
-                                        ref.invalidate(offlineActionsProvider);
-                                        await HapticFeedback.selectionClick();
-                                      } catch (error) {
-                                        ref.invalidate(offlineActionsProvider);
-                                        if (!mounted) {
-                                          return;
-                                        }
-                                        ScaffoldMessenger.of(
-                                          this.context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              _reactionErrorMessage(error),
+                                                const SizedBox(height: 10),
+                                                Text(
+                                                  title,
+                                                  style: TextStyle(
+                                                    color: palette.ink,
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                if (subtitle.isNotEmpty)
+                                                  Text(
+                                                    subtitle,
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      color: palette.mutedInk,
+                                                      fontSize: 13,
+                                                      height: 1.3,
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                           ),
-                                        );
-                                      } finally {
-                                        if (mounted) {
-                                          setState(
-                                            () => _isSendingReaction = false,
-                                          );
-                                        }
-                                      }
-                                    },
-                                  ),
-                                ],
-                                const SizedBox(height: 14),
-
-                                SliderTheme(
-                                  data: SliderThemeData(
-                                    trackHeight: 4,
-                                    thumbShape: const RoundSliderThumbShape(
-                                      enabledThumbRadius: 7,
-                                    ),
-                                    activeTrackColor: palette.accent,
-                                    inactiveTrackColor: palette.panelBorder
-                                        .withValues(alpha: 0.7),
-                                    thumbColor: Colors.white,
-                                    overlayColor: palette.accent.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                  ),
-                                  child: Slider(
-                                    value: scrubValue,
-                                    onChanged: _seekTo,
-                                  ),
-                                ),
-
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        _formatDuration(_position),
-                                        style: TextStyle(
-                                          color: palette.mutedInk,
-                                          fontSize: 12,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures(),
-                                          ],
-                                        ),
-                                      ),
-                                      Text(
-                                        _formatDuration(_duration),
-                                        style: TextStyle(
-                                          color: palette.mutedInk,
-                                          fontSize: 12,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures(),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    IconButton(
-                                      onPressed: _rewind,
-                                      icon: const Icon(
-                                        Icons.skip_previous_rounded,
-                                        size: 32,
-                                      ),
-                                      color: palette.ink,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    GestureDetector(
-                                      onTap: _togglePlay,
-                                      child: Container(
-                                        width: 64,
-                                        height: 64,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              palette.accent,
-                                              palette.accentSecondary,
-                                            ],
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: palette.accent.withValues(
-                                                alpha: 0.22,
+                                          const SizedBox(width: 12),
+                                          GestureDetector(
+                                            onTap: () async {
+                                              if (video != null) {
+                                                await HapticFeedback
+                                                    .selectionClick();
+                                                await ref
+                                                    .read(
+                                                      likeCoordinatorProvider,
+                                                    )
+                                                    .setLocalVideoLiked(
+                                                      videoId: video.id,
+                                                      liked: !video.liked,
+                                                    );
+                                                return;
+                                              }
+                                              if (remoteShare == null ||
+                                                  identity == null ||
+                                                  selectedProfileId == null ||
+                                                  remoteLikedByViewer ||
+                                                  _isSendingLike) {
+                                                return;
+                                              }
+                                              setState(
+                                                () => _isSendingLike = true,
+                                              );
+                                              try {
+                                                await ref
+                                                    .read(
+                                                      likeCoordinatorProvider,
+                                                    )
+                                                    .sendRemoteLike(
+                                                      identity: identity,
+                                                      videoId:
+                                                          remoteShare.videoId,
+                                                      childProfileId:
+                                                          selectedProfileId,
+                                                      mlsGroupIdHex:
+                                                          remoteShare
+                                                              .mlsGroupId,
+                                                    );
+                                                ref.invalidate(
+                                                  offlineActionsProvider,
+                                                );
+                                                await HapticFeedback
+                                                    .selectionClick();
+                                              } catch (error) {
+                                                ref.invalidate(
+                                                  offlineActionsProvider,
+                                                );
+                                                if (!mounted) {
+                                                  return;
+                                                }
+                                                final messenger =
+                                                    ScaffoldMessenger.of(
+                                                      this.context,
+                                                    );
+                                                messenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      _likeErrorMessage(error),
+                                                    ),
+                                                  ),
+                                                );
+                                              } finally {
+                                                if (mounted) {
+                                                  setState(
+                                                    () =>
+                                                        _isSendingLike = false,
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            child: AnimatedScale(
+                                              duration: stateChangeDuration,
+                                              curve: AppMotion.easeOutQuint,
+                                              scale: isLiked ? 1.05 : 1.0,
+                                              child: AnimatedContainer(
+                                                duration: stateChangeDuration,
+                                                curve: AppMotion.easeOutQuint,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 10,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: isLiked
+                                                      ? const Color(0xFFFFE4E8)
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.78,
+                                                        ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                  border: Border.all(
+                                                    color: isLiked
+                                                        ? const Color(
+                                                            0xFFFFC7D0,
+                                                          )
+                                                        : palette.panelBorder,
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    Icon(
+                                                      isLiked
+                                                          ? Icons
+                                                                .favorite_rounded
+                                                          : Icons
+                                                                .favorite_border_rounded,
+                                                      size: 28,
+                                                      color: isLiked
+                                                          ? const Color(
+                                                              0xFFFF6B7A,
+                                                            )
+                                                          : palette.mutedInk,
+                                                    ),
+                                                    if (remoteShare != null)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .only(top: 4),
+                                                        child: Text(
+                                                          '$remoteLikeCount',
+                                                          style: TextStyle(
+                                                            color: palette.ink,
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
                                               ),
-                                              blurRadius: 14,
-                                              offset: const Offset(0, 8),
                                             ),
-                                          ],
-                                        ),
-                                        child: Icon(
-                                          _playing
-                                              ? Icons.pause_rounded
-                                              : Icons.play_arrow_rounded,
-                                          size: 36,
-                                          color: Colors.white,
-                                        ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: const Icon(
-                                        Icons.skip_next_rounded,
-                                        size: 32,
+                                      const SizedBox(height: 14),
+                                      _PlaybackMetricRow(
+                                        palette: palette,
+                                        metrics: playbackMetrics,
+                                        isRemote: remoteShare != null,
                                       ),
-                                      color: palette.panelBorder,
-                                    ),
+                                      if (remoteShare != null) ...[
+                                        const SizedBox(height: 14),
+                                        _PlaybackLikeSummary(
+                                          likes: likes,
+                                          likeCount: remoteLikeCount,
+                                          palette: palette,
+                                        ),
+                                        const SizedBox(height: 14),
+                                        _ReactionSection(
+                                          palette: palette,
+                                          reactions: reactionSummaries,
+                                          selectedEmojis: viewerReactions,
+                                          isSendingReaction:
+                                              _isSendingReaction,
+                                          onSelect: (emoji) async {
+                                            if (identity == null ||
+                                                selectedProfileId == null ||
+                                                _isSendingReaction ||
+                                                viewerReactions
+                                                    .contains(emoji)) {
+                                              return;
+                                            }
+                                            setState(
+                                              () =>
+                                                  _isSendingReaction = true,
+                                            );
+                                            try {
+                                              await ref
+                                                  .read(
+                                                    reactionCoordinatorProvider,
+                                                  )
+                                                  .sendRemoteReaction(
+                                                    identity: identity,
+                                                    videoId:
+                                                        remoteShare.videoId,
+                                                    childProfileId:
+                                                        selectedProfileId,
+                                                    mlsGroupIdHex:
+                                                        remoteShare
+                                                            .mlsGroupId,
+                                                    emoji: emoji,
+                                                  );
+                                              ref.invalidate(
+                                                offlineActionsProvider,
+                                              );
+                                              await HapticFeedback
+                                                  .selectionClick();
+                                            } catch (error) {
+                                              ref.invalidate(
+                                                offlineActionsProvider,
+                                              );
+                                              if (!mounted) {
+                                                return;
+                                              }
+                                              ScaffoldMessenger.of(
+                                                this.context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    _reactionErrorMessage(
+                                                      error,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            } finally {
+                                              if (mounted) {
+                                                setState(
+                                                  () =>
+                                                      _isSendingReaction =
+                                                          false,
+                                                );
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ],
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
@@ -1333,6 +1421,60 @@ class _PlayerChromeButton extends StatelessWidget {
             icon,
             color: enabled ? palette.ink : palette.mutedInk,
             size: 22,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SharePillButton extends StatelessWidget {
+  const _SharePillButton({
+    required this.isBusy,
+    required this.palette,
+    this.onTap,
+  });
+
+  final bool isBusy;
+  final KidPalette palette;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null && !isBusy;
+    return Material(
+      color: enabled
+          ? Colors.white.withValues(alpha: 0.92)
+          : Colors.white.withValues(alpha: 0.48),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              }
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isBusy ? Icons.hourglass_top_rounded : Icons.ios_share_rounded,
+                color: enabled ? palette.ink : palette.mutedInk,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isBusy ? 'Sharing' : 'Share',
+                style: TextStyle(
+                  color: enabled ? palette.ink : palette.mutedInk,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+            ],
           ),
         ),
       ),
