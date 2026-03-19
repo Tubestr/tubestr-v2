@@ -144,65 +144,62 @@ class ParentZonePinEntryView extends StatelessWidget {
     final hPad = screenWidth < 600 ? 20.0 : 32.0;
 
     return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: hPad),
-          child: FrostCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: palette.accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    Icons.shield_rounded,
-                    size: 28,
-                    color: palette.accent,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Unlock Parent Zone',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Enter your four-digit PIN to open family settings, approvals, and safety controls.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
-                ),
-                const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.center,
-                  child: PinDots(filled: pinEntry.length),
-                ),
-                if (pinError != null) ...[
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.center,
-                    child: Text(
-                      pinError!,
-                      style: TextStyle(color: palette.danger, fontSize: 13),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 32),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: FrostCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: palette.accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.shield_rounded,
+                      size: 28,
+                      color: palette.accent,
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: PinKeypad(onDigit: onDigit, onDelete: onDelete),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Unlock Parent Zone',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Enter your four-digit PIN to open family settings, approvals, and safety controls.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
+                  ),
+                  const SizedBox(height: 24),
+                  Align(
+                    alignment: Alignment.center,
+                    child: PinDots(filled: pinEntry.length),
+                  ),
+                  if (pinError != null) ...[
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        pinError!,
+                        style: TextStyle(color: palette.danger, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  PinKeypad(onDigit: onDigit, onDelete: onDelete),
+                ],
+              ),
             ),
           ),
         ),
