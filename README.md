@@ -1,16 +1,20 @@
-# MyTube v2
+# TubeStr
 
-Flutter rewrite of MyTube with:
+Private family video sharing for parents and kids.
 
-- parent-only Nostr identity
-- Drift-backed local app state
-- NDK adapter boundary for general Nostr plumbing
-- MDK bridge scaffold for MLS and MIP-04
-- Blossom client scaffold for immutable blob upload
+TubeStr is a local-first family video app built with Flutter. Parents create the account, manage child profiles, review content, and share clips across trusted family spaces with Nostr-based sync.
+
+## What TubeStr Does
+
+- Parent-managed accounts and child profiles
+- Private family spaces for sharing videos with trusted people
+- Parent review flows for approvals, reports, and moderation actions
+- Local-first storage with offline queueing and sync recovery
+- Camera, playback, and editing foundations for kid-friendly creation
 
 ## Current State
 
-The app is bootstrapped and runnable. The first vertical slice is in place:
+The app is bootstrapped and runnable. The current vertical slice includes:
 
 - onboarding creates and securely stores a parent identity
 - child profiles are persisted in Drift
@@ -53,7 +57,7 @@ scripts/rebuild_android_bridge.sh 58281JEBF12262
 Set a release version in `pubspec.yaml`:
 
 ```bash
-scripts/set_app_version.sh 1.0.1+18
+scripts/set_app_version.sh 1.0.3+20
 ```
 
 Create the Android upload keystore:

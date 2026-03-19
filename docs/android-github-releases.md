@@ -6,9 +6,9 @@ This repo now builds signed Android release artifacts locally and uploads them t
 
 ```bash
 scripts/create_android_keystore.sh
-scripts/set_app_version.sh 1.0.1+18
+scripts/set_app_version.sh 1.0.3+20
 git add pubspec.yaml
-git commit -m "Bump version to 1.0.1+18"
+git commit -m "Bump version to 1.0.3+20"
 scripts/release_android.sh --publish
 ```
 
@@ -51,14 +51,14 @@ You do not need to put the Android keystore into GitHub. GitHub only receives th
 1. Update the app version:
 
 ```bash
-scripts/set_app_version.sh 1.0.1+18
+scripts/set_app_version.sh 1.0.3+20
 ```
 
 2. Commit that version bump:
 
 ```bash
 git add pubspec.yaml
-git commit -m "Bump version to 1.0.1+18"
+git commit -m "Bump version to 1.0.3+20"
 ```
 
 3. Create and publish the GitHub release from the current `pubspec.yaml` version:
