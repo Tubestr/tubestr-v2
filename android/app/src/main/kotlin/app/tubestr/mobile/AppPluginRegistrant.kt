@@ -5,6 +5,7 @@ import com.alexmercerind.media_kit_libs_android_video.MediaKitLibsAndroidVideoPl
 import com.alexmercerind.media_kit_video.MediaKitVideoPlugin
 import com.antonkarpenko.ffmpegkit.FFmpegKitFlutterPlugin
 import com.google_mlkit_commons.GoogleMlKitCommonsPlugin
+import com.google_mlkit_face_detection.GoogleMlKitFaceDetectionPlugin
 import com.google_mlkit_selfie_segmentation.GoogleMlKitSelfieSegmentationPlugin
 import com.it_nomads.fluttersecurestorage.FlutterSecureStoragePlugin
 import com.llfbandit.app_links.AppLinksPlugin
@@ -38,6 +39,7 @@ object AppPluginRegistrant {
         flutterEngine.plugins.add(FlutterAndroidLifecyclePlugin())
         flutterEngine.plugins.add(FlutterSecureStoragePlugin())
         flutterEngine.plugins.add(GoogleMlKitCommonsPlugin())
+        flutterEngine.plugins.add(GoogleMlKitFaceDetectionPlugin())
         flutterEngine.plugins.add(GoogleMlKitSelfieSegmentationPlugin())
         flutterEngine.plugins.add(InAppPurchasePlugin())
         flutterEngine.plugins.add(JustAudioPlugin())

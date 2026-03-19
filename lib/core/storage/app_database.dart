@@ -76,6 +76,12 @@ class LocalVideos extends Table {
       text().withDefault(const Constant('approved'))();
   DateTimeColumn get approvedAt => dateTime().nullable()();
   TextColumn get approvedByParentKey => text().nullable()();
+  IntColumn get scanVersion => integer().withDefault(const Constant(0))();
+  TextColumn get highestRiskCategory => text().nullable()();
+  RealColumn get scanConfidence => real().nullable()();
+  TextColumn get reviewReasons => text()
+      .map(const JsonStringListConverter())
+      .withDefault(const Constant('[]'))();
   TextColumn get scanResults => text().nullable()();
   DateTimeColumn get scanCompletedAt => dateTime().nullable()();
   RealColumn get aspectRatio => real().nullable()();
@@ -208,13 +214,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (m, from, to) => m.createAll(),
-      );
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(localVideos, localVideos.scanVersion);
+        await m.addColumn(localVideos, localVideos.highestRiskCategory);
+        await m.addColumn(localVideos, localVideos.scanConfidence);
+        await m.addColumn(localVideos, localVideos.reviewReasons);
+      }
+    },
+  );
 
   Stream<List<Profile>> watchProfiles() {
     return (select(
@@ -607,6 +620,10 @@ class AppDatabase extends _$AppDatabase {
     String? approvalStatus,
     DateTime? approvedAt,
     String? approvedByParentKey,
+    int? scanVersion,
+    String? highestRiskCategory,
+    double? scanConfidence,
+    List<String>? reviewReasons,
     String? scanResults,
     DateTime? scanCompletedAt,
     bool clearApproval = false,
@@ -626,12 +643,39 @@ class AppDatabase extends _$AppDatabase {
             : approvedByParentKey == null
             ? const Value.absent()
             : Value(approvedByParentKey),
+        scanVersion: scanVersion == null
+            ? const Value.absent()
+            : Value(scanVersion),
+        highestRiskCategory: highestRiskCategory == null
+            ? const Value.absent()
+            : Value(highestRiskCategory),
+        scanConfidence: scanConfidence == null
+            ? const Value.absent()
+            : Value(scanConfidence),
+        reviewReasons: reviewReasons == null
+            ? const Value.absent()
+            : Value(reviewReasons),
         scanResults: scanResults == null
             ? const Value.absent()
             : Value(scanResults),
         scanCompletedAt: scanCompletedAt == null
             ? const Value.absent()
             : Value(scanCompletedAt),
+      ),
+    );
+  }
+
+  Future<void> updateLocalVideoSignals({
+    required String videoId,
+    List<String>? cvLabels,
+    int? faceCount,
+    double? loudness,
+  }) {
+    return (update(localVideos)..where((tbl) => tbl.id.equals(videoId))).write(
+      LocalVideosCompanion(
+        cvLabels: cvLabels == null ? const Value.absent() : Value(cvLabels),
+        faceCount: faceCount == null ? const Value.absent() : Value(faceCount),
+        loudness: loudness == null ? const Value.absent() : Value(loudness),
       ),
     );
   }

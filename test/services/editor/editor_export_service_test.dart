@@ -67,6 +67,21 @@ void main() {
         plan.arguments,
         containsAllInOrder(['-map', '[music]', '-shortest']),
       );
+      expect(
+        plan.arguments,
+        containsAllInOrder([
+          '-c:v',
+          'libx264',
+          '-preset',
+          'fast',
+          '-crf',
+          '20',
+          '-maxrate',
+          '10000k',
+          '-bufsize',
+          '20000k',
+        ]),
+      );
     },
   );
 
@@ -232,10 +247,47 @@ void main() {
   test('normalizeEditorRenderSize keeps output even and capped', () {
     expect(
       normalizeEditorRenderSize(const ui.Size(2160, 3840)),
-      const ui.Size(720, 1280),
+      const ui.Size(1080, 1920),
     );
     expect(
       normalizeEditorRenderSize(const ui.Size(1081, 1921)),
+      const ui.Size(1080, 1920),
+    );
+  });
+
+  test(
+    'buildEditorExportPlan uses qscale fallback for mpeg4 exports',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+        videoCodec: 'mpeg4',
+      );
+
+      expect(
+        plan.arguments,
+        containsAllInOrder(['-c:v', 'mpeg4', '-q:v', '4']),
+      );
+      expect(plan.arguments, isNot(contains('-crf')));
+      expect(plan.arguments, isNot(contains('-preset')));
+    },
+  );
+
+  test('scaleEditorRenderSize respects an explicit max dimension override', () {
+    expect(
+      scaleEditorRenderSize(const ui.Size(1080, 1920), 1, maxDimension: 1280),
       const ui.Size(720, 1280),
     );
   });

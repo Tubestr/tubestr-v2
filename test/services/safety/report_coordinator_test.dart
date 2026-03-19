@@ -50,17 +50,71 @@ void main() {
   });
 
   test(
-    'submitReport publishes to family group and queues Safety HQ when absent',
+    'submitReport delivers level 1 locally without publish or blob hash',
     () async {
       final result = await coordinator.submitReport(
         identity: identity,
         videoId: 'video-1',
         subjectChildId: 'child-1',
+        reporterChildId: 'child-1',
+        reason: 'inappropriate',
+        level: 1,
+        recipientType: 'local',
+      );
+
+      final savedReport = await (database.select(
+        database.reports,
+      )..where((tbl) => tbl.id.equals(result.reportId))).getSingle();
+
+      expect(result.status, 'delivered');
+      expect(result.familyPublished, isFalse);
+      expect(result.safetyPublished, isFalse);
+      expect(result.safetyQueued, isFalse);
+      expect(savedReport.status, 'delivered');
+      expect(savedReport.deliveredAt, isNotNull);
+      expect(nostr.publishedEventJsons, isEmpty);
+    },
+  );
+
+  test(
+    'submitReport delivers level 2 locally without publish or blob hash',
+    () async {
+      final result = await coordinator.submitReport(
+        identity: identity,
+        videoId: 'video-2',
+        subjectChildId: 'child-1',
+        reporterChildId: 'child-1',
+        reason: 'unsafe',
+        level: 2,
+        recipientType: 'local_parent',
+      );
+
+      final savedReport = await (database.select(
+        database.reports,
+      )..where((tbl) => tbl.id.equals(result.reportId))).getSingle();
+
+      expect(result.status, 'delivered');
+      expect(result.familyPublished, isFalse);
+      expect(result.safetyPublished, isFalse);
+      expect(result.safetyQueued, isFalse);
+      expect(savedReport.status, 'delivered');
+      expect(savedReport.deliveredAt, isNotNull);
+      expect(nostr.publishedEventJsons, isEmpty);
+    },
+  );
+
+  test(
+    'submitReport publishes level 3 to family group and queues Safety HQ when absent',
+    () async {
+      final result = await coordinator.submitReport(
+        identity: identity,
+        videoId: 'video-3',
+        subjectChildId: 'child-1',
         blobHash: 'blob-123',
         reporterChildId: 'child-1',
         reason: 'inappropriate',
-        level: 2,
-        recipientType: 'parents',
+        level: 3,
+        recipientType: 'family',
       );
 
       final savedReport = await (database.select(
@@ -79,7 +133,7 @@ void main() {
   );
 
   test(
-    'submitReport publishes to both family and Safety HQ when provisioned',
+    'submitReport publishes level 3 to both family and Safety HQ when provisioned',
     () async {
       await database.putSetting(AppConstants.safetyJoinedKey, 'true');
       await database.putSetting(
@@ -89,13 +143,13 @@ void main() {
 
       final result = await coordinator.submitReport(
         identity: identity,
-        videoId: 'video-2',
+        videoId: 'video-4',
         subjectChildId: 'child-1',
         blobHash: 'blob-456',
         reporterChildId: 'child-1',
         reason: 'unsafe',
-        level: 2,
-        recipientType: 'parents',
+        level: 3,
+        recipientType: 'family',
       );
 
       final savedReport = await (database.select(
@@ -112,17 +166,45 @@ void main() {
     },
   );
 
-  test('submitReport queues offline when transport fails', () async {
+  test(
+    'submitReport keeps level 3 pending when blob hash is missing',
+    () async {
+      final result = await coordinator.submitReport(
+        identity: identity,
+        videoId: 'video-5',
+        subjectChildId: 'child-1',
+        reporterChildId: 'child-1',
+        reason: 'unsafe',
+        level: 3,
+        recipientType: 'family',
+      );
+
+      final report = await (database.select(
+        database.reports,
+      )..where((tbl) => tbl.id.equals(result.reportId))).getSingle();
+
+      expect(result.status, 'pending_blob_hash');
+      expect(result.familyPublished, isFalse);
+      expect(result.safetyPublished, isFalse);
+      expect(result.safetyQueued, isFalse);
+      expect(report.status, 'pending_blob_hash');
+      expect(nostr.publishedEventJsons, isEmpty);
+    },
+  );
+
+  test('submitReport queues level 3 offline when transport fails', () async {
     nostr.throwOnPublishSignedEvent = true;
 
     await expectLater(
       () => coordinator.submitReport(
         identity: identity,
-        videoId: 'video-3',
+        videoId: 'video-6',
         subjectChildId: 'child-1',
         blobHash: 'blob-789',
         reporterChildId: 'child-1',
         reason: 'unsafe',
+        level: 3,
+        recipientType: 'family',
       ),
       throwsA(isA<StateError>()),
     );
@@ -134,7 +216,7 @@ void main() {
     expect(queued, contains('submitReport'));
     final report = await (database.select(
       database.reports,
-    )..where((tbl) => tbl.videoId.equals('video-3'))).getSingle();
+    )..where((tbl) => tbl.videoId.equals('video-6'))).getSingle();
     expect(report.status, 'queued_offline');
   });
 }

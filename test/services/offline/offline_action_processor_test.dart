@@ -6,6 +6,7 @@ import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/offline_action.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/approval/content_scan_service.dart';
+import 'package:mytube/services/approval/media_signal_extraction_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
 import 'package:mytube/services/engagement/reaction_coordinator.dart';
@@ -28,7 +29,7 @@ void main() {
   );
 
   test(
-    'flush processes queued share, like, reaction, report, and profile actions',
+    'flush processes queued share, like, reaction, local report, and profile actions',
     () async {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -88,6 +89,13 @@ void main() {
           videoApprovalService: VideoApprovalService(
             database: database,
             scanService: const ContentScanService(),
+            signalExtractionService: MediaSignalExtractionService(
+              extractSignals: (video) async => MediaSignalExtractionResult(
+                cvLabels: video.cvLabels,
+                faceCount: video.faceCount,
+                loudness: video.loudness,
+              ),
+            ),
           ),
           blossomClient: blossom,
           mdkService: mdk,
@@ -160,11 +168,17 @@ void main() {
 
       final flushed = await processor.flush();
       final remaining = await store.load();
+      final report = await (database.select(
+        database.reports,
+      )..where((tbl) => tbl.videoId.equals('remote-1'))).getSingle();
 
       expect(flushed, 5);
       expect(remaining, isEmpty);
       expect(nostr.lastPublishedDisplayName, 'Lee & Emma');
-      expect(nostr.publishedEventJsons, hasLength(4));
+      expect(nostr.publishedEventJsons, hasLength(3));
+      expect(report.status, 'delivered');
+      expect(report.level, 1);
+      expect(report.recipientType, 'group');
     },
   );
 }

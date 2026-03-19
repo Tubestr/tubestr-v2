@@ -36,6 +36,10 @@ void main() {
       approvalStatus: 'pending',
       approvedAt: null,
       approvedByParentKey: null,
+      scanVersion: 0,
+      highestRiskCategory: null,
+      scanConfidence: null,
+      reviewReasons: const <String>[],
       scanResults: null,
       scanCompletedAt: null,
     );
@@ -47,11 +51,15 @@ void main() {
     );
 
     expect(scan.riskLevel, 'medium');
+    expect(scan.scanVersion, 1);
+    expect(scan.highestRiskCategory, 'sensitive_topic');
+    expect(scan.confidence, greaterThan(0.5));
     expect(scan.needsReview, isTrue);
     expect(
       scan.flags,
       containsAll(['review_label', 'attention_seeking_title']),
     );
+    expect(scan.reviewReasons, isNotEmpty);
     expect(scan.summary, contains('Please check'));
   });
 
@@ -65,6 +73,7 @@ void main() {
     );
 
     expect(scan.riskLevel, 'low');
+    expect(scan.highestRiskCategory, isNull);
     expect(scan.needsReview, isFalse);
     expect(scan.flags, isEmpty);
   });
@@ -80,6 +89,8 @@ void main() {
     );
 
     expect(scan.riskLevel, 'high');
+    expect(scan.highestRiskCategory, 'intense_audio');
+    expect(scan.confidence, greaterThan(0.8));
     expect(
       scan.flags,
       containsAll(['very_loud_audio', 'crowded_frame', 'long_clip']),

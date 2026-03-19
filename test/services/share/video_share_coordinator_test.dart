@@ -7,6 +7,7 @@ import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/marmot/message_models.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/approval/content_scan_service.dart';
+import 'package:mytube/services/approval/media_signal_extraction_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/share/share_history_service.dart';
@@ -27,6 +28,13 @@ void main() {
     return VideoApprovalService(
       database: database,
       scanService: const ContentScanService(),
+      signalExtractionService: MediaSignalExtractionService(
+        extractSignals: (video) async => MediaSignalExtractionResult(
+          cvLabels: video.cvLabels,
+          faceCount: video.faceCount,
+          loudness: video.loudness,
+        ),
+      ),
     );
   }
 
@@ -71,6 +79,10 @@ void main() {
         approvalStatus: 'approved',
         approvedAt: null,
         approvedByParentKey: null,
+        scanVersion: 0,
+        highestRiskCategory: null,
+        scanConfidence: null,
+        reviewReasons: const <String>[],
         scanResults: null,
         scanCompletedAt: null,
       );
@@ -347,6 +359,10 @@ void main() {
         approvalStatus: 'approved',
         approvedAt: null,
         approvedByParentKey: null,
+        scanVersion: 0,
+        highestRiskCategory: null,
+        scanConfidence: null,
+        reviewReasons: const <String>[],
         scanResults: null,
         scanCompletedAt: null,
       );
@@ -438,6 +454,10 @@ void main() {
         approvalStatus: 'approved',
         approvedAt: null,
         approvedByParentKey: null,
+        scanVersion: 0,
+        highestRiskCategory: null,
+        scanConfidence: null,
+        reviewReasons: const <String>[],
         scanResults: null,
         scanCompletedAt: null,
       );
@@ -527,6 +547,10 @@ void main() {
         approvalStatus: 'approved',
         approvedAt: null,
         approvedByParentKey: null,
+        scanVersion: 0,
+        highestRiskCategory: null,
+        scanConfidence: null,
+        reviewReasons: const <String>[],
         scanResults: null,
         scanCompletedAt: null,
       );

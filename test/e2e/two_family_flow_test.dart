@@ -169,8 +169,8 @@ void main() {
         reporterChildId: familyB.childId,
         reason: 'inappropriate',
         note: 'Please check this one',
-        level: 1,
-        recipientType: 'group',
+        level: 3,
+        recipientType: 'family',
       );
       expect(reportResult.familyPublished, isTrue);
 
@@ -342,8 +342,8 @@ void main() {
         blobHash: projection.blobHash,
         reporterChildId: familyB.childId,
         reason: 'offline concern',
-        level: 1,
-        recipientType: 'group',
+        level: 3,
+        recipientType: 'family',
       ),
       throwsA(isA<StateError>()),
     );

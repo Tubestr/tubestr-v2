@@ -223,15 +223,19 @@ class _InboundReportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final destinationLabel = _reportDestinationLabel(report.recipientType);
     final feelingEmoji = switch (report.level) {
       1 => '\u{1F615}',
       2 => '\u{1F628}',
       _ => '\u{1F620}',
     };
     final helperText = switch (report.level) {
-      1 => 'Another family shared gentle feedback.',
-      2 => 'A parent-level concern needs a quick check-in.',
-      _ => 'A serious concern was escalated to Safety HQ.',
+      1 => 'Gentle feedback from another family.',
+      2 => 'A concern from another family needs a look.',
+      _ => switch (report.recipientType) {
+        'safety_hq' => 'A serious concern was escalated to Safety HQ.',
+        _ => 'A concern was shared with both families.',
+      },
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -263,7 +267,7 @@ class _InboundReportRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${report.recipientType} · ${report.createdAt.toLocal()}',
+                    '$destinationLabel · ${_formatTimestamp(report.createdAt)}',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.black54),
@@ -285,7 +289,12 @@ class _OutboundReportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final destinationLabel = _reportDestinationLabel(report.recipientType);
+    final isLocal = report.recipientType == 'local';
+    final isLocalParent = report.recipientType == 'local_parent';
     final statusColor = switch (report.status) {
+      'delivered' when isLocal => Colors.blue,
+      'delivered' when isLocalParent => Colors.amber.shade700,
       'delivered' => Colors.green,
       'queued_safety' => Colors.orange,
       'pending_blob_hash' => Colors.amber,
@@ -312,14 +321,14 @@ class _OutboundReportRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${report.reason} · level ${report.level}',
+                  '${report.reason} · level ${report.level} · $destinationLabel',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${report.status} · ${report.createdAt.toLocal()}',
+                  '${report.status} · ${_formatTimestamp(report.createdAt)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -330,6 +339,20 @@ class _OutboundReportRow extends StatelessWidget {
     );
   }
 }
+
+String _reportDestinationLabel(String recipientType) {
+  return switch (recipientType) {
+    'local' => 'Device only',
+    'local_parent' => 'Parent only',
+    'family' => 'Both families',
+    'group' => 'Family group',
+    'parents' => 'Parent helpers',
+    'safety_hq' => 'Safety HQ',
+    _ => recipientType,
+  };
+}
+
+String _formatTimestamp(DateTime value) => value.toLocal().toString();
 
 class _ModerationLogRow extends StatelessWidget {
   const _ModerationLogRow({required this.log});

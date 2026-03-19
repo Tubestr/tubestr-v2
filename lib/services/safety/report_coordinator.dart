@@ -54,7 +54,7 @@ class ReportCoordinator {
     required String reason,
     String? note,
     int level = 1,
-    String recipientType = 'group',
+    String recipientType = 'local',
   }) async {
     await _insertReport(
       reportId: _uuid.v4(),
@@ -79,7 +79,7 @@ class ReportCoordinator {
     required String reason,
     String? note,
     int level = 1,
-    String recipientType = 'group',
+    String recipientType = 'local',
     bool allowQueueOnFailure = true,
   }) async {
     final reportId = _uuid.v4();
@@ -97,6 +97,21 @@ class ReportCoordinator {
       recipientType: recipientType,
       createdAt: createdAt,
     );
+
+    if (level < 3) {
+      await _updateReportStatus(
+        reportId: reportId,
+        status: 'delivered',
+        deliveredAt: DateTime.now(),
+      );
+      return ReportSubmissionResult(
+        reportId: reportId,
+        status: 'delivered',
+        familyPublished: false,
+        safetyPublished: false,
+        safetyQueued: false,
+      );
+    }
 
     final effectiveBlobHash = blobHash?.trim();
     if (effectiveBlobHash == null || effectiveBlobHash.isEmpty) {
@@ -141,32 +156,30 @@ class ReportCoordinator {
         familyPublished = true;
       }
 
-      if (level >= 2) {
-        final safetyJoined =
-            await _database.getSetting(AppConstants.safetyJoinedKey) == 'true';
-        final safetyGroupId = await _database.getSetting(
-          AppConstants.safetyGroupIdSettingKey,
+      final safetyJoined =
+          await _database.getSetting(AppConstants.safetyJoinedKey) == 'true';
+      final safetyGroupId = await _database.getSetting(
+        AppConstants.safetyGroupIdSettingKey,
+      );
+      if (safetyJoined && safetyGroupId != null && safetyGroupId.isNotEmpty) {
+        await _publishReportToGroup(
+          identity: identity,
+          mlsGroupIdHex: safetyGroupId,
+          reportId: reportId,
+          videoId: videoId,
+          subjectChildId: subjectChildId,
+          blobHash: effectiveBlobHash,
+          reporterChildId: reporterChildId,
+          reason: reason,
+          note: note,
+          level: level,
+          recipientType: 'safety_hq',
+          relays: relays,
+          createdAt: createdAt,
         );
-        if (safetyJoined && safetyGroupId != null && safetyGroupId.isNotEmpty) {
-          await _publishReportToGroup(
-            identity: identity,
-            mlsGroupIdHex: safetyGroupId,
-            reportId: reportId,
-            videoId: videoId,
-            subjectChildId: subjectChildId,
-            blobHash: effectiveBlobHash,
-            reporterChildId: reporterChildId,
-            reason: reason,
-            note: note,
-            level: level,
-            recipientType: 'safety_hq',
-            relays: relays,
-            createdAt: createdAt,
-          );
-          safetyPublished = true;
-        } else {
-          safetyQueued = true;
-        }
+        safetyPublished = true;
+      } else {
+        safetyQueued = true;
       }
 
       final status = safetyQueued
@@ -231,6 +244,8 @@ class ReportCoordinator {
     final relays = await _nostrService.loadRelayList();
     var deliveredCount = 0;
     for (final report in queuedReports) {
+      // Preserve legacy behavior for pre-remap reports that were already sent
+      // to the family group and still need their deferred Safety HQ copy.
       final blobHash = report.blobHash?.trim();
       if (blobHash == null || blobHash.isEmpty) {
         continue;

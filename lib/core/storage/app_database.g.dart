@@ -1033,6 +1033,50 @@ class $LocalVideosTable extends LocalVideos
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _scanVersionMeta = const VerificationMeta(
+    'scanVersion',
+  );
+  @override
+  late final GeneratedColumn<int> scanVersion = GeneratedColumn<int>(
+    'scan_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _highestRiskCategoryMeta =
+      const VerificationMeta('highestRiskCategory');
+  @override
+  late final GeneratedColumn<String> highestRiskCategory =
+      GeneratedColumn<String>(
+        'highest_risk_category',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _scanConfidenceMeta = const VerificationMeta(
+    'scanConfidence',
+  );
+  @override
+  late final GeneratedColumn<double> scanConfidence = GeneratedColumn<double>(
+    'scan_confidence',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String>
+  reviewReasons = GeneratedColumn<String>(
+    'review_reasons',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<String>>($LocalVideosTable.$converterreviewReasons);
   static const VerificationMeta _scanResultsMeta = const VerificationMeta(
     'scanResults',
   );
@@ -1091,6 +1135,10 @@ class $LocalVideosTable extends LocalVideos
     approvalStatus,
     approvedAt,
     approvedByParentKey,
+    scanVersion,
+    highestRiskCategory,
+    scanConfidence,
+    reviewReasons,
     scanResults,
     scanCompletedAt,
     aspectRatio,
@@ -1252,6 +1300,33 @@ class $LocalVideosTable extends LocalVideos
         ),
       );
     }
+    if (data.containsKey('scan_version')) {
+      context.handle(
+        _scanVersionMeta,
+        scanVersion.isAcceptableOrUnknown(
+          data['scan_version']!,
+          _scanVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('highest_risk_category')) {
+      context.handle(
+        _highestRiskCategoryMeta,
+        highestRiskCategory.isAcceptableOrUnknown(
+          data['highest_risk_category']!,
+          _highestRiskCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('scan_confidence')) {
+      context.handle(
+        _scanConfidenceMeta,
+        scanConfidence.isAcceptableOrUnknown(
+          data['scan_confidence']!,
+          _scanConfidenceMeta,
+        ),
+      );
+    }
     if (data.containsKey('scan_results')) {
       context.handle(
         _scanResultsMeta,
@@ -1380,6 +1455,24 @@ class $LocalVideosTable extends LocalVideos
         DriftSqlType.string,
         data['${effectivePrefix}approved_by_parent_key'],
       ),
+      scanVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}scan_version'],
+      )!,
+      highestRiskCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}highest_risk_category'],
+      ),
+      scanConfidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}scan_confidence'],
+      ),
+      reviewReasons: $LocalVideosTable.$converterreviewReasons.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}review_reasons'],
+        )!,
+      ),
       scanResults: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}scan_results'],
@@ -1403,6 +1496,8 @@ class $LocalVideosTable extends LocalVideos
   static TypeConverter<List<String>, String> $convertertags =
       const JsonStringListConverter();
   static TypeConverter<List<String>, String> $convertercvLabels =
+      const JsonStringListConverter();
+  static TypeConverter<List<String>, String> $converterreviewReasons =
       const JsonStringListConverter();
 }
 
@@ -1429,6 +1524,10 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
   final String approvalStatus;
   final DateTime? approvedAt;
   final String? approvedByParentKey;
+  final int scanVersion;
+  final String? highestRiskCategory;
+  final double? scanConfidence;
+  final List<String> reviewReasons;
   final String? scanResults;
   final DateTime? scanCompletedAt;
   final double? aspectRatio;
@@ -1455,6 +1554,10 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     required this.approvalStatus,
     this.approvedAt,
     this.approvedByParentKey,
+    required this.scanVersion,
+    this.highestRiskCategory,
+    this.scanConfidence,
+    required this.reviewReasons,
     this.scanResults,
     this.scanCompletedAt,
     this.aspectRatio,
@@ -1502,6 +1605,18 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     if (!nullToAbsent || approvedByParentKey != null) {
       map['approved_by_parent_key'] = Variable<String>(approvedByParentKey);
     }
+    map['scan_version'] = Variable<int>(scanVersion);
+    if (!nullToAbsent || highestRiskCategory != null) {
+      map['highest_risk_category'] = Variable<String>(highestRiskCategory);
+    }
+    if (!nullToAbsent || scanConfidence != null) {
+      map['scan_confidence'] = Variable<double>(scanConfidence);
+    }
+    {
+      map['review_reasons'] = Variable<String>(
+        $LocalVideosTable.$converterreviewReasons.toSql(reviewReasons),
+      );
+    }
     if (!nullToAbsent || scanResults != null) {
       map['scan_results'] = Variable<String>(scanResults);
     }
@@ -1548,6 +1663,14 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       approvedByParentKey: approvedByParentKey == null && nullToAbsent
           ? const Value.absent()
           : Value(approvedByParentKey),
+      scanVersion: Value(scanVersion),
+      highestRiskCategory: highestRiskCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(highestRiskCategory),
+      scanConfidence: scanConfidence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scanConfidence),
+      reviewReasons: Value(reviewReasons),
       scanResults: scanResults == null && nullToAbsent
           ? const Value.absent()
           : Value(scanResults),
@@ -1590,6 +1713,12 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       approvedByParentKey: serializer.fromJson<String?>(
         json['approvedByParentKey'],
       ),
+      scanVersion: serializer.fromJson<int>(json['scanVersion']),
+      highestRiskCategory: serializer.fromJson<String?>(
+        json['highestRiskCategory'],
+      ),
+      scanConfidence: serializer.fromJson<double?>(json['scanConfidence']),
+      reviewReasons: serializer.fromJson<List<String>>(json['reviewReasons']),
       scanResults: serializer.fromJson<String?>(json['scanResults']),
       scanCompletedAt: serializer.fromJson<DateTime?>(json['scanCompletedAt']),
       aspectRatio: serializer.fromJson<double?>(json['aspectRatio']),
@@ -1621,6 +1750,10 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       'approvalStatus': serializer.toJson<String>(approvalStatus),
       'approvedAt': serializer.toJson<DateTime?>(approvedAt),
       'approvedByParentKey': serializer.toJson<String?>(approvedByParentKey),
+      'scanVersion': serializer.toJson<int>(scanVersion),
+      'highestRiskCategory': serializer.toJson<String?>(highestRiskCategory),
+      'scanConfidence': serializer.toJson<double?>(scanConfidence),
+      'reviewReasons': serializer.toJson<List<String>>(reviewReasons),
       'scanResults': serializer.toJson<String?>(scanResults),
       'scanCompletedAt': serializer.toJson<DateTime?>(scanCompletedAt),
       'aspectRatio': serializer.toJson<double?>(aspectRatio),
@@ -1650,6 +1783,10 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     String? approvalStatus,
     Value<DateTime?> approvedAt = const Value.absent(),
     Value<String?> approvedByParentKey = const Value.absent(),
+    int? scanVersion,
+    Value<String?> highestRiskCategory = const Value.absent(),
+    Value<double?> scanConfidence = const Value.absent(),
+    List<String>? reviewReasons,
     Value<String?> scanResults = const Value.absent(),
     Value<DateTime?> scanCompletedAt = const Value.absent(),
     Value<double?> aspectRatio = const Value.absent(),
@@ -1678,6 +1815,14 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     approvedByParentKey: approvedByParentKey.present
         ? approvedByParentKey.value
         : this.approvedByParentKey,
+    scanVersion: scanVersion ?? this.scanVersion,
+    highestRiskCategory: highestRiskCategory.present
+        ? highestRiskCategory.value
+        : this.highestRiskCategory,
+    scanConfidence: scanConfidence.present
+        ? scanConfidence.value
+        : this.scanConfidence,
+    reviewReasons: reviewReasons ?? this.reviewReasons,
     scanResults: scanResults.present ? scanResults.value : this.scanResults,
     scanCompletedAt: scanCompletedAt.present
         ? scanCompletedAt.value
@@ -1726,6 +1871,18 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
       approvedByParentKey: data.approvedByParentKey.present
           ? data.approvedByParentKey.value
           : this.approvedByParentKey,
+      scanVersion: data.scanVersion.present
+          ? data.scanVersion.value
+          : this.scanVersion,
+      highestRiskCategory: data.highestRiskCategory.present
+          ? data.highestRiskCategory.value
+          : this.highestRiskCategory,
+      scanConfidence: data.scanConfidence.present
+          ? data.scanConfidence.value
+          : this.scanConfidence,
+      reviewReasons: data.reviewReasons.present
+          ? data.reviewReasons.value
+          : this.reviewReasons,
       scanResults: data.scanResults.present
           ? data.scanResults.value
           : this.scanResults,
@@ -1763,6 +1920,10 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
           ..write('approvalStatus: $approvalStatus, ')
           ..write('approvedAt: $approvedAt, ')
           ..write('approvedByParentKey: $approvedByParentKey, ')
+          ..write('scanVersion: $scanVersion, ')
+          ..write('highestRiskCategory: $highestRiskCategory, ')
+          ..write('scanConfidence: $scanConfidence, ')
+          ..write('reviewReasons: $reviewReasons, ')
           ..write('scanResults: $scanResults, ')
           ..write('scanCompletedAt: $scanCompletedAt, ')
           ..write('aspectRatio: $aspectRatio')
@@ -1794,6 +1955,10 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
     approvalStatus,
     approvedAt,
     approvedByParentKey,
+    scanVersion,
+    highestRiskCategory,
+    scanConfidence,
+    reviewReasons,
     scanResults,
     scanCompletedAt,
     aspectRatio,
@@ -1824,6 +1989,10 @@ class LocalVideo extends DataClass implements Insertable<LocalVideo> {
           other.approvalStatus == this.approvalStatus &&
           other.approvedAt == this.approvedAt &&
           other.approvedByParentKey == this.approvedByParentKey &&
+          other.scanVersion == this.scanVersion &&
+          other.highestRiskCategory == this.highestRiskCategory &&
+          other.scanConfidence == this.scanConfidence &&
+          other.reviewReasons == this.reviewReasons &&
           other.scanResults == this.scanResults &&
           other.scanCompletedAt == this.scanCompletedAt &&
           other.aspectRatio == this.aspectRatio);
@@ -1852,6 +2021,10 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
   final Value<String> approvalStatus;
   final Value<DateTime?> approvedAt;
   final Value<String?> approvedByParentKey;
+  final Value<int> scanVersion;
+  final Value<String?> highestRiskCategory;
+  final Value<double?> scanConfidence;
+  final Value<List<String>> reviewReasons;
   final Value<String?> scanResults;
   final Value<DateTime?> scanCompletedAt;
   final Value<double?> aspectRatio;
@@ -1879,6 +2052,10 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     this.approvalStatus = const Value.absent(),
     this.approvedAt = const Value.absent(),
     this.approvedByParentKey = const Value.absent(),
+    this.scanVersion = const Value.absent(),
+    this.highestRiskCategory = const Value.absent(),
+    this.scanConfidence = const Value.absent(),
+    this.reviewReasons = const Value.absent(),
     this.scanResults = const Value.absent(),
     this.scanCompletedAt = const Value.absent(),
     this.aspectRatio = const Value.absent(),
@@ -1907,6 +2084,10 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     this.approvalStatus = const Value.absent(),
     this.approvedAt = const Value.absent(),
     this.approvedByParentKey = const Value.absent(),
+    this.scanVersion = const Value.absent(),
+    this.highestRiskCategory = const Value.absent(),
+    this.scanConfidence = const Value.absent(),
+    this.reviewReasons = const Value.absent(),
     this.scanResults = const Value.absent(),
     this.scanCompletedAt = const Value.absent(),
     this.aspectRatio = const Value.absent(),
@@ -1939,6 +2120,10 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     Expression<String>? approvalStatus,
     Expression<DateTime>? approvedAt,
     Expression<String>? approvedByParentKey,
+    Expression<int>? scanVersion,
+    Expression<String>? highestRiskCategory,
+    Expression<double>? scanConfidence,
+    Expression<String>? reviewReasons,
     Expression<String>? scanResults,
     Expression<DateTime>? scanCompletedAt,
     Expression<double>? aspectRatio,
@@ -1968,6 +2153,11 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
       if (approvedAt != null) 'approved_at': approvedAt,
       if (approvedByParentKey != null)
         'approved_by_parent_key': approvedByParentKey,
+      if (scanVersion != null) 'scan_version': scanVersion,
+      if (highestRiskCategory != null)
+        'highest_risk_category': highestRiskCategory,
+      if (scanConfidence != null) 'scan_confidence': scanConfidence,
+      if (reviewReasons != null) 'review_reasons': reviewReasons,
       if (scanResults != null) 'scan_results': scanResults,
       if (scanCompletedAt != null) 'scan_completed_at': scanCompletedAt,
       if (aspectRatio != null) 'aspect_ratio': aspectRatio,
@@ -1998,6 +2188,10 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
     Value<String>? approvalStatus,
     Value<DateTime?>? approvedAt,
     Value<String?>? approvedByParentKey,
+    Value<int>? scanVersion,
+    Value<String?>? highestRiskCategory,
+    Value<double?>? scanConfidence,
+    Value<List<String>>? reviewReasons,
     Value<String?>? scanResults,
     Value<DateTime?>? scanCompletedAt,
     Value<double?>? aspectRatio,
@@ -2026,6 +2220,10 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
       approvalStatus: approvalStatus ?? this.approvalStatus,
       approvedAt: approvedAt ?? this.approvedAt,
       approvedByParentKey: approvedByParentKey ?? this.approvedByParentKey,
+      scanVersion: scanVersion ?? this.scanVersion,
+      highestRiskCategory: highestRiskCategory ?? this.highestRiskCategory,
+      scanConfidence: scanConfidence ?? this.scanConfidence,
+      reviewReasons: reviewReasons ?? this.reviewReasons,
       scanResults: scanResults ?? this.scanResults,
       scanCompletedAt: scanCompletedAt ?? this.scanCompletedAt,
       aspectRatio: aspectRatio ?? this.aspectRatio,
@@ -2108,6 +2306,22 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
         approvedByParentKey.value,
       );
     }
+    if (scanVersion.present) {
+      map['scan_version'] = Variable<int>(scanVersion.value);
+    }
+    if (highestRiskCategory.present) {
+      map['highest_risk_category'] = Variable<String>(
+        highestRiskCategory.value,
+      );
+    }
+    if (scanConfidence.present) {
+      map['scan_confidence'] = Variable<double>(scanConfidence.value);
+    }
+    if (reviewReasons.present) {
+      map['review_reasons'] = Variable<String>(
+        $LocalVideosTable.$converterreviewReasons.toSql(reviewReasons.value),
+      );
+    }
     if (scanResults.present) {
       map['scan_results'] = Variable<String>(scanResults.value);
     }
@@ -2148,6 +2362,10 @@ class LocalVideosCompanion extends UpdateCompanion<LocalVideo> {
           ..write('approvalStatus: $approvalStatus, ')
           ..write('approvedAt: $approvedAt, ')
           ..write('approvedByParentKey: $approvedByParentKey, ')
+          ..write('scanVersion: $scanVersion, ')
+          ..write('highestRiskCategory: $highestRiskCategory, ')
+          ..write('scanConfidence: $scanConfidence, ')
+          ..write('reviewReasons: $reviewReasons, ')
           ..write('scanResults: $scanResults, ')
           ..write('scanCompletedAt: $scanCompletedAt, ')
           ..write('aspectRatio: $aspectRatio, ')
@@ -7074,6 +7292,10 @@ typedef $$LocalVideosTableCreateCompanionBuilder =
       Value<String> approvalStatus,
       Value<DateTime?> approvedAt,
       Value<String?> approvedByParentKey,
+      Value<int> scanVersion,
+      Value<String?> highestRiskCategory,
+      Value<double?> scanConfidence,
+      Value<List<String>> reviewReasons,
       Value<String?> scanResults,
       Value<DateTime?> scanCompletedAt,
       Value<double?> aspectRatio,
@@ -7103,6 +7325,10 @@ typedef $$LocalVideosTableUpdateCompanionBuilder =
       Value<String> approvalStatus,
       Value<DateTime?> approvedAt,
       Value<String?> approvedByParentKey,
+      Value<int> scanVersion,
+      Value<String?> highestRiskCategory,
+      Value<double?> scanConfidence,
+      Value<List<String>> reviewReasons,
       Value<String?> scanResults,
       Value<DateTime?> scanCompletedAt,
       Value<double?> aspectRatio,
@@ -7247,6 +7473,27 @@ class $$LocalVideosTableFilterComposer
   ColumnFilters<String> get approvedByParentKey => $composableBuilder(
     column: $table.approvedByParentKey,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get scanVersion => $composableBuilder(
+    column: $table.scanVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get highestRiskCategory => $composableBuilder(
+    column: $table.highestRiskCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get scanConfidence => $composableBuilder(
+    column: $table.scanConfidence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+  get reviewReasons => $composableBuilder(
+    column: $table.reviewReasons,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<String> get scanResults => $composableBuilder(
@@ -7402,6 +7649,26 @@ class $$LocalVideosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get scanVersion => $composableBuilder(
+    column: $table.scanVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get highestRiskCategory => $composableBuilder(
+    column: $table.highestRiskCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get scanConfidence => $composableBuilder(
+    column: $table.scanConfidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reviewReasons => $composableBuilder(
+    column: $table.reviewReasons,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get scanResults => $composableBuilder(
     column: $table.scanResults,
     builder: (column) => ColumnOrderings(column),
@@ -7531,6 +7798,27 @@ class $$LocalVideosTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get scanVersion => $composableBuilder(
+    column: $table.scanVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get highestRiskCategory => $composableBuilder(
+    column: $table.highestRiskCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get scanConfidence => $composableBuilder(
+    column: $table.scanConfidence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get reviewReasons =>
+      $composableBuilder(
+        column: $table.reviewReasons,
+        builder: (column) => column,
+      );
+
   GeneratedColumn<String> get scanResults => $composableBuilder(
     column: $table.scanResults,
     builder: (column) => column,
@@ -7620,6 +7908,10 @@ class $$LocalVideosTableTableManager
                 Value<String> approvalStatus = const Value.absent(),
                 Value<DateTime?> approvedAt = const Value.absent(),
                 Value<String?> approvedByParentKey = const Value.absent(),
+                Value<int> scanVersion = const Value.absent(),
+                Value<String?> highestRiskCategory = const Value.absent(),
+                Value<double?> scanConfidence = const Value.absent(),
+                Value<List<String>> reviewReasons = const Value.absent(),
                 Value<String?> scanResults = const Value.absent(),
                 Value<DateTime?> scanCompletedAt = const Value.absent(),
                 Value<double?> aspectRatio = const Value.absent(),
@@ -7647,6 +7939,10 @@ class $$LocalVideosTableTableManager
                 approvalStatus: approvalStatus,
                 approvedAt: approvedAt,
                 approvedByParentKey: approvedByParentKey,
+                scanVersion: scanVersion,
+                highestRiskCategory: highestRiskCategory,
+                scanConfidence: scanConfidence,
+                reviewReasons: reviewReasons,
                 scanResults: scanResults,
                 scanCompletedAt: scanCompletedAt,
                 aspectRatio: aspectRatio,
@@ -7676,6 +7972,10 @@ class $$LocalVideosTableTableManager
                 Value<String> approvalStatus = const Value.absent(),
                 Value<DateTime?> approvedAt = const Value.absent(),
                 Value<String?> approvedByParentKey = const Value.absent(),
+                Value<int> scanVersion = const Value.absent(),
+                Value<String?> highestRiskCategory = const Value.absent(),
+                Value<double?> scanConfidence = const Value.absent(),
+                Value<List<String>> reviewReasons = const Value.absent(),
                 Value<String?> scanResults = const Value.absent(),
                 Value<DateTime?> scanCompletedAt = const Value.absent(),
                 Value<double?> aspectRatio = const Value.absent(),
@@ -7703,6 +8003,10 @@ class $$LocalVideosTableTableManager
                 approvalStatus: approvalStatus,
                 approvedAt: approvedAt,
                 approvedByParentKey: approvedByParentKey,
+                scanVersion: scanVersion,
+                highestRiskCategory: highestRiskCategory,
+                scanConfidence: scanConfidence,
+                reviewReasons: reviewReasons,
                 scanResults: scanResults,
                 scanCompletedAt: scanCompletedAt,
                 aspectRatio: aspectRatio,

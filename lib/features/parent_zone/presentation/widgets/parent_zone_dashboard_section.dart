@@ -8,10 +8,7 @@ import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../models/parent_zone_models.dart';
 
 class ParentZoneDashboardSection extends ConsumerWidget {
-  const ParentZoneDashboardSection({
-    super.key,
-    required this.onSelectSection,
-  });
+  const ParentZoneDashboardSection({super.key, required this.onSelectSection});
 
   final ValueChanged<ParentZoneSection> onSelectSection;
 
@@ -48,10 +45,8 @@ class ParentZoneDashboardSection extends ConsumerWidget {
           pendingVideos: pendingVideos.length,
           pendingReports: pendingReports,
           queuedActions: queuedActions.length,
-          onOpenChildren: () =>
-              onSelectSection(ParentZoneSection.children),
-          onOpenNetwork: () =>
-              onSelectSection(ParentZoneSection.network),
+          onOpenChildren: () => onSelectSection(ParentZoneSection.children),
+          onOpenNetwork: () => onSelectSection(ParentZoneSection.network),
         ),
         const SizedBox(height: 16),
         FrostCard(
@@ -67,9 +62,7 @@ class ParentZoneDashboardSection extends ConsumerWidget {
                 icon: identity != null
                     ? Icons.check_circle_rounded
                     : Icons.error_outline_rounded,
-                color: identity != null
-                    ? palette.success
-                    : palette.warning,
+                color: identity != null ? palette.success : palette.warning,
                 label: 'Parent account',
                 value: identity != null ? 'Ready' : 'Not set',
               ),
@@ -214,10 +207,10 @@ class _OverviewHero extends StatelessWidget {
               color: pendingReports == 0 ? palette.success : palette.warning,
               title: pendingReports == 0
                   ? 'Reports are up to date'
-                  : '$pendingReports report(s) still syncing',
+                  : '$pendingReports report(s) need attention',
               detail: pendingReports == 0
-                  ? 'Family feedback and safety reports have finished sending.'
-                  : 'Keep an eye on delivery and safety follow-up before leaving the control room.',
+                  ? 'Family feedback and safety reports are up to date.'
+                  : 'Some reports are still being delivered or need follow-up.',
             ),
             _AttentionRow(
               icon: queuedActions == 0

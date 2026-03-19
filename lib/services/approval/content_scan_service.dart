@@ -15,6 +15,7 @@ class ContentScanService {
       ...video.cvLabels.map((label) => label.toLowerCase()),
     };
     final flags = <String>[];
+    final categories = <String>[];
     var score = 0;
 
     const highRiskTerms = <String>{
@@ -37,40 +38,47 @@ class ContentScanService {
 
     if (labels.any(highRiskTerms.contains)) {
       flags.add('high_risk_label');
-      score += 2;
+      categories.add('unsafe_content');
+      score += 4;
     }
     if (labels.any(reviewTerms.contains)) {
       flags.add('review_label');
+      categories.add('sensitive_topic');
       score += 1;
     }
 
-    if (video.loudness > 0.85) {
+    if (video.loudness >= 0.85) {
       flags.add('very_loud_audio');
-      score += 1;
+      categories.add('intense_audio');
+      score += 2;
     }
 
-    if (video.faceCount > 3) {
+    if (video.faceCount >= 4) {
       flags.add('crowded_frame');
-      score += 1;
+      categories.add('crowded_scene');
+      score += video.faceCount >= 6 ? 2 : 1;
     }
 
     if (video.durationSeconds > 180) {
       flags.add('long_clip');
+      categories.add('long_runtime');
       score += 1;
     }
 
-    if (labels.contains('live') || labels.contains('challenge')) {
+    if ((labels.contains('live') || labels.contains('challenge')) &&
+        (flags.isNotEmpty || labels.any(reviewTerms.contains))) {
       flags.add('attention_seeking_title');
+      categories.add('attention_seeking');
       score += 1;
     }
 
     final riskLevel = switch (score) {
-      >= 3 => 'high',
-      > 0 => 'medium',
+      >= 4 => 'high',
+      >= 2 => 'medium',
       _ => 'low',
     };
     final needsReview = riskLevel != 'low';
-    final reasons = flags.map(_humanizeFlag).take(2).toList(growable: false);
+    final reasons = flags.map(_humanizeFlag).take(3).toList(growable: false);
     final summary = switch ((riskLevel, reasons.isEmpty)) {
       ('high', false) => 'Needs review: ${reasons.join(' and ')}.',
       ('medium', false) => 'Please check: ${reasons.join(' and ')}.',
@@ -80,7 +88,11 @@ class ContentScanService {
     };
 
     return ContentScanSummary(
+      scanVersion: 1,
       riskLevel: riskLevel,
+      highestRiskCategory: categories.isEmpty ? null : categories.first,
+      confidence: _confidenceFor(score: score, flags: flags),
+      reviewReasons: reasons,
       flags: flags,
       labels: labels.toList(growable: false)..sort(),
       needsReview: needsReview,
@@ -97,6 +109,19 @@ class ContentScanService {
       'long_clip' => 'a long video',
       'attention_seeking_title' => 'an intense title',
       _ => flag.replaceAll('_', ' '),
+    };
+  }
+
+  double _confidenceFor({required int score, required List<String> flags}) {
+    if (flags.contains('high_risk_label')) {
+      return 0.94;
+    }
+    return switch (score) {
+      >= 4 => 0.88,
+      3 => 0.78,
+      2 => 0.68,
+      1 => 0.56,
+      _ => 0.24,
     };
   }
 }

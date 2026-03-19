@@ -163,11 +163,16 @@ class EditorExportService {
         session: attempt.session,
         assetBundle: _assetBundle,
         stagingDir: stagingDir.path,
-        videoSize: scaleEditorRenderSize(baseRenderSize, attempt.renderScale),
+        videoSize: scaleEditorRenderSize(
+          baseRenderSize,
+          attempt.renderScale,
+          maxDimension: attempt.maxDimensionOverride,
+        ),
       );
       final renderSize = scaleEditorRenderSize(
         baseRenderSize,
         attempt.renderScale,
+        maxDimension: attempt.maxDimensionOverride,
       );
       final plan = await buildEditorExportPlan(
         session: attempt.session,
@@ -267,6 +272,7 @@ class _ExportAttempt {
     required this.session,
     required this.videoCodec,
     this.renderScale = 1,
+    this.maxDimensionOverride,
     this.warning,
   });
 
@@ -274,6 +280,7 @@ class _ExportAttempt {
   final EditorSession session;
   final String videoCodec;
   final double renderScale;
+  final double? maxDimensionOverride;
   final String? warning;
 }
 
@@ -412,11 +419,22 @@ Future<EditorExportPlan> buildEditorExportPlan({
     arguments.addAll(['-map', '0:v:0', '-map', '0:a?', '-shortest']);
   }
 
+  arguments.addAll(['-c:v', videoCodec]);
+  if (videoCodec == 'libx264') {
+    arguments.addAll([
+      '-preset',
+      'fast',
+      '-crf',
+      '20',
+      '-maxrate',
+      '10000k',
+      '-bufsize',
+      '20000k',
+    ]);
+  } else {
+    arguments.addAll(['-q:v', '4']);
+  }
   arguments.addAll([
-    '-c:v',
-    videoCodec,
-    '-preset',
-    'veryfast',
     '-pix_fmt',
     'yuv420p',
     '-metadata:s:v:0',
@@ -443,19 +461,25 @@ List<_ExportAttempt> _buildExportAttempts(EditorSession session) {
       session: session,
       videoCodec: 'libx264',
       renderScale: 0.8,
+    ),
+    _ExportAttempt(
+      label: 'safe_res',
+      session: session,
+      videoCodec: 'libx264',
+      maxDimensionOverride: 1280,
       warning: 'Saved remix at a smaller size for this device.',
     ),
     _ExportAttempt(
       label: 'safe_codec',
       session: session,
       videoCodec: 'mpeg4',
-      renderScale: 0.8,
+      maxDimensionOverride: 1280,
       warning: 'Saved remix with a compatibility export path on this device.',
     ),
   ];
 }
 
-ui.Size normalizeEditorRenderSize(ui.Size input, {double maxDimension = 1280}) {
+ui.Size normalizeEditorRenderSize(ui.Size input, {double maxDimension = 1920}) {
   final width = input.width <= 0 ? 720.0 : input.width;
   final height = input.height <= 0 ? 1280.0 : input.height;
   final longestSide = math.max(width, height);
@@ -466,11 +490,15 @@ ui.Size normalizeEditorRenderSize(ui.Size input, {double maxDimension = 1280}) {
   return ui.Size(_makeEven(width * scale), _makeEven(height * scale));
 }
 
-ui.Size scaleEditorRenderSize(ui.Size input, double scale) {
+ui.Size scaleEditorRenderSize(
+  ui.Size input,
+  double scale, {
+  double? maxDimension,
+}) {
   final normalizedScale = scale.clamp(0.5, 1.0);
   return normalizeEditorRenderSize(
     ui.Size(input.width * normalizedScale, input.height * normalizedScale),
-    maxDimension: math.max(input.width, input.height),
+    maxDimension: maxDimension ?? math.max(input.width, input.height),
   );
 }
 

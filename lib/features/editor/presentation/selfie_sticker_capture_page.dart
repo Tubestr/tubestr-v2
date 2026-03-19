@@ -1,14 +1,12 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_selfie_segmentation/google_mlkit_selfie_segmentation.dart';
 
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../services/editor/editor_sticker_library.dart';
+import '../../../services/editor/selfie_segmentation_service.dart';
 import '../../../shared_ui/components/fill_camera_preview.dart';
 
 class SelfieStickerCapturePage extends StatefulWidget {
@@ -30,6 +28,8 @@ class SelfieStickerCapturePage extends StatefulWidget {
 
 class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
     with WidgetsBindingObserver {
+  final SelfieSegmentationService _segmentationService =
+      SelfieSegmentationService();
   CameraController? _controller;
   List<CameraDescription> _cameras = const [];
   int _cameraIndex = 0;
@@ -49,6 +49,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
+    unawaited(_segmentationService.dispose());
     super.dispose();
   }
 
@@ -147,7 +148,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
 
     try {
       final photo = await controller.takePicture();
-      final pngBytes = await _extractStickerPng(photo.path);
+      final pngBytes = await _segmentationService.extractStickerPng(photo.path);
       if (pngBytes == null) {
         throw StateError('Could not lift the subject from that photo.');
       }
@@ -169,139 +170,6 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
         setState(() => _isProcessing = false);
       }
     }
-  }
-
-  Future<Uint8List?> _extractStickerPng(String path) async {
-    final segmenter = SelfieSegmenter(mode: SegmenterMode.single);
-    try {
-      final inputImage = InputImage.fromFilePath(path);
-      final mask = await segmenter.processImage(inputImage);
-      if (mask == null) {
-        return null;
-      }
-
-      final imageBytes = await File(path).readAsBytes();
-      final codec = await ui.instantiateImageCodec(imageBytes);
-      final frame = await codec.getNextFrame();
-      final image = frame.image;
-      final rgbaByteData = await image.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
-      );
-      if (rgbaByteData == null) {
-        return null;
-      }
-
-      final sourceBytes = rgbaByteData.buffer.asUint8List();
-      final outputBytes = Uint8List(sourceBytes.length);
-      final width = image.width;
-      final height = image.height;
-      const threshold = 0.35;
-
-      for (var y = 0; y < height; y += 1) {
-        for (var x = 0; x < width; x += 1) {
-          final sourcePixelIndex = (y * width + x) * 4;
-          final maskX = (x / width * mask.width).floor().clamp(
-            0,
-            mask.width - 1,
-          );
-          final maskY = (y / height * mask.height).floor().clamp(
-            0,
-            mask.height - 1,
-          );
-          final maskConfidence = mask.confidences[maskY * mask.width + maskX];
-          if (maskConfidence >= threshold) {
-            outputBytes[sourcePixelIndex] = sourceBytes[sourcePixelIndex];
-            outputBytes[sourcePixelIndex + 1] =
-                sourceBytes[sourcePixelIndex + 1];
-            outputBytes[sourcePixelIndex + 2] =
-                sourceBytes[sourcePixelIndex + 2];
-            outputBytes[sourcePixelIndex + 3] = (maskConfidence * 255)
-                .round()
-                .clamp(0, 255);
-          } else {
-            outputBytes[sourcePixelIndex] = 0;
-            outputBytes[sourcePixelIndex + 1] = 0;
-            outputBytes[sourcePixelIndex + 2] = 0;
-            outputBytes[sourcePixelIndex + 3] = 0;
-          }
-        }
-      }
-
-      final stickerImage = await _imageFromRgba(
-        outputBytes,
-        width: width,
-        height: height,
-      );
-      final pngByteData = await stickerImage.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
-      return pngByteData?.buffer.asUint8List();
-    } finally {
-      await segmenter.close();
-    }
-  }
-
-  Future<ui.Image> _imageFromRgba(
-    Uint8List bytes, {
-    required int width,
-    required int height,
-  }) async {
-    final codec = await ui.instantiateImageCodec(
-      await _encodeRawRgbaToBmp(bytes, width: width, height: height),
-    );
-    final frame = await codec.getNextFrame();
-    return frame.image;
-  }
-
-  Future<Uint8List> _encodeRawRgbaToBmp(
-    Uint8List rgbaBytes, {
-    required int width,
-    required int height,
-  }) async {
-    final buffer = BytesBuilder();
-    final pixelDataSize = width * height * 4;
-    final fileSize = 54 + pixelDataSize;
-
-    void writeInt16(int value) {
-      buffer.add([value & 0xFF, (value >> 8) & 0xFF]);
-    }
-
-    void writeInt32(int value) {
-      buffer.add([
-        value & 0xFF,
-        (value >> 8) & 0xFF,
-        (value >> 16) & 0xFF,
-        (value >> 24) & 0xFF,
-      ]);
-    }
-
-    buffer.add([0x42, 0x4D]);
-    writeInt32(fileSize);
-    writeInt16(0);
-    writeInt16(0);
-    writeInt32(54);
-
-    writeInt32(40);
-    writeInt32(width);
-    writeInt32(-height);
-    writeInt16(1);
-    writeInt16(32);
-    writeInt32(0);
-    writeInt32(pixelDataSize);
-    writeInt32(2835);
-    writeInt32(2835);
-    writeInt32(0);
-    writeInt32(0);
-
-    for (var i = 0; i < rgbaBytes.length; i += 4) {
-      final r = rgbaBytes[i];
-      final g = rgbaBytes[i + 1];
-      final b = rgbaBytes[i + 2];
-      final a = rgbaBytes[i + 3];
-      buffer.add([b, g, r, a]);
-    }
-
-    return buffer.toBytes();
   }
 
   Future<void> _saveSticker() async {

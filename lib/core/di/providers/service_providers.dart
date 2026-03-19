@@ -6,6 +6,7 @@ import '../../../services/auth/parent_auth_service.dart';
 import '../../../services/app_reset_service.dart';
 import '../../../services/blossom/blossom_client.dart';
 import '../../../services/approval/content_scan_service.dart';
+import '../../../services/approval/media_signal_extraction_service.dart';
 import '../../../services/approval/video_approval_service.dart';
 import '../../../services/connections/family_connection_service.dart';
 import '../../../services/editor/editor_export_service.dart';
@@ -61,6 +62,10 @@ final contentScanServiceProvider = Provider(
   (ref) => const ContentScanService(),
 );
 
+final mediaSignalExtractionServiceProvider = Provider(
+  (ref) => MediaSignalExtractionService(),
+);
+
 final blossomClientProvider = Provider<BlossomClient>((ref) {
   return BlossomClient(ref.watch(dioProvider));
 });
@@ -83,6 +88,7 @@ final videoApprovalServiceProvider = Provider((ref) {
   return VideoApprovalService(
     database: ref.watch(appDatabaseProvider),
     scanService: ref.watch(contentScanServiceProvider),
+    signalExtractionService: ref.watch(mediaSignalExtractionServiceProvider),
   );
 });
 

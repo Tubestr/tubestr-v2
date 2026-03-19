@@ -15,6 +15,7 @@ import 'package:mytube/services/connections/family_connection_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
 import 'package:mytube/services/engagement/reaction_coordinator.dart';
 import 'package:mytube/services/approval/content_scan_service.dart';
+import 'package:mytube/services/approval/media_signal_extraction_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/identity/identity_service.dart';
 import 'package:mytube/services/identity/parent_profile_service.dart';
@@ -904,6 +905,13 @@ class FamilyAppHarness {
       videoApprovalService: VideoApprovalService(
         database: database,
         scanService: const ContentScanService(),
+        signalExtractionService: MediaSignalExtractionService(
+          extractSignals: (video) async => MediaSignalExtractionResult(
+            cvLabels: video.cvLabels,
+            faceCount: video.faceCount,
+            loudness: video.loudness,
+          ),
+        ),
       ),
       blossomClient: blossom,
       mdkService: mdk,

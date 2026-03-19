@@ -19,19 +19,19 @@ enum ReportActionOption {
   tellThem(
     icon: Icons.pan_tool_alt_rounded,
     title: 'Just Tell Them',
-    subtitle: 'Send feedback to the family group.',
+    subtitle: 'Note it for yourself.',
     level: 1,
   ),
   hideVideos(
     icon: Icons.visibility_off_rounded,
     title: 'Hide Their Videos',
-    subtitle: 'Escalate it to parents and hide this for now.',
+    subtitle: 'Let your parent know privately.',
     level: 2,
   ),
   blockThem(
     icon: Icons.gpp_bad_rounded,
     title: 'Block Them',
-    subtitle: 'Treat this as serious and send it to Safety HQ.',
+    subtitle: 'Alert both families.',
     level: 3,
   );
 
@@ -58,27 +58,29 @@ class FeelingReportSubmission {
       action.level > feeling.minimumLevel ? action.level : feeling.minimumLevel;
 
   String get recipientType => switch (level) {
-    1 => 'group',
-    2 => 'parents',
-    _ => 'safety_hq',
+    1 => 'local',
+    2 => 'local_parent',
+    _ => 'family',
   };
 
   String get destinationLabel => switch (level) {
-    1 => 'Your family',
-    2 => 'Parent helpers',
-    _ => 'Safety HQ',
+    1 => 'Stays on this device',
+    2 => 'Your parent',
+    _ => 'Both families',
   };
 
   String get levelLabel => switch (level) {
-    1 => 'Level 1 · Family feedback',
+    1 => 'Level 1 · Noted',
     2 => 'Level 2 · Parent help',
-    _ => 'Level 3 · Safety alert',
+    _ => 'Level 3 · Family alert',
   };
 
   String get helperText => switch (level) {
-    1 => 'This stays inside the family group so grown-ups can talk it through.',
-    2 => 'This asks parents to step in and take a closer look.',
-    _ => 'This sends a serious alert to Safety HQ for follow-up.',
+    1 =>
+      'This stays on your device so you can talk about it with a grown-up later.',
+    2 => 'This lets your parent know so they can check in with you.',
+    _ =>
+      'This sends an alert to both families so the grown-ups can sort it out.',
   };
 
   String get reason => feeling.reason;
