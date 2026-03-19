@@ -17,6 +17,10 @@ PODS:
   - google_mlkit_commons (0.11.1):
     - Flutter
     - MLKitVision (~> 10.0.0)
+  - google_mlkit_face_detection (0.13.2):
+    - Flutter
+    - google_mlkit_commons
+    - GoogleMLKit/FaceDetection (~> 9.0.0)
   - google_mlkit_selfie_segmentation (0.10.1):
     - Flutter
     - google_mlkit_commons
@@ -24,6 +28,9 @@ PODS:
   - GoogleDataTransport (10.1.0):
     - nanopb (~> 3.30910.0)
     - PromisesObjC (~> 2.4)
+  - GoogleMLKit/FaceDetection (9.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitFaceDetection (~> 8.0.0)
   - GoogleMLKit/MLKitCore (9.0.0):
     - MLKitCommon (~> 14.0.0)
   - GoogleMLKit/SegmentationSelfie (9.0.0):
@@ -76,6 +83,9 @@ PODS:
     - GoogleUtilities/Logger (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+  - MLKitFaceDetection (8.0.0):
+    - MLKitCommon (~> 14.0)
+    - MLKitVision (~> 10.0)
   - MLKitSegmentationCommon (1.0.0-beta14):
     - MLKitCommon (~> 14.0)
     - MLKitXenoCommon (= 1.0.0-beta16)
@@ -119,6 +129,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
+  - google_mlkit_face_detection (from `.symlinks/plugins/google_mlkit_face_detection/ios`)
   - google_mlkit_selfie_segmentation (from `.symlinks/plugins/google_mlkit_selfie_segmentation/ios`)
   - in_app_purchase_storekit (from `.symlinks/plugins/in_app_purchase_storekit/darwin`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
@@ -142,6 +153,7 @@ SPEC REPOS:
     - libwebp
     - MLImage
     - MLKitCommon
+    - MLKitFaceDetection
     - MLKitSegmentationCommon
     - MLKitSegmentationSelfie
     - MLKitVision
@@ -164,6 +176,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
   google_mlkit_commons:
     :path: ".symlinks/plugins/google_mlkit_commons/ios"
+  google_mlkit_face_detection:
+    :path: ".symlinks/plugins/google_mlkit_face_detection/ios"
   google_mlkit_selfie_segmentation:
     :path: ".symlinks/plugins/google_mlkit_selfie_segmentation/ios"
   in_app_purchase_storekit:
@@ -197,6 +211,7 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_secure_storage_darwin: 557817588b80e60213cbecb573c45c76b788018d
   google_mlkit_commons: 1e6ef6605d7281f35baf2b355e6049b9984fd624
+  google_mlkit_face_detection: ceddb8d65f594b9ff8379efc16ab2c4efa801349
   google_mlkit_selfie_segmentation: e1c74c1433e36a23ca6799d24fa66e31a38d0068
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleMLKit: b1eee21a41c57704fe72483b15c85cb2c0cd7444
@@ -211,6 +226,7 @@ SPEC CHECKSUMS:
   media_kit_video: 5da63f157170e5bf303bf85453b7ef6971218a2e
   MLImage: 0de5c6c2bf9e93b80ef752e2797f0836f03b58c0
   MLKitCommon: 47d47b50a031d00db62f1b0efe5a1d8b09a3b2e6
+  MLKitFaceDetection: 32549f1e70e6e7731261bf9cea2b74095e2531cb
   MLKitSegmentationCommon: f634fb3c20c1d8bace22a2c026bdaa0ca17613d9
   MLKitSegmentationSelfie: 62371f35c33d49c3e7474443677b6a0c7ac9c98b
   MLKitVision: 39a5a812db83c4a0794445088e567f3631c11961
@@ -224,6 +240,6 @@ SPEC CHECKSUMS:
   video_thumbnail: c4e2a3c539e247d4de13cd545344fd2d26ffafd1
   wakelock_plus: 76957ab028e12bfa4e66813c99e46637f367fc7e
 
-PODFILE CHECKSUM: 3e1807e367962932d2b5584c3a992fa8a45dc159
+PODFILE CHECKSUM: bd29822c3d5baf6b44b726f00ea3293a19339ef2
 
 COCOAPODS: 1.16.2

@@ -15,7 +15,7 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     SelfieSubjectLiftingPlugin.register(
-      with: engineBridge.pluginRegistry.registrar(forPlugin: "SelfieSubjectLiftingPlugin")
+      with: engineBridge.pluginRegistry.registrar(forPlugin: "SelfieSubjectLiftingPlugin")!
     )
   }
 }
