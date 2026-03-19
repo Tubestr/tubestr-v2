@@ -167,13 +167,13 @@ class NdkNostrService implements NostrService {
       timeout: const Duration(seconds: 2),
     );
     final results = await response.broadcastDoneFuture;
-    final failedRelays = results
-        .where((result) => !result.broadcastSuccessful)
-        .map((result) => result.relayUrl)
-        .toList(growable: false);
-    if (failedRelays.isNotEmpty) {
+    final succeeded = results.any((result) => result.broadcastSuccessful);
+    if (!succeeded) {
+      final failedRelays = results
+          .map((result) => result.relayUrl)
+          .toList(growable: false);
       throw StateError(
-        'Failed to publish parent profile to: ${failedRelays.join(', ')}',
+        'Failed to publish parent profile to any relay: ${failedRelays.join(', ')}',
       );
     }
   }

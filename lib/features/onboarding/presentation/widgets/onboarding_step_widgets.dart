@@ -163,8 +163,8 @@ class OnboardingIntroSlides extends StatelessWidget {
                           const SizedBox(height: 28),
                           Text(
                             slide.title,
-                            style: const TextStyle(
-                              fontSize: 34,
+                            style: TextStyle(
+                              fontSize: MediaQuery.sizeOf(context).width < 400 ? 28.0 : 34.0,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -717,21 +717,24 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text('Theme', style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 8),
-                SegmentedButton<ThemeDescriptor>(
-                  segments: [
-                    for (final themeOption in ThemeDescriptor.values)
-                      ButtonSegment(
-                        value: themeOption,
-                        label: Text(
-                          themeOption.label,
-                          style: const TextStyle(fontSize: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedButton<ThemeDescriptor>(
+                    segments: [
+                      for (final themeOption in ThemeDescriptor.values)
+                        ButtonSegment(
+                          value: themeOption,
+                          label: Text(
+                            themeOption.label,
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ),
-                      ),
-                  ],
-                  selected: {theme},
-                  onSelectionChanged: busy
-                      ? null
-                      : (selection) => onThemeChanged(selection.first),
+                    ],
+                    selected: {theme},
+                    onSelectionChanged: busy
+                        ? null
+                        : (selection) => onThemeChanged(selection.first),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 SizedBox(

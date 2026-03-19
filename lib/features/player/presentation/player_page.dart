@@ -942,7 +942,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                     ),
 
                                     // ── Expanded: title, like, metrics ──
-                                    if (_sheetExpanded) ...[
+                                    if (_sheetExpanded)
+                                      Flexible(
+                                        child: SingleChildScrollView(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
                                       const SizedBox(height: 14),
                                       Row(
                                         crossAxisAlignment:
@@ -1227,6 +1233,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         ),
                                       ],
                                     ],
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),

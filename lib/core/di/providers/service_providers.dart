@@ -128,6 +128,10 @@ final syncRevisionProvider = StreamProvider<int>((ref) {
   return ref.watch(syncCoordinatorProvider).revisions;
 });
 
+final syncDiagnosticsRevisionProvider = StreamProvider<int>((ref) {
+  return ref.watch(syncCoordinatorProvider).diagnosticsRevisions;
+});
+
 final videoShareCoordinatorProvider = Provider((ref) {
   return VideoShareCoordinator(
     database: ref.watch(appDatabaseProvider),

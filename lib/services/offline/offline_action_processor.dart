@@ -38,7 +38,7 @@ class OfflineActionProcessor {
     if (identity == null) {
       return 0;
     }
-    final actions = await _store.load();
+    final actions = await _deduplicate(await _store.load());
     var flushed = 0;
     for (final action in actions) {
       try {
@@ -50,6 +50,26 @@ class OfflineActionProcessor {
       }
     }
     return flushed;
+  }
+
+  /// Collapse duplicate actions (same type + payload) keeping the oldest.
+  /// This heals queues bloated by the re-enqueue bug.
+  Future<List<OfflineAction>> _deduplicate(List<OfflineAction> actions) async {
+    final seen = <String>{};
+    final deduped = <OfflineAction>[];
+    final removals = <String>[];
+    for (final action in actions) {
+      final key = '${action.type.name}:${action.payload}';
+      if (seen.add(key)) {
+        deduped.add(action);
+      } else {
+        removals.add(action.id);
+      }
+    }
+    for (final id in removals) {
+      await _store.remove(id);
+    }
+    return deduped;
   }
 
   Future<void> _processAction({
@@ -107,6 +127,7 @@ class OfflineActionProcessor {
             .publishLocalProfile(
               identity: identity,
               displayName: action.payload['display_name']?.toString() ?? '',
+              allowQueueOnFailure: false,
             )
             .then((_) {});
     }

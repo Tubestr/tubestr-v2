@@ -325,6 +325,14 @@ class LoopbackNostrService implements NostrService {
       filter: filter,
       controller: controller,
     );
+    Future<void>.delayed(Duration.zero, () {
+      if (controller.isClosed) {
+        return;
+      }
+      for (final event in _bus.query(filter)) {
+        controller.add(event);
+      }
+    });
     return NdkResponse(subscriptionId, controller.stream);
   }
 

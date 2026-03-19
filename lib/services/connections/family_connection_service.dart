@@ -30,9 +30,7 @@ class FamilyConnectResult {
 }
 
 class FamilyConnectionService {
-  static const _keyPackageQueryTimeout = Duration(seconds: 2);
-  static const _keyPackagePollWindow = Duration(seconds: 5);
-  static const _keyPackagePollInterval = Duration(milliseconds: 250);
+  static const _keyPackageResolveTimeout = Duration(seconds: 4);
 
   FamilyConnectionService({
     required MdkService mdkService,
@@ -234,64 +232,23 @@ class FamilyConnectionService {
     required GroupInvitePacket packet,
     required List<String> relays,
   }) async {
-    final queried = await _queryKeyPackages(
-      packet: packet,
+    final eventId = packet.keyPackageEventId;
+    if (eventId != null && eventId.isNotEmpty) {
+      return _resolveKeyPackageById(
+        eventId: eventId,
+        publicKeyHex: packet.publicKeyHex,
+        relays: relays,
+      );
+    }
+    return _resolveKeyPackageByAuthor(
       publicKeyHex: packet.publicKeyHex,
       relays: relays,
-    );
-    if (queried.isNotEmpty) {
-      return queried;
-    }
-
-    final polled = await _pollForKeyPackages(
-      packet: packet,
-      publicKeyHex: packet.publicKeyHex,
-      relays: relays,
-    );
-    if (polled.isNotEmpty) {
-      return polled;
-    }
-
-    final finalAttempt = await _queryKeyPackages(
-      packet: packet,
-      publicKeyHex: packet.publicKeyHex,
-      relays: relays,
-      timeout: const Duration(seconds: 1),
-    );
-    if (finalAttempt.isNotEmpty) {
-      return finalAttempt;
-    }
-
-    throw StateError(
-      'No key packages found for this invite yet. Ask the other parent to refresh the invite and try again.',
     );
   }
 
-  Future<List<String>> _queryKeyPackages({
-    required GroupInvitePacket packet,
-    required String publicKeyHex,
-    required List<String> relays,
-    Duration timeout = _keyPackageQueryTimeout,
-  }) async {
-    final events = await _nostrService.queryEvents(
-      relays: relays,
-      timeout: timeout,
-      filter: Filter(
-        ids:
-            packet.keyPackageEventId == null ||
-                packet.keyPackageEventId!.isEmpty
-            ? null
-            : [packet.keyPackageEventId!],
-        authors: [publicKeyHex],
-        kinds: [MarmotKinds.keyPackage],
-        limit: 20,
-      ),
-    );
-    return _dedupeEventJson(events);
-  }
-
-  Future<List<String>> _pollForKeyPackages({
-    required GroupInvitePacket packet,
+  /// Fast path: we know the exact event ID, resolve on first match.
+  Future<List<String>> _resolveKeyPackageById({
+    required String eventId,
     required String publicKeyHex,
     required List<String> relays,
   }) async {
@@ -301,50 +258,67 @@ class FamilyConnectionService {
       subscriptionId: subscriptionId,
       relays: relays,
       filter: Filter(
-        ids:
-            packet.keyPackageEventId == null ||
-                packet.keyPackageEventId!.isEmpty
-            ? null
-            : [packet.keyPackageEventId!],
+        ids: [eventId],
+        authors: [publicKeyHex],
+        kinds: [MarmotKinds.keyPackage],
+        limit: 1,
+      ),
+    );
+
+    final completer = Completer<String>();
+    late final StreamSubscription<Nip01Event> subscription;
+    subscription = response.stream.listen((event) {
+      if (event.pubKey != publicKeyHex ||
+          event.kind != MarmotKinds.keyPackage ||
+          event.id != eventId) {
+        return;
+      }
+      if (!completer.isCompleted) {
+        completer.complete(Nip01EventModel.fromEntity(event).toJsonString());
+      }
+    }, onError: (Object error, StackTrace stackTrace) {
+      if (!completer.isCompleted) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+
+    try {
+      final eventJson =
+          await completer.future.timeout(_keyPackageResolveTimeout);
+      return [eventJson];
+    } on TimeoutException {
+      throw StateError(
+        'No key packages found for this invite yet. '
+        'Ask the other parent to refresh the invite and try again.',
+      );
+    } finally {
+      await subscription.cancel();
+      await _nostrService.unsubscribe(subscriptionId);
+    }
+  }
+
+  /// Legacy fallback: no event ID, collect candidates and pick the newest.
+  Future<List<String>> _resolveKeyPackageByAuthor({
+    required String publicKeyHex,
+    required List<String> relays,
+  }) async {
+    final events = await _nostrService.queryEvents(
+      relays: relays,
+      timeout: _keyPackageResolveTimeout,
+      filter: Filter(
         authors: [publicKeyHex],
         kinds: [MarmotKinds.keyPackage],
         limit: 20,
       ),
     );
-
-    final collectedById = <String, Nip01Event>{};
-    late final StreamSubscription<Nip01Event> subscription;
-    subscription = response.stream.listen((event) {
-      if (event.pubKey != publicKeyHex ||
-          event.kind != MarmotKinds.keyPackage) {
-        return;
-      }
-      collectedById[event.id] = event;
-    });
-
-    try {
-      final iterations =
-          _keyPackagePollWindow.inMilliseconds ~/
-          _keyPackagePollInterval.inMilliseconds;
-      for (var i = 0; i < iterations; i += 1) {
-        await Future<void>.delayed(_keyPackagePollInterval);
-        if (collectedById.isNotEmpty) {
-          break;
-        }
-      }
-    } finally {
-      await subscription.cancel();
-      await _nostrService.unsubscribe(subscriptionId);
+    if (events.isEmpty) {
+      throw StateError(
+        'No key packages found for this invite yet. '
+        'Ask the other parent to refresh the invite and try again.',
+      );
     }
-
-    return _dedupeEventJson(collectedById.values);
-  }
-
-  List<String> _dedupeEventJson(Iterable<Nip01Event> events) {
-    final byId = <String, String>{};
-    for (final event in events) {
-      byId[event.id] = Nip01EventModel.fromEntity(event).toJsonString();
-    }
-    return byId.values.toList(growable: false);
+    final sorted = events.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return [Nip01EventModel.fromEntity(sorted.first).toJsonString()];
   }
 }

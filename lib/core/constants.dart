@@ -16,8 +16,8 @@ class AppConstants {
   static const safetyHqGroupName = 'Safety HQ';
   static const defaultRelays = <String>[
     'wss://no.str.cr',
-    'wss://relay.damus.io',
     'wss://relay.primal.net',
+    'wss://nos.lol',
   ];
   static const defaultBlossomServers = <String>['https://blossom.tubestr.app'];
 }

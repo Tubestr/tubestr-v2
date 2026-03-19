@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/router/deep_link_service.dart';
 import '../../../core/theme/theme_descriptor.dart';
+import '../../../services/sync/sync_coordinator.dart';
 import '../../../shared_ui/components/nook_decorations.dart';
 import '../../capture/presentation/capture_page.dart';
 import '../../editor_hub/presentation/editor_hub_page.dart';
@@ -45,6 +46,11 @@ class _AppShellState extends ConsumerState<AppShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
+      unawaited(
+        ref
+            .read(syncCoordinatorProvider)
+            .refreshSubscriptions(trigger: SyncRefreshTrigger.resume),
+      );
       unawaited(_flushOperationalQueues());
     }
   }
@@ -66,7 +72,9 @@ class _AppShellState extends ConsumerState<AppShell>
         .read(safetyHqServiceProvider)
         .ensureProvisioned(identity: identity);
     if (safetyGroup != null) {
-      await ref.read(syncCoordinatorProvider).refreshSubscriptions();
+      await ref
+          .read(syncCoordinatorProvider)
+          .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
     }
     await ref
         .read(reportCoordinatorProvider)

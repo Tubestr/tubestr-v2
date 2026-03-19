@@ -23,11 +23,14 @@ class ParentZonePinSetupView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final hPad = screenWidth < 600 ? 20.0 : 32.0;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.only(
-          left: 32,
-          right: 32,
+          left: hPad,
+          right: hPad,
           top: 32,
           bottom: MediaQuery.of(context).viewInsets.bottom + 32,
         ),
@@ -137,10 +140,13 @@ class ParentZonePinEntryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final hPad = screenWidth < 600 ? 20.0 : 32.0;
+
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: EdgeInsets.symmetric(horizontal: hPad),
           child: FrostCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +198,7 @@ class ParentZonePinEntryView extends StatelessWidget {
                 Align(
                   alignment: Alignment.center,
                   child: SizedBox(
-                    width: 280,
+                    width: double.infinity,
                     child: PinKeypad(onDigit: onDigit, onDelete: onDelete),
                   ),
                 ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -335,10 +336,59 @@ class FakeNostrService implements NostrService {
   String? unwrapGiftWrapRumorJsonResult;
   bool throwOnPublishSignedEvent = false;
   bool throwOnPublishParentProfile = false;
+  final Set<String> unsubscribeFailures = <String>{};
   final Map<String, Filter> subscriptionFilters = {};
   final Map<String, StreamController<Nip01Event>> subscriptionControllers = {};
   final List<String> unsubscribedSubscriptionIds = [];
   Filter? lastQueryFilter;
+
+  List<Nip01Event> _matchingEvents(Filter filter) {
+    final matches = queryEventsResult
+        .where((event) => _matches(filter, event))
+        .toList(growable: false);
+    if (filter.limit != null && matches.length > filter.limit!) {
+      return matches.sublist(max(0, matches.length - filter.limit!));
+    }
+    return matches;
+  }
+
+  bool _matches(Filter filter, Nip01Event event) {
+    if (filter.ids != null && !filter.ids!.contains(event.id)) {
+      return false;
+    }
+    if (filter.authors != null && !filter.authors!.contains(event.pubKey)) {
+      return false;
+    }
+    if (filter.kinds != null && !filter.kinds!.contains(event.kind)) {
+      return false;
+    }
+    if (filter.since != null && event.createdAt < filter.since!) {
+      return false;
+    }
+    if (filter.until != null && event.createdAt > filter.until!) {
+      return false;
+    }
+    if (filter.search != null &&
+        !event.content.toLowerCase().contains(filter.search!.toLowerCase())) {
+      return false;
+    }
+
+    final tags = filter.tags;
+    if (tags != null) {
+      for (final entry in tags.entries) {
+        final key = entry.key.startsWith('#')
+            ? entry.key.substring(1)
+            : entry.key;
+        final eventValues = event.getTags(key);
+        if (eventValues.isEmpty ||
+            !entry.value.any((value) => eventValues.contains(value))) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
 
   @override
   Future<void> connect() async {}
@@ -437,21 +487,7 @@ class FakeNostrService implements NostrService {
     Duration? timeout,
   }) async {
     lastQueryFilter = filter;
-    return queryEventsResult
-        .where((event) {
-          if (filter.ids != null && !filter.ids!.contains(event.id)) {
-            return false;
-          }
-          if (filter.authors != null &&
-              !filter.authors!.contains(event.pubKey)) {
-            return false;
-          }
-          if (filter.kinds != null && !filter.kinds!.contains(event.kind)) {
-            return false;
-          }
-          return true;
-        })
-        .toList(growable: false);
+    return _matchingEvents(filter);
   }
 
   @override
@@ -473,12 +509,23 @@ class FakeNostrService implements NostrService {
     subscriptionFilters[subscriptionId] = filter;
     final controller = StreamController<Nip01Event>.broadcast();
     subscriptionControllers[subscriptionId] = controller;
+    Future<void>.delayed(Duration.zero, () {
+      if (controller.isClosed) {
+        return;
+      }
+      for (final event in _matchingEvents(filter)) {
+        controller.add(event);
+      }
+    });
     return subscribeResult ?? NdkResponse(subscriptionId, controller.stream);
   }
 
   @override
   Future<void> unsubscribe(String subscriptionId) async {
     unsubscribedSubscriptionIds.add(subscriptionId);
+    if (unsubscribeFailures.contains(subscriptionId)) {
+      throw StateError('unsubscribe failed for $subscriptionId');
+    }
     await subscriptionControllers.remove(subscriptionId)?.close();
   }
 

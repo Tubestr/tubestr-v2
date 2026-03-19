@@ -7,18 +7,12 @@ import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../services/safety/safety_hq_service.dart';
 
-class ParentZoneSettingsSection extends ConsumerWidget {
-  const ParentZoneSettingsSection({
+class ParentZoneNetworkSection extends ConsumerWidget {
+  const ParentZoneNetworkSection({
     super.key,
-    required this.displayNameController,
     required this.relayController,
     required this.blossomController,
-    required this.pinManagementController,
-    required this.approvalRequired,
     required this.onRefresh,
-    required this.onSaveDisplayName,
-    required this.onPublishDisplayName,
-    required this.onToggleApprovalRequired,
     required this.onRetryOfflineQueue,
     required this.onSaveRelays,
     required this.onRemoveRelay,
@@ -26,20 +20,12 @@ class ParentZoneSettingsSection extends ConsumerWidget {
     required this.onReconnectRelays,
     required this.onSaveBlossomServers,
     required this.onPublishBlossomServers,
-    required this.onUpdatePin,
     required this.onProvisionSafetyHq,
-    required this.onResetApp,
   });
 
-  final TextEditingController displayNameController;
   final TextEditingController relayController;
   final TextEditingController blossomController;
-  final TextEditingController pinManagementController;
-  final bool approvalRequired;
   final VoidCallback onRefresh;
-  final VoidCallback onSaveDisplayName;
-  final Future<void> Function() onPublishDisplayName;
-  final ValueChanged<bool> onToggleApprovalRequired;
   final Future<void> Function() onRetryOfflineQueue;
   final VoidCallback onSaveRelays;
   final Future<void> Function(String relay) onRemoveRelay;
@@ -47,109 +33,18 @@ class ParentZoneSettingsSection extends ConsumerWidget {
   final Future<void> Function() onReconnectRelays;
   final VoidCallback onSaveBlossomServers;
   final Future<void> Function(List<String> servers) onPublishBlossomServers;
-  final VoidCallback onUpdatePin;
   final Future<void> Function() onProvisionSafetyHq;
-  final Future<void> Function() onResetApp;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = ref.watch(activeThemeProvider).palette;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final hPad = screenWidth < 600 ? 12.0 : 20.0;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
       children: [
-        FrostCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Settings & Safety',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Adjust the parent profile, connection health, media servers, and safety controls from one calmer workspace.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        FrostCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Parent Profile',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Choose the name other families will see when you connect or share.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: displayNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Display name',
-                  hintText: 'Lee and Emma',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  FilledButton.tonal(
-                    onPressed: onSaveDisplayName,
-                    child: const Text('Save locally'),
-                  ),
-                  FilledButton(
-                    onPressed: () async {
-                      await onPublishDisplayName();
-                    },
-                    child: const Text('Publish profile'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        FrostCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Approvals & Scanning',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Decide how much parent review happens before a clip can leave the device.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile.adaptive(
-                value: approvalRequired,
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Require parent approval before sharing'),
-                subtitle: const Text(
-                  'Clips are always scanned on-device. Turn this on if you also want every new clip to wait for a parent.',
-                ),
-                onChanged: onToggleApprovalRequired,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
         Consumer(
           builder: (context, ref, _) {
             final queuedActions =
@@ -382,88 +277,6 @@ class ParentZoneSettingsSection extends ConsumerWidget {
               ),
             );
           },
-        ),
-        const SizedBox(height: 16),
-        FrostCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Parent PIN',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Update the four-digit code that protects the parent workspace.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: pinManagementController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                decoration: const InputDecoration(
-                  labelText: 'New 4-digit PIN',
-                  counterText: '',
-                ),
-              ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: onUpdatePin,
-                child: const Text('Update PIN'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        FrostCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Reset This Device',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Sign out and wipe this device\'s local Nook data, including cached media, queued actions, and the parent PIN.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-              ),
-              const SizedBox(height: 12),
-              _InlineStatus(
-                icon: Icons.warning_amber_rounded,
-                color: palette.danger,
-                title: 'This cannot be undone on this device',
-                detail:
-                    'Make sure your parent recovery key is saved somewhere safe before you continue.',
-              ),
-              const SizedBox(height: 12),
-              FilledButton.tonal(
-                style: FilledButton.styleFrom(
-                  foregroundColor: palette.danger,
-                  backgroundColor: palette.danger.withValues(alpha: 0.10),
-                ),
-                onPressed: () async {
-                  await onResetApp();
-                },
-                child: const Text('Sign out & reset app'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        FrostCard(
-          child: Text(
-            'MyTube v2 · Flutter',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-          ),
         ),
       ],
     );

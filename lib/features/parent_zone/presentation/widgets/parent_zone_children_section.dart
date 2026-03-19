@@ -1,31 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/content_scan_summary.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
-import '../../../../shared_ui/components/private_key_export_card.dart';
 
-class ParentZoneFamilySection extends ConsumerWidget {
-  const ParentZoneFamilySection({
+class ParentZoneChildrenSection extends ConsumerWidget {
+  const ParentZoneChildrenSection({
     super.key,
     required this.nameController,
     required this.childTheme,
+    required this.approvalRequired,
     required this.onThemeSelected,
     required this.onSaveChild,
     required this.onDeleteChild,
     required this.onApproveVideo,
     required this.onRejectVideo,
+    required this.onToggleApprovalRequired,
   });
 
   final TextEditingController nameController;
   final ThemeDescriptor childTheme;
+  final bool approvalRequired;
   final ValueChanged<ThemeDescriptor> onThemeSelected;
   final VoidCallback onSaveChild;
   final ValueChanged<String> onDeleteChild;
   final ValueChanged<String> onApproveVideo;
   final ValueChanged<String> onRejectVideo;
+  final ValueChanged<bool> onToggleApprovalRequired;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,28 +39,12 @@ class ParentZoneFamilySection extends ConsumerWidget {
         ref.watch(pendingApprovalVideosProvider).valueOrNull ?? const [];
     final palette = ref.watch(activeThemeProvider).palette;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final hPad = screenWidth < 600 ? 12.0 : 20.0;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
       children: [
-        FrostCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Family & Approvals',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Review clips that need a parent decision, manage child profiles, and keep your backup information in one place.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,17 +154,24 @@ class ParentZoneFamilySection extends ConsumerWidget {
                 decoration: const InputDecoration(labelText: 'Child name'),
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final descriptor in ThemeDescriptor.values)
-                    ChoiceChip(
-                      label: Text(descriptor.label),
-                      selected: descriptor == childTheme,
-                      onSelected: (_) => onThemeSelected(descriptor),
-                    ),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final descriptor in ThemeDescriptor.values)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(descriptor.label),
+                          selected: descriptor == childTheme,
+                          onSelected: (_) {
+                            HapticFeedback.selectionClick();
+                            onThemeSelected(descriptor);
+                          },
+                        ),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
@@ -193,67 +188,29 @@ class ParentZoneFamilySection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Parent Backup',
+                'Approvals & Scanning',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
               Text(
-                'Keep your recovery details somewhere private so you can restore parent access if you switch devices.',
+                'Decide how much parent review happens before a clip can leave the device.',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 14),
-              _InlineInfo(
-                icon: identity == null
-                    ? Icons.error_outline_rounded
-                    : Icons.check_circle_rounded,
-                color: identity == null ? palette.warning : palette.success,
-                title: identity == null
-                    ? 'Parent identity missing'
-                    : 'Parent account is ready',
-                detail: identity == null
-                    ? 'Create or restore the parent account before using family tools.'
-                    : 'Your public parent address is ready for invites and sharing.',
+              const SizedBox(height: 12),
+              SwitchListTile.adaptive(
+                value: approvalRequired,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Require parent approval before sharing'),
+                subtitle: const Text(
+                  'Clips are always scanned on-device. Turn this on if you also want every new clip to wait for a parent.',
+                ),
+                onChanged: (value) {
+                  HapticFeedback.selectionClick();
+                  onToggleApprovalRequired(value);
+                },
               ),
-              if (identity != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Parent address',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: 6),
-                      SelectableText(
-                        identity.npub,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                PrivateKeyExportCard(
-                  secret: identity.nsec,
-                  title: 'Recovery key',
-                  description:
-                      'This is the backup key for your parent account. Keep it somewhere private and easy for you to find later.',
-                  warningText:
-                      'Keep this private. Anyone with this key can control your family account.',
-                  shareText:
-                      'Nook Parent Backup Key\n\nKeep this private. Anyone with this key can control your family account.\n\n${identity.nsec}',
-                ),
-              ],
             ],
           ),
         ),
@@ -475,54 +432,6 @@ class _EmptyPanel extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _InlineInfo extends StatelessWidget {
-  const _InlineInfo({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.detail,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 3),
-              Text(detail, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

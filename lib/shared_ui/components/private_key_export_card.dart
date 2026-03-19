@@ -89,39 +89,45 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
           ),
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
+        Row(
           children: [
-            OutlinedButton.icon(
-              onPressed: () => setState(() => _revealed = !_revealed),
-              icon: Icon(
-                _revealed ? Icons.visibility_off_rounded : Icons.visibility,
-                size: 18,
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _revealed = !_revealed),
+                icon: Icon(
+                  _revealed ? Icons.visibility_off_rounded : Icons.visibility,
+                  size: 18,
+                ),
+                label: Text(_revealed ? 'Hide' : 'Reveal'),
               ),
-              label: Text(_revealed ? 'Hide key' : 'Reveal key'),
             ),
-            FilledButton.tonalIcon(
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: widget.secret));
-                if (!context.mounted) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Recovery key copied')),
-                );
-              },
-              icon: const Icon(Icons.copy_rounded, size: 18),
-              label: const Text('Copy'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: widget.secret));
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Recovery key copied')),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                label: const Text('Copy'),
+              ),
             ),
-            OutlinedButton.icon(
-              onPressed: () async {
-                await SharePlus.instance.share(
-                  ShareParams(text: widget.shareText ?? widget.secret),
-                );
-              },
-              icon: const Icon(Icons.ios_share_rounded, size: 18),
-              label: const Text('Share'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await SharePlus.instance.share(
+                    ShareParams(text: widget.shareText ?? widget.secret),
+                  );
+                },
+                icon: const Icon(Icons.ios_share_rounded, size: 18),
+                label: const Text('Share'),
+              ),
             ),
           ],
         ),

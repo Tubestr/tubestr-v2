@@ -413,6 +413,8 @@ class _FreshHomeState extends ConsumerWidget {
           child: OutlinedButton.icon(
             onPressed: () {
               HapticFeedback.selectionClick();
+              ref.read(pendingParentZoneSectionProvider.notifier).state =
+                  'familySpaces';
               ref.read(appShellTabIndexProvider.notifier).state = 3;
             },
             icon: const Icon(Icons.person_add_alt_1_rounded),
@@ -444,7 +446,7 @@ class _HomeSceneHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: compactTitle ? 196 : 208,
+      constraints: BoxConstraints(minHeight: compactTitle ? 196 : 208),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: palette.panelBorder, width: 1.2),
@@ -460,22 +462,25 @@ class _HomeSceneHero extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: Stack(
-          fit: StackFit.expand,
           children: [
-            _HomeFeedMotionLayer(
-              palette: palette,
-              emphasizeMotion: emphasizeMotion,
+            Positioned.fill(
+              child: _HomeFeedMotionLayer(
+                palette: palette,
+                emphasizeMotion: emphasizeMotion,
+              ),
             ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.12),
-                    palette.backgroundTop.withValues(alpha: 0.34),
-                    palette.backgroundBottom.withValues(alpha: 0.62),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.12),
+                      palette.backgroundTop.withValues(alpha: 0.34),
+                      palette.backgroundBottom.withValues(alpha: 0.62),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
                 ),
               ),
             ),
@@ -483,6 +488,7 @@ class _HomeSceneHero extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     eyebrow,
@@ -491,7 +497,7 @@ class _HomeSceneHero extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 12),
                   Text(
                     title,
                     style:
@@ -859,6 +865,8 @@ class _AddFriendsCta extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: () {
+        ref.read(pendingParentZoneSectionProvider.notifier).state =
+            'familySpaces';
         ref.read(appShellTabIndexProvider.notifier).state = 3;
       },
       child: Container(
@@ -920,7 +928,7 @@ class _SharedVideosSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final grouped = groupBy(
       items,
-      (RemoteShareProjection item) => item.senderParentKey,
+      (RemoteShareProjection item) => item.mlsGroupId,
     );
 
     return Column(
@@ -929,8 +937,8 @@ class _SharedVideosSection extends StatelessWidget {
         _SectionHeader(title: 'From Friends & Family'),
         const SizedBox(height: 12),
         for (final entry in grouped.entries) ...[
-          _SharedFamilyHeader(
-            senderParentKey: entry.key,
+          _SharedGroupHeader(
+            mlsGroupId: entry.key,
             fallbackChildName: entry.value.first.displayName,
             palette: palette,
           ),
@@ -955,23 +963,22 @@ class _SharedVideosSection extends StatelessWidget {
   }
 }
 
-class _SharedFamilyHeader extends ConsumerWidget {
-  const _SharedFamilyHeader({
-    required this.senderParentKey,
+class _SharedGroupHeader extends ConsumerWidget {
+  const _SharedGroupHeader({
+    required this.mlsGroupId,
     required this.fallbackChildName,
     required this.palette,
   });
 
-  final String senderParentKey;
+  final String mlsGroupId;
   final String fallbackChildName;
   final KidPalette palette;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref
-        .watch(resolvedParentProfileProvider(senderParentKey))
-        .valueOrNull;
-    final label = profile?.displayName ?? fallbackChildName;
+    final groupSummary =
+        ref.watch(mdkGroupSummaryProvider(mlsGroupId)).valueOrNull;
+    final label = groupSummary?.name ?? fallbackChildName;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(

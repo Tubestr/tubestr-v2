@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
@@ -8,8 +9,8 @@ import '../../../../services/mdk/mdk_service.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../models/parent_zone_models.dart';
 
-class ParentZoneConnectionsSection extends ConsumerWidget {
-  const ParentZoneConnectionsSection({
+class ParentZoneFamilySpacesSection extends ConsumerWidget {
+  const ParentZoneFamilySpacesSection({
     super.key,
     required this.mdkDebugFuture,
     required this.isGeneratingInvitePacket,
@@ -42,28 +43,12 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
     final palette = ref.watch(activeThemeProvider).palette;
     final busy = isGeneratingInvitePacket || isCreatingWelcome;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final hPad = screenWidth < 600 ? 12.0 : 20.0;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
       children: [
-        FrostCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Trusted Families',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Open a family space, approve pending welcomes, and keep every trusted connection easy to understand.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,24 +82,21 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                 busy: isCreatingWelcome,
                 onTap: identity == null || busy ? null : onScanAndProcessInvite,
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: inviteImportController,
-                minLines: 2,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Paste invite link or code',
-                  hintText: 'nook://family-invite?...',
-                ),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.tonal(
-                onPressed: identity == null || busy
+              const SizedBox(height: 10),
+              _ActionTile(
+                icon: Icons.content_paste_rounded,
+                color: palette.ink,
+                title: 'Paste invite',
+                subtitle: 'Enter an invite link or code manually',
+                busy: false,
+                onTap: identity == null || busy
                     ? null
-                    : onProcessInviteInput,
-                child: Text(
-                  isCreatingWelcome ? 'Joining family…' : 'Use pasted invite',
-                ),
+                    : () => _showPasteInviteSheet(
+                          context,
+                          controller: inviteImportController,
+                          busy: isCreatingWelcome,
+                          onSubmit: onProcessInviteInput,
+                        ),
               ),
             ],
           ),
@@ -226,7 +208,10 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                             const Spacer(),
                             IconButton(
                               icon: const Icon(Icons.refresh_rounded, size: 18),
-                              onPressed: onRefreshMdkState,
+                              onPressed: () {
+                                HapticFeedback.selectionClick();
+                                onRefreshMdkState();
+                              },
                             ),
                           ],
                         ),
@@ -250,7 +235,10 @@ class ParentZoneConnectionsSection extends ConsumerWidget {
                                 IconButton(
                                   icon: const Icon(Icons.more_horiz_rounded),
                                   tooltip: 'Manage connection',
-                                  onPressed: () => onManageGroup(group),
+                                  onPressed: () {
+                                    HapticFeedback.selectionClick();
+                                    onManageGroup(group);
+                                  },
                                 ),
                               ],
                             ),
@@ -368,6 +356,71 @@ String _preferredGroupLabel({
   return '$fallback Family';
 }
 
+void _showPasteInviteSheet(
+  BuildContext context, {
+  required TextEditingController controller,
+  required bool busy,
+  required VoidCallback onSubmit,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Paste Invite',
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Paste an invite link or code from another parent.',
+                style: Theme.of(sheetContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Invite link or code',
+                  hintText: 'nook://family-invite?...',
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: busy
+                      ? null
+                      : () {
+                          HapticFeedback.selectionClick();
+                          Navigator.of(sheetContext).pop();
+                          onSubmit();
+                        },
+                  child: Text(busy ? 'Joining family…' : 'Use invite'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 class _ActionTile extends StatelessWidget {
   const _ActionTile({
     required this.icon,
@@ -394,7 +447,12 @@ class _ActionTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           child: Row(

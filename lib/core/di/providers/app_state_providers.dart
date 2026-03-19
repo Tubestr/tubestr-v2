@@ -182,6 +182,8 @@ final pendingDeepLinkProvider = StateProvider<Uri?>((ref) => null);
 
 final appShellTabIndexProvider = StateProvider<int>((ref) => 0);
 
+final pendingParentZoneSectionProvider = StateProvider<String?>((ref) => null);
+
 final selectedProfileIdProvider = StateProvider<String?>((ref) => null);
 
 final activeThemeProvider = Provider<ThemeDescriptor>((ref) {

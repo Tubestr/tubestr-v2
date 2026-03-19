@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +25,30 @@ class _FakeIdentityService extends IdentityService {
   Future<ParentIdentity?> loadIdentity() async => identity;
 }
 
+class _DelayedNostrService extends FakeNostrService {
+  final Completer<void> connectCompleter = Completer<void>();
+
+  @override
+  Future<void> connect() => connectCompleter.future;
+}
+
+class _DelayedSubscribeNostrService extends FakeNostrService {
+  final Completer<void> subscribeCompleter = Completer<void>();
+
+  @override
+  Future<NdkResponse> subscribe({
+    required String subscriptionId,
+    required Filter filter,
+    List<String>? relays,
+  }) async {
+    subscriptionFilters[subscriptionId] = filter;
+    final controller = StreamController<Nip01Event>.broadcast();
+    subscriptionControllers[subscriptionId] = controller;
+    await subscribeCompleter.future;
+    return NdkResponse(subscriptionId, controller.stream);
+  }
+}
+
 void main() {
   const identity = ParentIdentity(
     publicKeyHex: 'parent-pubkey',
@@ -30,6 +57,8 @@ void main() {
     nsec: 'nsec1parent',
     createdAtIso: '2026-03-15T00:00:00Z',
   );
+  final recentEventCreatedAt =
+      DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
 
   test(
     'buildFiltersForTesting scopes MLS traffic to tracked group h-tags',
@@ -329,6 +358,8 @@ void main() {
 
       await coordinator.refreshSubscriptions();
 
+      final diagnostics = coordinator.debugSnapshot();
+
       final refreshedCommitFilters = nostr.subscriptionFilters.values
           .where(
             (filter) =>
@@ -338,6 +369,314 @@ void main() {
       expect(refreshedCommitFilters, hasLength(1));
       expect(refreshedCommitFilters.single.tags?['#h'], ['nostr-group-1']);
       expect(nostr.unsubscribedSubscriptionIds, isNotEmpty);
+      expect(diagnostics.refreshGeneration, 2);
+      expect(diagnostics.lastRefreshTrigger, SyncRefreshTrigger.manual.value);
+      expect(diagnostics.activeSubscriptions, hasLength(2));
+      expect(
+        diagnostics.recentHistory.any(
+          (entry) =>
+              entry.category == 'subscription' &&
+              entry.detail.contains('subscribed'),
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'refreshSubscriptions coalesces while a prior refresh is in flight',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final nostr = _DelayedNostrService();
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: FakeMdkService(),
+        nostrService: nostr,
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
+      addTearDown(() async {
+        if (!nostr.connectCompleter.isCompleted) {
+          nostr.connectCompleter.complete();
+        }
+        await coordinator.stop();
+      });
+
+      final startFuture = coordinator.start();
+      await pumpEventQueue(times: 5);
+
+      final refreshFuture = coordinator.refreshSubscriptions(
+        trigger: SyncRefreshTrigger.groupChange,
+      );
+      await pumpEventQueue(times: 2);
+
+      final midFlight = coordinator.debugSnapshot();
+      expect(midFlight.refreshInFlight, isTrue);
+      expect(midFlight.refreshGeneration, 1);
+      expect(midFlight.coalescedRefreshRequestCount, 1);
+      expect(
+        midFlight.recentHistory.any(
+          (entry) =>
+              entry.category == 'refresh' &&
+              entry.trigger == SyncRefreshTrigger.groupChange.value &&
+              entry.detail.contains('coalesced'),
+        ),
+        isTrue,
+      );
+
+      nostr.connectCompleter.complete();
+      await Future.wait<void>([startFuture, refreshFuture]);
+
+      final completed = coordinator.debugSnapshot();
+      expect(completed.refreshRequestCount, 2);
+      expect(completed.coalescedRefreshRequestCount, 1);
+      expect(completed.lastRefreshTrigger, SyncRefreshTrigger.startup.value);
+    },
+  );
+
+  test(
+    'stop clears active subscriptions and records lifecycle history',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: FakeMdkService(),
+        nostrService: FakeNostrService(),
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
+
+      await coordinator.start();
+      expect(coordinator.debugSnapshot().activeSubscriptions, isNotEmpty);
+
+      await coordinator.stop();
+
+      final diagnostics = coordinator.debugSnapshot();
+      expect(diagnostics.started, isFalse);
+      expect(diagnostics.activeSubscriptions, isEmpty);
+      expect(diagnostics.recentHistory.last.detail, contains('stopped'));
+    },
+  );
+
+  test(
+    'stop cleans up subscribe responses that arrive after shutdown',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final nostr = _DelayedSubscribeNostrService();
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: FakeMdkService(),
+        nostrService: nostr,
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
+      addTearDown(() async {
+        if (!nostr.subscribeCompleter.isCompleted) {
+          nostr.subscribeCompleter.complete();
+        }
+        await coordinator.stop();
+      });
+
+      final startFuture = coordinator.start();
+      await pumpEventQueue(times: 5);
+
+      await coordinator.stop();
+      nostr.subscribeCompleter.complete();
+      await startFuture;
+
+      final diagnostics = coordinator.debugSnapshot();
+      expect(diagnostics.started, isFalse);
+      expect(diagnostics.activeSubscriptions, isEmpty);
+      expect(nostr.unsubscribedSubscriptionIds, contains('mytube.family.sync.0'));
+      expect(
+        diagnostics.recentHistory.any(
+          (entry) =>
+              entry.category == 'subscription' &&
+              entry.detail.contains('cleaned up late subscribe response'),
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'refreshSubscriptions records unsubscribe failures and keeps going',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final nostr = FakeNostrService();
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: FakeMdkService(),
+        nostrService: nostr,
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
+      addTearDown(coordinator.stop);
+
+      await coordinator.start();
+      nostr.unsubscribeFailures.add('mytube.family.sync.0');
+
+      await coordinator.refreshSubscriptions();
+
+      final diagnostics = coordinator.debugSnapshot();
+      expect(diagnostics.unsubscribeFailureCount, 1);
+      expect(
+        diagnostics.recentHistory.any(
+          (entry) => entry.detail.contains('unsubscribe failed'),
+        ),
+        isTrue,
+      );
+      expect(diagnostics.activeSubscriptions, isNotEmpty);
+    },
+  );
+
+  test(
+    'subscription stream errors are counted and redacted in debug dump',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final nostr = FakeNostrService();
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: FakeMdkService(),
+        nostrService: nostr,
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
+      addTearDown(coordinator.stop);
+      final originalDebugPrint = debugPrint;
+      final loggedMessages = <String>[];
+      debugPrint = (String? message, {int? wrapWidth}) {
+        if (message != null) {
+          loggedMessages.add(message);
+        }
+      };
+      addTearDown(() {
+        debugPrint = originalDebugPrint;
+      });
+
+      await coordinator.start();
+
+      nostr.subscriptionControllers['mytube.family.sync.0']!.addError(
+        StateError(
+          '{"content":"signed-payload","sig":"deadbeef","nsec":"nsec1secret"}',
+        ),
+      );
+      await pumpEventQueue(times: 2);
+
+      final diagnostics = coordinator.debugSnapshot();
+      final dump = coordinator.debugDescribeState();
+
+      expect(diagnostics.subscriptionErrorCount, 1);
+      expect(dump, contains('[redacted]'));
+      expect(dump, isNot(contains('signed-payload')));
+      expect(dump, isNot(contains('nsec1secret')));
+      expect(loggedMessages.join('\n'), contains('[redacted]'));
+      expect(loggedMessages.join('\n'), isNot(contains('signed-payload')));
+      expect(loggedMessages.join('\n'), isNot(contains('nsec1secret')));
+    },
+  );
+
+  test(
+    'initial subscription replay respects h-tag filters and lookback window',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final mdk = FakeMdkService()
+        ..groupSummariesResult = const [
+          MdkGroupSummary(
+            mlsGroupIdHex: 'mls-group-1',
+            nostrGroupIdHex: 'nostr-group-1',
+            name: 'Family Space',
+            description: 'Joined locally',
+            memberCount: 2,
+            adminPubkeysHex: ['parent-pubkey'],
+          ),
+        ]
+        ..processedMessage = const MdkProcessedMessage(
+          outcome: MdkMessageOutcome.applicationMessage,
+          mlsGroupIdHex: 'mls-group-1',
+          messageEventIdHex: 'rumor-event-1',
+          wrapperEventIdHex: 'wrapper-event-1',
+          pubkeyHex: 'sender-pubkey',
+          kind: 4543,
+          content:
+              '{"t":"mytube/video_share","video_id":"video-relay","child_profile_id":"child-1","child_display_name":"Emma","meta":{"title":"Relay Song","dur":12.5,"created_at":1710460800},"blob":{"hash":"blob-1","servers":["https://blossom.example"],"mime":"video/mp4","len":321,"orig_hash":"orig-1","nonce":"nonce-1","filename":"clip.mp4","scheme":"mip04-v2"},"thumb":{"hash":"thumb-1","servers":["https://blossom.example"],"mime":"image/jpeg","len":111,"orig_hash":"orig-thumb","nonce":"nonce-thumb","filename":"clip.jpg","scheme":"mip04-v2"},"media":{"alg":"mip04","epoch":"epoch-1"},"policy":{"version":2,"expires_at":null},"by":"sender-pubkey","ts":1710460800}',
+          createdAt: 1710460800,
+          state: 'processed',
+        );
+      final nostr = FakeNostrService()
+        ..queryEventsResult = [
+          Nip01Event(
+            id: 'wrong-group',
+            pubKey: 'sender-pubkey',
+            createdAt: recentEventCreatedAt,
+            kind: MarmotKinds.groupCommit,
+            tags: const [
+              ['h', 'nostr-group-2'],
+            ],
+            content: '{"kind":445}',
+            sig: 'sig-1',
+          ),
+          Nip01Event(
+            id: 'too-old',
+            pubKey: 'sender-pubkey',
+            createdAt: recentEventCreatedAt - const Duration(days: 30).inSeconds,
+            kind: MarmotKinds.groupCommit,
+            tags: const [
+              ['h', 'nostr-group-1'],
+            ],
+            content: '{"kind":445}',
+            sig: 'sig-2',
+          ),
+        ];
+      final coordinator = SyncCoordinator(
+        database: database,
+        mdkService: mdk,
+        nostrService: nostr,
+        identityService: _FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+      );
+      addTearDown(coordinator.stop);
+
+      await coordinator.start();
+      await pumpEventQueue(times: 2);
+
+      final diagnostics = coordinator.debugSnapshot();
+      expect(diagnostics.eventCount, 0);
+      expect(diagnostics.projectedEventCount, 0);
+      expect(
+        await database.getRemoteShareProjectionByRemoteShareId(
+          buildRemoteShareId(
+            senderParentKey: 'sender-pubkey',
+            mlsGroupId: 'mls-group-1',
+            videoId: 'video-relay',
+          ),
+        ),
+        isNull,
+      );
     },
   );
 
@@ -394,7 +733,7 @@ void main() {
         Nip01Event(
           id: 'event-1',
           pubKey: 'sender-pubkey',
-          createdAt: 1710460800,
+          createdAt: recentEventCreatedAt,
           kind: MarmotKinds.groupCommit,
           tags: const [
             ['h', 'nostr-group-1'],

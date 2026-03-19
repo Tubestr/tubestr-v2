@@ -16,12 +16,16 @@ import '../../../domain/models/remote_share_projection.dart';
 import '../../../shared_ui/components/qr_scanner_sheet.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../../services/mdk/mdk_service.dart';
+import '../../../services/sync/sync_coordinator.dart';
 import 'models/parent_zone_models.dart';
-import 'widgets/parent_zone_connections_section.dart';
-import 'widgets/parent_zone_family_section.dart';
-import 'widgets/parent_zone_overview_section.dart';
+import 'widgets/parent_zone_account_section.dart';
+import 'widgets/parent_zone_activity_section.dart';
+import 'widgets/parent_zone_children_section.dart';
+import 'widgets/parent_zone_dashboard_section.dart';
+import 'widgets/parent_zone_diagnostics_section.dart';
+import 'widgets/parent_zone_family_spaces_section.dart';
+import 'widgets/parent_zone_network_section.dart';
 import 'widgets/parent_zone_pin_views.dart';
-import 'widgets/parent_zone_settings_section.dart';
 import 'widgets/parent_zone_sidebar.dart';
 
 class ParentZoneContent extends ConsumerStatefulWidget {
@@ -42,7 +46,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   String _confirmPin = '';
 
   bool _sidebarOpen = false;
-  ParentZoneSection _section = ParentZoneSection.overview;
+  ParentZoneSection _section = ParentZoneSection.dashboard;
 
   final _nameController = TextEditingController();
   final _displayNameController = TextEditingController();
@@ -51,6 +55,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   final _pinManagementController = TextEditingController();
   final _inviteImportController = TextEditingController();
   ThemeDescriptor _childTheme = ThemeDescriptor.campfire;
+  String? _syncedDisplayName;
 
   late Future<ParentZoneMdkDebugState> _mdkDebugFuture;
 
@@ -108,8 +113,28 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     if (!mounted) {
       return;
     }
-    _displayNameController.text = displayName ?? '';
+    _syncDisplayNameController(displayName);
     setState(() => _approvalRequired = approvalRequired);
+  }
+
+  void _syncDisplayNameController(String? displayName) {
+    final normalized = displayName?.trim() ?? '';
+    final current = _displayNameController.text.trim();
+    final lastSynced = _syncedDisplayName ?? '';
+    if (current == normalized) {
+      _syncedDisplayName = normalized;
+      return;
+    }
+    final canReplace = current.isEmpty || current == lastSynced;
+    if (!canReplace) {
+      return;
+    }
+    _displayNameController.value = _displayNameController.value.copyWith(
+      text: normalized,
+      selection: TextSelection.collapsed(offset: normalized.length),
+      composing: TextRange.empty,
+    );
+    _syncedDisplayName = normalized;
   }
 
   Future<void> _verifyPin() async {
@@ -126,6 +151,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         _isUnlocked = true;
         _pinError = null;
       });
+      _consumePendingSectionIfPossible();
       unawaited(_consumeQueuedDeepLinkIfPossible());
     } else {
       await HapticFeedback.heavyImpact();
@@ -151,6 +177,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       _needsPinSetup = false;
       _pinError = null;
     });
+    _consumePendingSectionIfPossible();
     unawaited(_consumeQueuedDeepLinkIfPossible());
   }
 
@@ -242,7 +269,9 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       await ref
           .read(appDatabaseProvider)
           .assignPrimaryGroupToProfilesIfMissing(group.mlsGroupIdHex);
-      await ref.read(syncCoordinatorProvider).refreshSubscriptions();
+      await ref
+          .read(syncCoordinatorProvider)
+          .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
       if (!mounted) {
         return;
       }
@@ -272,17 +301,18 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       context: context,
       builder: (context) {
         final payloadUri = Uri.tryParse(payload);
+        final qrSize = (MediaQuery.sizeOf(context).width - 120).clamp(0.0, 240.0);
         return SimpleDialog(
           title: Text(title, textAlign: TextAlign.center),
           children: [
             Center(
               child: SizedBox(
-                width: 240,
-                height: 240,
+                width: qrSize,
+                height: qrSize,
                 child: QrImageView(
                   data: payload,
                   version: QrVersions.auto,
-                  size: 240,
+                  size: qrSize,
                   backgroundColor: Colors.white,
                 ),
               ),
@@ -366,7 +396,9 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     }
     setState(() => _isGeneratingInvitePacket = true);
     try {
-      await ref.read(syncCoordinatorProvider).refreshSubscriptions();
+      await ref
+          .read(syncCoordinatorProvider)
+          .refreshSubscriptions(trigger: SyncRefreshTrigger.manual);
       final result = await ref
           .read(familyConnectionServiceProvider)
           .createInvite(identity: identity);
@@ -449,7 +481,9 @@ ${result.payload}
       await ref
           .read(appDatabaseProvider)
           .assignPrimaryGroupToProfilesIfMissing(result.group.mlsGroupIdHex);
-      await ref.read(syncCoordinatorProvider).refreshSubscriptions();
+      await ref
+          .read(syncCoordinatorProvider)
+          .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
       _inviteImportController.clear();
       if (clearPendingDeepLink) {
         ref.read(pendingDeepLinkProvider.notifier).state = null;
@@ -487,7 +521,7 @@ ${result.payload}
   void _queueDeepLink(Uri uri) {
     setState(() {
       _queuedDeepLinkUri = uri;
-      _section = ParentZoneSection.connections;
+      _section = ParentZoneSection.familySpaces;
     });
     unawaited(_consumeQueuedDeepLinkIfPossible());
   }
@@ -517,6 +551,20 @@ ${result.payload}
     await _processInvitePayload(queued.toString(), clearPendingDeepLink: true);
   }
 
+  void _consumePendingSectionIfPossible() {
+    final pending = ref.read(pendingParentZoneSectionProvider);
+    if (pending == null || !_isUnlocked) {
+      return;
+    }
+    final section = ParentZoneSection.values
+        .where((s) => s.name == pending)
+        .firstOrNull;
+    ref.read(pendingParentZoneSectionProvider.notifier).state = null;
+    if (section != null) {
+      setState(() => _section = section);
+    }
+  }
+
   Future<void> _saveChild() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -526,10 +574,12 @@ ${result.payload}
         .read(identityServiceProvider)
         .createChildProfile(name: name, theme: _childTheme);
     _nameController.clear();
+    await HapticFeedback.mediumImpact();
   }
 
-  Future<void> _deleteChild(String profileId) {
-    return ref.read(appDatabaseProvider).deleteProfileById(profileId);
+  Future<void> _deleteChild(String profileId) async {
+    await ref.read(appDatabaseProvider).deleteProfileById(profileId);
+    await HapticFeedback.mediumImpact();
   }
 
   Future<void> _approveVideo(String videoId) async {
@@ -543,6 +593,7 @@ ${result.payload}
           videoId: videoId,
           parentPublicKeyHex: identity.publicKeyHex,
         );
+    await HapticFeedback.mediumImpact();
   }
 
   Future<void> _rejectVideo(String videoId) async {
@@ -556,6 +607,7 @@ ${result.payload}
           videoId: videoId,
           parentPublicKeyHex: identity.publicKeyHex,
         );
+    await HapticFeedback.mediumImpact();
   }
 
   Future<void> _saveDisplayName() async {
@@ -568,6 +620,7 @@ ${result.payload}
     if (!mounted) {
       return;
     }
+    await HapticFeedback.lightImpact();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Saved display name')));
@@ -622,6 +675,8 @@ ${result.payload}
 
   Future<void> _retryOfflineQueue() async {
     final messenger = ScaffoldMessenger.of(context);
+    final actions = await ref.read(offlineActionStoreProvider).load();
+    final totalBefore = actions.length;
     final flushed = await ref.read(offlineActionProcessorProvider).flush();
     ref.invalidate(offlineActionsProvider);
     ref.invalidate(shareHistoryProvider);
@@ -630,15 +685,12 @@ ${result.payload}
       return;
     }
     await HapticFeedback.lightImpact();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          flushed == 0
-              ? 'Nothing new was sent'
-              : 'Retried $flushed queued action(s)',
-        ),
-      ),
-    );
+    final message = switch ((flushed, totalBefore)) {
+      (0, 0) => 'No queued actions to retry',
+      (0, _) => '$totalBefore action${totalBefore == 1 ? '' : 's'} still waiting — check your connection',
+      (_, _) => 'Sent $flushed of $totalBefore queued action${totalBefore == 1 ? '' : 's'}',
+    };
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _saveRelay() async {
@@ -649,6 +701,7 @@ ${result.payload}
     final relays = await ref.read(nostrServiceProvider).loadRelayList();
     await ref.read(nostrServiceProvider).saveRelayList([...relays, next]);
     _relayController.clear();
+    await HapticFeedback.lightImpact();
   }
 
   Future<void> _removeRelay(String relay) async {
@@ -658,18 +711,22 @@ ${result.payload}
         .saveRelayList(
           relays.where((item) => item != relay).toList(growable: false),
         );
+    await HapticFeedback.lightImpact();
   }
 
-  Future<void> _resetRelays() {
-    return ref
+  Future<void> _resetRelays() async {
+    await ref
         .read(nostrServiceProvider)
         .saveRelayList(AppConstants.defaultRelays);
+    await HapticFeedback.lightImpact();
   }
 
   Future<void> _reconnectRelays() async {
     final messenger = ScaffoldMessenger.of(context);
     await ref.read(nostrServiceProvider).connect();
-    await ref.read(syncCoordinatorProvider).refreshSubscriptions();
+    await ref
+        .read(syncCoordinatorProvider)
+        .refreshSubscriptions(trigger: SyncRefreshTrigger.reconnect);
     await ref.read(offlineActionProcessorProvider).flush();
     ref.invalidate(offlineActionsProvider);
     ref.invalidate(shareHistoryProvider);
@@ -694,6 +751,7 @@ ${result.payload}
       next,
     ]);
     _blossomController.clear();
+    await HapticFeedback.lightImpact();
   }
 
   Future<void> _publishBlossomServers(List<String> servers) async {
@@ -707,6 +765,7 @@ ${result.payload}
     if (!mounted) {
       return;
     }
+    await HapticFeedback.lightImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Published Blossom server list')),
     );
@@ -722,6 +781,7 @@ ${result.payload}
     if (!mounted) {
       return;
     }
+    await HapticFeedback.lightImpact();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('PIN updated')));
@@ -736,7 +796,9 @@ ${result.payload}
     final group = await ref
         .read(safetyHqServiceProvider)
         .ensureProvisioned(identity: identity);
-    await ref.read(syncCoordinatorProvider).refreshSubscriptions();
+    await ref
+        .read(syncCoordinatorProvider)
+        .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
     ref.invalidate(safetyHqStatusProvider);
     if (!mounted) {
       return;
@@ -793,6 +855,7 @@ ${result.payload}
       ref.read(selectedProfileIdProvider.notifier).state = null;
       ref.read(appShellTabIndexProvider.notifier).state = 0;
       ref.read(pendingDeepLinkProvider.notifier).state = null;
+      ref.read(pendingParentZoneSectionProvider.notifier).state = null;
 
       ref.invalidate(syncCoordinatorProvider);
       ref.invalidate(syncRevisionProvider);
@@ -845,7 +908,11 @@ ${result.payload}
         group: group,
         onChanged: () {
           _refreshMdkState();
-          unawaited(ref.read(syncCoordinatorProvider).refreshSubscriptions());
+          unawaited(
+            ref
+                .read(syncCoordinatorProvider)
+                .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange),
+          );
         },
       ),
     );
@@ -853,19 +920,23 @@ ${result.payload}
 
   Widget _buildSectionContent() {
     return switch (_section) {
-      ParentZoneSection.overview => ParentZoneOverviewSection(
+      ParentZoneSection.dashboard => ParentZoneDashboardSection(
         onSelectSection: (section) => setState(() => _section = section),
       ),
-      ParentZoneSection.family => ParentZoneFamilySection(
+      ParentZoneSection.children => ParentZoneChildrenSection(
         nameController: _nameController,
         childTheme: _childTheme,
+        approvalRequired: _approvalRequired,
         onThemeSelected: (theme) => setState(() => _childTheme = theme),
         onSaveChild: _saveChild,
         onDeleteChild: _deleteChild,
         onApproveVideo: _approveVideo,
         onRejectVideo: _rejectVideo,
+        onToggleApprovalRequired: (value) {
+          unawaited(_toggleApprovalRequired(value));
+        },
       ),
-      ParentZoneSection.connections => ParentZoneConnectionsSection(
+      ParentZoneSection.familySpaces => ParentZoneFamilySpacesSection(
         mdkDebugFuture: _mdkDebugFuture,
         isGeneratingInvitePacket: _isGeneratingInvitePacket,
         isCreatingWelcome: _isCreatingWelcome,
@@ -878,18 +949,19 @@ ${result.payload}
         onRefreshMdkState: _refreshMdkState,
         onManageGroup: _manageGroup,
       ),
-      ParentZoneSection.settings => ParentZoneSettingsSection(
+      ParentZoneSection.activity => const ParentZoneActivitySection(),
+      ParentZoneSection.account => ParentZoneAccountSection(
         displayNameController: _displayNameController,
-        relayController: _relayController,
-        blossomController: _blossomController,
         pinManagementController: _pinManagementController,
-        approvalRequired: _approvalRequired,
-        onRefresh: () => setState(() {}),
         onSaveDisplayName: _saveDisplayName,
         onPublishDisplayName: _publishDisplayName,
-        onToggleApprovalRequired: (value) {
-          unawaited(_toggleApprovalRequired(value));
-        },
+        onUpdatePin: _updatePin,
+        onResetApp: _resetApp,
+      ),
+      ParentZoneSection.network => ParentZoneNetworkSection(
+        relayController: _relayController,
+        blossomController: _blossomController,
+        onRefresh: () => setState(() {}),
         onRetryOfflineQueue: _retryOfflineQueue,
         onSaveRelays: _saveRelay,
         onRemoveRelay: _removeRelay,
@@ -897,9 +969,15 @@ ${result.payload}
         onReconnectRelays: _reconnectRelays,
         onSaveBlossomServers: _saveBlossomServer,
         onPublishBlossomServers: _publishBlossomServers,
-        onUpdatePin: _updatePin,
         onProvisionSafetyHq: _provisionSafetyHq,
-        onResetApp: _resetApp,
+      ),
+      ParentZoneSection.diagnostics => ParentZoneDiagnosticsSection(
+        onRefreshPanel: () => setState(() {}),
+        onRefreshSubscriptions: () {
+          return ref
+              .read(syncCoordinatorProvider)
+              .refreshSubscriptions(trigger: SyncRefreshTrigger.manual);
+        },
       ),
     };
   }
@@ -1044,6 +1122,15 @@ ${result.payload}
         _queueDeepLink(pendingDeepLink);
       });
     }
+    final pendingSectionName = ref.watch(pendingParentZoneSectionProvider);
+    if (pendingSectionName != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _consumePendingSectionIfPossible();
+      });
+    }
     if (activeTab != 3 &&
         !_checkingPin &&
         !_needsPinSetup &&
@@ -1059,6 +1146,7 @@ ${result.payload}
     final palette = ref.watch(activeThemeProvider).palette;
     final parentZoneTheme = _buildParentZoneTheme(context, palette);
     final parentLabel = ref.watch(parentDisplayNameProvider).valueOrNull;
+    _syncDisplayNameController(parentLabel);
     if (_checkingPin) {
       return Theme(
         data: parentZoneTheme,
@@ -1211,13 +1299,18 @@ ${result.payload}
                 child: ColoredBox(color: Colors.black.withValues(alpha: 0.28)),
               ),
             ),
-          AnimatedPositioned(
+          Builder(
+            builder: (context) {
+              final sidebarWidth = MediaQuery.sizeOf(context).width < 600
+                  ? MediaQuery.sizeOf(context).width * 0.85
+                  : 300.0;
+              return AnimatedPositioned(
             duration: AppMotion.duration(context, AppMotion.layoutChange),
             curve: AppMotion.easeOutQuint,
-            left: _sidebarOpen ? 0 : -300,
+            left: _sidebarOpen ? 0 : -sidebarWidth,
             top: 0,
             bottom: 0,
-            width: 300,
+            width: sidebarWidth,
             child: ParentZoneSidebar(
               palette: palette,
               parentLabel: (parentLabel == null || parentLabel.trim().isEmpty)
@@ -1235,6 +1328,8 @@ ${result.payload}
                 });
               },
             ),
+          );
+            },
           ),
           if (_isResettingApp)
             Positioned.fill(
@@ -1495,7 +1590,9 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
 
             final data = snapshot.data!;
             return ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 620),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+              ),
               child: ListView(
                 shrinkWrap: true,
                 children: [
