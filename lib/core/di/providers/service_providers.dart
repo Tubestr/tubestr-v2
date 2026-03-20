@@ -22,6 +22,7 @@ import '../../../services/offline/offline_action_processor.dart';
 import '../../../services/offline/offline_action_store.dart';
 import '../../../services/safety/moderation_coordinator.dart';
 import '../../../services/safety/report_coordinator.dart';
+import '../../../services/safety/safety_hq_backend_client.dart';
 import '../../../services/safety/safety_hq_service.dart';
 import '../../../services/share/share_history_service.dart';
 import '../../../services/share/video_lifecycle_coordinator.dart';
@@ -189,6 +190,7 @@ final reportCoordinatorProvider = Provider((ref) {
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
     offlineActionStore: ref.watch(offlineActionStoreProvider),
+    safetyHqService: ref.watch(safetyHqServiceProvider),
   );
 });
 
@@ -207,6 +209,7 @@ final safetyHqServiceProvider = Provider((ref) {
     database: ref.watch(appDatabaseProvider),
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
+    backendClient: DioSafetyHqBackendClient(dio: ref.watch(dioProvider)),
   );
 });
 

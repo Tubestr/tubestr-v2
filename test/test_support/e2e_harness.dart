@@ -26,6 +26,8 @@ import 'package:mytube/services/offline/offline_action_processor.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/safety/moderation_coordinator.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
+import 'package:mytube/services/safety/safety_hq_backend_client.dart';
+import 'package:mytube/services/safety/safety_hq_service.dart';
 import 'package:mytube/services/share/share_history_service.dart';
 import 'package:mytube/services/share/video_lifecycle_coordinator.dart';
 import 'package:mytube/services/share/video_share_coordinator.dart';
@@ -368,6 +370,20 @@ class _LoopbackSubscription {
 
   final Filter filter;
   final StreamController<Nip01Event> controller;
+}
+
+class _LoopbackSafetyHqBackendClient implements SafetyHqBackendClient {
+  @override
+  Future<SafetyHqBootstrapData> fetchBootstrap() async {
+    return SafetyHqBootstrapData(
+      servicePublicKeyHex: AppConstants.safetyHqServicePublicKeyHex,
+      signedKeyPackageEventJson: '{"id":"loopback-safety-key-package"}',
+      keyPackageEventId: 'loopback-safety-key-package',
+      relays: const ['wss://loopback.local'],
+      version: 'loopback',
+      generatedAt: DateTime.parse('2026-03-19T14:15:50.251046778Z'),
+    );
+  }
 }
 
 class InMemoryBlossomClient extends BlossomClient {
@@ -883,11 +899,18 @@ class FamilyAppHarness {
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
     );
+    final safetyHqService = SafetyHqService(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+      backendClient: _LoopbackSafetyHqBackendClient(),
+    );
     final reportCoordinator = ReportCoordinator(
       database: database,
       mdkService: mdk,
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
+      safetyHqService: safetyHqService,
     );
     final lifecycleCoordinator = VideoLifecycleCoordinator(
       mdkService: mdk,

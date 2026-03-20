@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/router/deep_link_service.dart';
 import '../../../core/theme/theme_descriptor.dart';
+import '../../../services/mdk/mdk_service.dart';
 import '../../../services/sync/sync_coordinator.dart';
 import '../../../shared_ui/components/nook_decorations.dart';
 import '../../capture/presentation/capture_page.dart';
@@ -68,17 +69,28 @@ class _AppShellState extends ConsumerState<AppShell>
       return;
     }
 
-    final safetyGroup = await ref
-        .read(safetyHqServiceProvider)
-        .ensureProvisioned(identity: identity);
-    if (safetyGroup != null) {
-      await ref
-          .read(syncCoordinatorProvider)
-          .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
+    final safetyService = ref.read(safetyHqServiceProvider);
+    final initialSafetyStatus = await safetyService.loadStatus();
+    MdkGroupSummary? safetyGroup;
+    if (!initialSafetyStatus.isJoined &&
+        (initialSafetyStatus.isQueued || initialSafetyStatus.needsRetry)) {
+      try {
+        safetyGroup = await safetyService.ensureProvisioned(identity: identity);
+      } catch (_) {
+        safetyGroup = null;
+      }
+      if (safetyGroup != null) {
+        await ref
+            .read(syncCoordinatorProvider)
+            .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
+      }
     }
-    await ref
-        .read(reportCoordinatorProvider)
-        .flushQueuedSafetyReports(identity: identity);
+    final refreshedSafetyStatus = await safetyService.loadStatus();
+    if (refreshedSafetyStatus.isJoined) {
+      await ref
+          .read(reportCoordinatorProvider)
+          .flushQueuedSafetyReports(identity: identity);
+    }
     await _flushOperationalQueues();
     ref.invalidate(safetyHqStatusProvider);
   }

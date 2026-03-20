@@ -11,6 +11,7 @@ import '../../domain/models/parent_identity.dart';
 import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
 import '../offline/offline_action_store.dart';
+import 'safety_hq_service.dart';
 
 class ReportSubmissionResult {
   const ReportSubmissionResult({
@@ -34,15 +35,18 @@ class ReportCoordinator {
     required MdkService mdkService,
     required NostrService nostrService,
     required OfflineActionStore offlineActionStore,
+    required SafetyHqService safetyHqService,
   }) : _database = database,
        _mdkService = mdkService,
        _nostrService = nostrService,
-       _offlineActionStore = offlineActionStore;
+       _offlineActionStore = offlineActionStore,
+       _safetyHqService = safetyHqService;
 
   final AppDatabase _database;
   final MdkService _mdkService;
   final NostrService _nostrService;
   final OfflineActionStore _offlineActionStore;
+  final SafetyHqService _safetyHqService;
   final Uuid _uuid = const Uuid();
 
   Future<void> fileReport({
@@ -156,12 +160,8 @@ class ReportCoordinator {
         familyPublished = true;
       }
 
-      final safetyJoined =
-          await _database.getSetting(AppConstants.safetyJoinedKey) == 'true';
-      final safetyGroupId = await _database.getSetting(
-        AppConstants.safetyGroupIdSettingKey,
-      );
-      if (safetyJoined && safetyGroupId != null && safetyGroupId.isNotEmpty) {
+      final safetyGroupId = await _safetyHqService.loadProvisionedGroupId();
+      if (safetyGroupId != null && safetyGroupId.isNotEmpty) {
         await _publishReportToGroup(
           identity: identity,
           mlsGroupIdHex: safetyGroupId,
@@ -225,12 +225,8 @@ class ReportCoordinator {
   Future<int> flushQueuedSafetyReports({
     required ParentIdentity identity,
   }) async {
-    final safetyJoined =
-        await _database.getSetting(AppConstants.safetyJoinedKey) == 'true';
-    final safetyGroupId = await _database.getSetting(
-      AppConstants.safetyGroupIdSettingKey,
-    );
-    if (!safetyJoined || safetyGroupId == null || safetyGroupId.isEmpty) {
+    final safetyGroupId = await _safetyHqService.loadProvisionedGroupId();
+    if (safetyGroupId == null || safetyGroupId.isEmpty) {
       return 0;
     }
 

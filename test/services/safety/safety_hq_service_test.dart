@@ -12,6 +12,7 @@ void main() {
   late AppDatabase database;
   late FakeMdkService mdk;
   late FakeNostrService nostr;
+  late FakeSafetyHqBackendClient backendClient;
   late SafetyHqService service;
 
   const identity = ParentIdentity(
@@ -25,19 +26,28 @@ void main() {
   setUp(() async {
     database = AppDatabase.forTesting(NativeDatabase.memory());
     mdk = FakeMdkService()
-      ..createGroupSummaryResult = const MdkGroupSummary(
-        mlsGroupIdHex: 'safety-group',
-        nostrGroupIdHex: 'nostr-safety-group',
-        name: AppConstants.safetyHqGroupName,
-        description: 'App-managed moderation inbox.',
-        memberCount: 1,
-        adminPubkeysHex: ['parent-pubkey'],
-      );
+      ..createGroupResult = const MdkCreateGroupResult(
+        group: MdkGroupSummary(
+          mlsGroupIdHex: 'safety-group',
+          nostrGroupIdHex: 'nostr-safety-group',
+          name: AppConstants.safetyHqGroupName,
+          description: 'Platform moderation inbox.',
+          memberCount: 2,
+          adminPubkeysHex: ['parent-pubkey'],
+        ),
+        welcomeRumorJsons: ['{"id":"welcome-rumor"}'],
+      )
+      ..groupMembersResult = const [
+        'parent-pubkey',
+        AppConstants.safetyHqServicePublicKeyHex,
+      ];
     nostr = FakeNostrService();
+    backendClient = FakeSafetyHqBackendClient();
     service = SafetyHqService(
       database: database,
       mdkService: mdk,
       nostrService: nostr,
+      backendClient: backendClient,
     );
   });
 
@@ -46,7 +56,7 @@ void main() {
   });
 
   test(
-    'ensureProvisioned creates and stores Safety HQ group when queued',
+    'ensureProvisioned fetches bootstrap, creates group, and publishes backend welcome',
     () async {
       await service.queueJoin();
 
@@ -55,31 +65,62 @@ void main() {
 
       expect(group, isNotNull);
       expect(group!.name, AppConstants.safetyHqGroupName);
+      expect(
+        nostr.lastGiftWrapRecipient,
+        AppConstants.safetyHqServicePublicKeyHex,
+      );
+      expect(nostr.lastGiftWrapRumorJson, '{"id":"welcome-rumor"}');
       expect(status.isJoined, isTrue);
       expect(status.isQueued, isFalse);
+      expect(status.needsRetry, isFalse);
       expect(status.groupId, 'safety-group');
       expect(status.lastSyncAt, isNotNull);
     },
   );
 
-  test('ensureProvisioned reuses existing Safety HQ group', () async {
-    mdk.groupSummariesResult = const [
-      MdkGroupSummary(
-        mlsGroupIdHex: 'existing-safety',
-        nostrGroupIdHex: 'nostr-existing-safety',
-        name: AppConstants.safetyHqGroupName,
-        description: 'Already here',
-        memberCount: 1,
-        adminPubkeysHex: ['parent-pubkey'],
-      ),
-    ];
+  test(
+    'ensureProvisioned reuses existing backend-backed Safety HQ group',
+    () async {
+      mdk.groupSummariesResult = const [
+        MdkGroupSummary(
+          mlsGroupIdHex: 'existing-safety',
+          nostrGroupIdHex: 'nostr-existing-safety',
+          name: AppConstants.safetyHqGroupName,
+          description: 'Already here',
+          memberCount: 2,
+          adminPubkeysHex: ['parent-pubkey'],
+        ),
+      ];
+      mdk.groupMembersResult = const [
+        'parent-pubkey',
+        AppConstants.safetyHqServicePublicKeyHex,
+      ];
 
-    final group = await service.ensureProvisioned(identity: identity);
-    final status = await service.loadStatus();
+      final group = await service.ensureProvisioned(identity: identity);
+      final status = await service.loadStatus();
 
-    expect(group, isNotNull);
-    expect(group!.mlsGroupIdHex, 'existing-safety');
-    expect(status.groupId, 'existing-safety');
-    expect(status.isJoined, isTrue);
-  });
+      expect(group, isNotNull);
+      expect(group!.mlsGroupIdHex, 'existing-safety');
+      expect(status.groupId, 'existing-safety');
+      expect(status.isJoined, isTrue);
+      expect(nostr.lastGiftWrapRecipient, isNull);
+    },
+  );
+
+  test(
+    'loadStatus does not treat local-only Safety HQ group as provisioned',
+    () async {
+      await database.putSetting(AppConstants.safetyJoinedKey, 'true');
+      await database.putSetting(
+        AppConstants.safetyGroupIdSettingKey,
+        'legacy-local-group',
+      );
+      mdk.groupMembersResult = const ['parent-pubkey'];
+
+      final status = await service.loadStatus();
+
+      expect(status.isJoined, isFalse);
+      expect(status.needsRetry, isTrue);
+    },
+  );
 }

@@ -301,7 +301,10 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       context: context,
       builder: (context) {
         final payloadUri = Uri.tryParse(payload);
-        final qrSize = (MediaQuery.sizeOf(context).width - 120).clamp(0.0, 240.0);
+        final qrSize = (MediaQuery.sizeOf(context).width - 120).clamp(
+          0.0,
+          240.0,
+        );
         return SimpleDialog(
           title: Text(title, textAlign: TextAlign.center),
           children: [
@@ -687,8 +690,10 @@ ${result.payload}
     await HapticFeedback.lightImpact();
     final message = switch ((flushed, totalBefore)) {
       (0, 0) => 'No queued actions to retry',
-      (0, _) => '$totalBefore action${totalBefore == 1 ? '' : 's'} still waiting — check your connection',
-      (_, _) => 'Sent $flushed of $totalBefore queued action${totalBefore == 1 ? '' : 's'}',
+      (0, _) =>
+        '$totalBefore action${totalBefore == 1 ? '' : 's'} still waiting — check your connection',
+      (_, _) =>
+        'Sent $flushed of $totalBefore queued action${totalBefore == 1 ? '' : 's'}',
     };
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
@@ -793,26 +798,38 @@ ${result.payload}
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
-    final group = await ref
-        .read(safetyHqServiceProvider)
-        .ensureProvisioned(identity: identity);
-    await ref
-        .read(syncCoordinatorProvider)
-        .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
-    ref.invalidate(safetyHqStatusProvider);
-    if (!mounted) {
-      return;
-    }
-    await HapticFeedback.mediumImpact();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          group == null
-              ? 'Safety HQ already provisioned'
-              : 'Provisioned ${group.name}',
+    try {
+      final group = await ref
+          .read(safetyHqServiceProvider)
+          .ensureProvisioned(identity: identity);
+      if (group != null) {
+        await ref
+            .read(syncCoordinatorProvider)
+            .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
+      }
+      ref.invalidate(safetyHqStatusProvider);
+      if (!mounted) {
+        return;
+      }
+      await HapticFeedback.mediumImpact();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            group == null
+                ? 'Safety HQ is already provisioned'
+                : 'Provisioned ${group.name}',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      ref.invalidate(safetyHqStatusProvider);
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Safety HQ provisioning failed: $error')),
+      );
+    }
   }
 
   Future<void> _resetApp() async {
@@ -1305,30 +1322,31 @@ ${result.payload}
                   ? MediaQuery.sizeOf(context).width * 0.85
                   : 300.0;
               return AnimatedPositioned(
-            duration: AppMotion.duration(context, AppMotion.layoutChange),
-            curve: AppMotion.easeOutQuint,
-            left: _sidebarOpen ? 0 : -sidebarWidth,
-            top: 0,
-            bottom: 0,
-            width: sidebarWidth,
-            child: ParentZoneSidebar(
-              palette: palette,
-              parentLabel: (parentLabel == null || parentLabel.trim().isEmpty)
-                  ? 'Family controls'
-                  : parentLabel.trim(),
-              accountHint: _needsPinSetup
-                  ? 'PIN setup required'
-                  : 'Protected by parent PIN',
-              selected: _section,
-              onSelect: (section) async {
-                await HapticFeedback.selectionClick();
-                setState(() {
-                  _section = section;
-                  _sidebarOpen = false;
-                });
-              },
-            ),
-          );
+                duration: AppMotion.duration(context, AppMotion.layoutChange),
+                curve: AppMotion.easeOutQuint,
+                left: _sidebarOpen ? 0 : -sidebarWidth,
+                top: 0,
+                bottom: 0,
+                width: sidebarWidth,
+                child: ParentZoneSidebar(
+                  palette: palette,
+                  parentLabel:
+                      (parentLabel == null || parentLabel.trim().isEmpty)
+                      ? 'Family controls'
+                      : parentLabel.trim(),
+                  accountHint: _needsPinSetup
+                      ? 'PIN setup required'
+                      : 'Protected by parent PIN',
+                  selected: _section,
+                  onSelect: (section) async {
+                    await HapticFeedback.selectionClick();
+                    setState(() {
+                      _section = section;
+                      _sidebarOpen = false;
+                    });
+                  },
+                ),
+              );
             },
           ),
           if (_isResettingApp)

@@ -5,11 +5,13 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mytube/core/constants.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/blossom/blossom_client.dart';
 import 'package:mytube/services/identity/identity_service.dart';
 import 'package:mytube/services/mdk/mdk_service.dart';
 import 'package:mytube/services/nostr/nostr_service.dart';
+import 'package:mytube/services/safety/safety_hq_backend_client.dart';
 import 'package:ndk/entities.dart';
 import 'package:ndk/ndk.dart';
 
@@ -92,6 +94,33 @@ class FakeIdentityService extends IdentityService {
 
   @override
   Future<ParentIdentity?> loadIdentity() async => identity;
+}
+
+class FakeSafetyHqBackendClient implements SafetyHqBackendClient {
+  FakeSafetyHqBackendClient({
+    SafetyHqBootstrapData? bootstrapData,
+    this.throwOnFetch = false,
+  }) : bootstrapData =
+           bootstrapData ??
+           SafetyHqBootstrapData(
+             servicePublicKeyHex: AppConstants.safetyHqServicePublicKeyHex,
+             signedKeyPackageEventJson: '{"id":"backend-key-package"}',
+             keyPackageEventId: 'backend-key-package',
+             relays: const ['wss://no.str.cr'],
+             version: 'v1',
+             generatedAt: DateTime.parse('2026-03-19T14:15:50.251046778Z'),
+           );
+
+  final SafetyHqBootstrapData bootstrapData;
+  final bool throwOnFetch;
+
+  @override
+  Future<SafetyHqBootstrapData> fetchBootstrap() async {
+    if (throwOnFetch) {
+      throw StateError('bootstrap unavailable');
+    }
+    return bootstrapData;
+  }
 }
 
 class FakeMdkService extends MdkService {

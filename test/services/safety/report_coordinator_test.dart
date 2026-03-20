@@ -5,6 +5,7 @@ import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
+import 'package:mytube/services/safety/safety_hq_service.dart';
 
 import '../../test_support/service_fakes.dart';
 
@@ -12,6 +13,7 @@ void main() {
   late AppDatabase database;
   late FakeMdkService mdk;
   late FakeNostrService nostr;
+  late SafetyHqService safetyHqService;
   late ReportCoordinator coordinator;
 
   const identity = ParentIdentity(
@@ -26,11 +28,18 @@ void main() {
     database = AppDatabase.forTesting(NativeDatabase.memory());
     mdk = FakeMdkService();
     nostr = FakeNostrService();
+    safetyHqService = SafetyHqService(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+      backendClient: FakeSafetyHqBackendClient(),
+    );
     coordinator = ReportCoordinator(
       database: database,
       mdkService: mdk,
       nostrService: nostr,
       offlineActionStore: OfflineActionStore(database: database),
+      safetyHqService: safetyHqService,
     );
 
     await database.upsertProfile(
@@ -140,6 +149,10 @@ void main() {
         AppConstants.safetyGroupIdSettingKey,
         'safety-group',
       );
+      mdk.groupMembersResult = const [
+        'parent-pubkey',
+        AppConstants.safetyHqServicePublicKeyHex,
+      ];
 
       final result = await coordinator.submitReport(
         identity: identity,

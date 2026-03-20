@@ -13,7 +13,13 @@ class AppConstants {
   static const safetyJoinedKey = 'safety_joined';
   static const safetyGroupIdSettingKey = 'safety_group_id';
   static const safetyLastSyncAtSettingKey = 'safety_last_sync_at';
+  static const safetyLastErrorSettingKey = 'safety_last_error';
+  static const safetyServicePublicKeySettingKey = 'safety_service_public_key';
   static const safetyHqGroupName = 'Safety HQ';
+  static const safetyHqBackendDevBaseUrl = 'https://api.tubestr.app';
+  static const safetyHqBackendProdBaseUrl = 'https://api.tubestr.app';
+  static const safetyHqServicePublicKeyHex =
+      'f4100da159176042754947bcfc0e281dbd80dab7918aada7f11f95076d5c03c6';
   static const defaultRelays = <String>[
     'wss://no.str.cr',
     'wss://relay.primal.net',

@@ -249,7 +249,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'This is the app-managed moderation inbox for higher-risk reports.',
+                    'This connects your family to the platform moderation service for higher-risk reports.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -298,7 +298,9 @@ class _SafetyStatusBody extends StatelessWidget {
           icon: status.isJoined ? Icons.shield_rounded : Icons.shield_outlined,
           color: status.isJoined ? Colors.green : Colors.orange,
           title: 'Status: ${status.label}',
-          detail: status.lastSyncAt == null
+          detail: status.lastError != null && status.lastError!.isNotEmpty
+              ? status.lastError!
+              : status.lastSyncAt == null
               ? 'No recent update yet.'
               : 'Last updated ${status.lastSyncAt!.toLocal()}',
         ),

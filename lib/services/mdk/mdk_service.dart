@@ -180,6 +180,11 @@ class MdkProcessedMessage {
 }
 
 class MdkService {
+  MdkService({Future<Directory> Function()? supportDirectoryProvider})
+    : _supportDirectoryProvider =
+          supportDirectoryProvider ?? getApplicationSupportDirectory;
+
+  final Future<Directory> Function() _supportDirectoryProvider;
   Completer<void>? _initCompleter;
 
   Future<void> ensureInitialized() async {
@@ -195,7 +200,7 @@ class MdkService {
       } else {
         await MdkBridgeApi.init();
       }
-      final root = await getApplicationSupportDirectory();
+      final root = await _supportDirectoryProvider();
       final dataDir = p.join(root.path, 'mdk');
       await bridge_api.initMdkUnencrypted(dataDir: dataDir);
       _initCompleter!.complete();
@@ -217,7 +222,7 @@ class MdkService {
   }
 
   Future<void> resetLocalState() async {
-    final root = await getApplicationSupportDirectory();
+    final root = await _supportDirectoryProvider();
     final primaryDir = Directory(p.join(root.path, 'mdk'));
     if (_initCompleter?.isCompleted ?? false) {
       final scratchDir = p.join(
