@@ -636,9 +636,9 @@ ${result.payload}
     final message = result.usedManagedCleanup
         ? 'Profile deleted. ${result.deletedBlobCount} file${result.deletedBlobCount == 1 ? '' : 's'} removed from Tubestr servers.'
         : 'Profile deleted.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _approveVideo(String videoId) async {
@@ -1283,8 +1283,7 @@ ${result.payload}
     final activeTab = ref.watch(appShellTabIndexProvider);
     final pendingDeepLink = ref.watch(pendingDeepLinkProvider);
     if (pendingDeepLink != null &&
-        pendingDeepLink.scheme.toLowerCase() ==
-            GroupInvitePacket.deepLinkScheme &&
+        GroupInvitePacket.isSupportedScheme(pendingDeepLink.scheme) &&
         pendingDeepLink != _queuedDeepLinkUri) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {

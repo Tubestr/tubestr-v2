@@ -35,7 +35,7 @@ void main() {
       final result = await service.createInvite(identity: identity);
       final packet = GroupInvitePacket.decode(result.payload);
 
-      expect(result.payload, startsWith('nook://family-invite'));
+      expect(result.payload, startsWith('tubestr://family-invite'));
       expect(result.payload, isNot(contains('key_package_event_json')));
       expect(packet.keyPackageEventId, 'event-id');
       expect(packet.inviterDisplayName, 'Lee');

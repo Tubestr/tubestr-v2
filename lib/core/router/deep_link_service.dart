@@ -1,4 +1,5 @@
 import 'package:app_links/app_links.dart';
+import 'package:mytube/domain/marmot/invite_transport_models.dart';
 
 enum AppDeepLinkDestination { parentZone }
 
@@ -10,8 +11,7 @@ class AppDeepLink {
 }
 
 AppDeepLink? parseAppDeepLink(Uri uri) {
-  final scheme = uri.scheme.trim().toLowerCase();
-  if (scheme != 'nook') {
+  if (!GroupInvitePacket.isSupportedScheme(uri.scheme)) {
     return null;
   }
   return AppDeepLink(uri: uri, destination: AppDeepLinkDestination.parentZone);
