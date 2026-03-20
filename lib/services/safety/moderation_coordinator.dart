@@ -132,7 +132,7 @@ class ModerationCoordinator {
       tags: [
         ['x', blobHash, reason ?? 'inappropriate'],
       ],
-      content: reason ?? 'MyTube moderation delete',
+      content: reason ?? 'Tubestr moderation delete',
       createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
 

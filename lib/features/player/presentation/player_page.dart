@@ -15,6 +15,7 @@ import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_playback_metrics.dart';
 import '../../../domain/models/video_reaction_summary.dart';
+import '../../parent_zone/presentation/models/launch_diagnostics.dart';
 import '../../../services/media/video_probe_service.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/motion/app_motion.dart';
@@ -791,16 +792,25 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                 decoration: BoxDecoration(
                                   color: palette.panel.withValues(alpha: 0.98),
                                   borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(color: palette.panelBorder),
+                                  border: Border.all(
+                                    color: palette.panelBorder,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: palette.ink.withValues(alpha: 0.10),
+                                      color: palette.ink.withValues(
+                                        alpha: 0.10,
+                                      ),
                                       blurRadius: 18,
                                       offset: const Offset(0, 10),
                                     ),
                                   ],
                                 ),
-                                padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  10,
+                                  18,
+                                  14,
+                                ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -811,7 +821,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                       ),
                                       behavior: HitTestBehavior.opaque,
                                       child: Padding(
-                                        padding: const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
                                         child: Center(
                                           child: Container(
                                             width: 36,
@@ -947,292 +959,332 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         child: SingleChildScrollView(
                                           child: Column(
                                             mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                      const SizedBox(height: 14),
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 6,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: palette.accent
-                                                        .withValues(alpha: 0.10),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          999,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    remoteShare == null
-                                                        ? 'My clip'
-                                                        : 'Family share',
-                                                    style: TextStyle(
-                                                      color: palette.accent,
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.w800,
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                Text(
-                                                  title,
-                                                  style: TextStyle(
-                                                    color: palette.ink,
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                                if (subtitle.isNotEmpty)
-                                                  Text(
-                                                    subtitle,
-                                                    maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: TextStyle(
-                                                      color: palette.mutedInk,
-                                                      fontSize: 13,
-                                                      height: 1.3,
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          GestureDetector(
-                                            onTap: () async {
-                                              if (video != null) {
-                                                await HapticFeedback
-                                                    .selectionClick();
-                                                await ref
-                                                    .read(
-                                                      likeCoordinatorProvider,
-                                                    )
-                                                    .setLocalVideoLiked(
-                                                      videoId: video.id,
-                                                      liked: !video.liked,
-                                                    );
-                                                return;
-                                              }
-                                              if (remoteShare == null ||
-                                                  identity == null ||
-                                                  selectedProfileId == null ||
-                                                  remoteLikedByViewer ||
-                                                  _isSendingLike) {
-                                                return;
-                                              }
-                                              setState(
-                                                () => _isSendingLike = true,
-                                              );
-                                              try {
-                                                await ref
-                                                    .read(
-                                                      likeCoordinatorProvider,
-                                                    )
-                                                    .sendRemoteLike(
-                                                      identity: identity,
-                                                      videoId:
-                                                          remoteShare.videoId,
-                                                      childProfileId:
-                                                          selectedProfileId,
-                                                      mlsGroupIdHex:
-                                                          remoteShare
-                                                              .mlsGroupId,
-                                                    );
-                                                ref.invalidate(
-                                                  offlineActionsProvider,
-                                                );
-                                                await HapticFeedback
-                                                    .selectionClick();
-                                              } catch (error) {
-                                                ref.invalidate(
-                                                  offlineActionsProvider,
-                                                );
-                                                if (!mounted) {
-                                                  return;
-                                                }
-                                                final messenger =
-                                                    ScaffoldMessenger.of(
-                                                      this.context,
-                                                    );
-                                                messenger.showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      _likeErrorMessage(error),
-                                                    ),
-                                                  ),
-                                                );
-                                              } finally {
-                                                if (mounted) {
-                                                  setState(
-                                                    () =>
-                                                        _isSendingLike = false,
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            child: AnimatedScale(
-                                              duration: stateChangeDuration,
-                                              curve: AppMotion.easeOutQuint,
-                                              scale: isLiked ? 1.05 : 1.0,
-                                              child: AnimatedContainer(
-                                                duration: stateChangeDuration,
-                                                curve: AppMotion.easeOutQuint,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 10,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: isLiked
-                                                      ? const Color(0xFFFFE4E8)
-                                                      : Colors.white.withValues(
-                                                          alpha: 0.78,
-                                                        ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                  border: Border.all(
-                                                    color: isLiked
-                                                        ? const Color(
-                                                            0xFFFFC7D0,
-                                                          )
-                                                        : palette.panelBorder,
-                                                  ),
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    Icon(
-                                                      isLiked
-                                                          ? Icons
-                                                                .favorite_rounded
-                                                          : Icons
-                                                                .favorite_border_rounded,
-                                                      size: 28,
-                                                      color: isLiked
-                                                          ? const Color(
-                                                              0xFFFF6B7A,
-                                                            )
-                                                          : palette.mutedInk,
-                                                    ),
-                                                    if (remoteShare != null)
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .only(top: 4),
-                                                        child: Text(
-                                                          '$remoteLikeCount',
-                                                          style: TextStyle(
-                                                            color: palette.ink,
-                                                            fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.w800,
+                                              const SizedBox(height: 14),
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 10,
+                                                                vertical: 6,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: palette
+                                                                .accent
+                                                                .withValues(
+                                                                  alpha: 0.10,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  999,
+                                                                ),
+                                                          ),
+                                                          child: Text(
+                                                            remoteShare == null
+                                                                ? 'My clip'
+                                                                : 'Family share',
+                                                            style: TextStyle(
+                                                              color: palette
+                                                                  .accent,
+                                                              fontSize: 11,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800,
+                                                            ),
                                                           ),
                                                         ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _PlaybackMetricRow(
-                                        palette: palette,
-                                        metrics: playbackMetrics,
-                                        isRemote: remoteShare != null,
-                                      ),
-                                      if (remoteShare != null) ...[
-                                        const SizedBox(height: 14),
-                                        _PlaybackLikeSummary(
-                                          likes: likes,
-                                          likeCount: remoteLikeCount,
-                                          palette: palette,
-                                        ),
-                                        const SizedBox(height: 14),
-                                        _ReactionSection(
-                                          palette: palette,
-                                          reactions: reactionSummaries,
-                                          selectedEmojis: viewerReactions,
-                                          isSendingReaction:
-                                              _isSendingReaction,
-                                          onSelect: (emoji) async {
-                                            if (identity == null ||
-                                                selectedProfileId == null ||
-                                                _isSendingReaction ||
-                                                viewerReactions
-                                                    .contains(emoji)) {
-                                              return;
-                                            }
-                                            setState(
-                                              () =>
-                                                  _isSendingReaction = true,
-                                            );
-                                            try {
-                                              await ref
-                                                  .read(
-                                                    reactionCoordinatorProvider,
-                                                  )
-                                                  .sendRemoteReaction(
-                                                    identity: identity,
-                                                    videoId:
-                                                        remoteShare.videoId,
-                                                    childProfileId:
-                                                        selectedProfileId,
-                                                    mlsGroupIdHex:
-                                                        remoteShare
-                                                            .mlsGroupId,
-                                                    emoji: emoji,
-                                                  );
-                                              ref.invalidate(
-                                                offlineActionsProvider,
-                                              );
-                                              await HapticFeedback
-                                                  .selectionClick();
-                                            } catch (error) {
-                                              ref.invalidate(
-                                                offlineActionsProvider,
-                                              );
-                                              if (!mounted) {
-                                                return;
-                                              }
-                                              ScaffoldMessenger.of(
-                                                this.context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    _reactionErrorMessage(
-                                                      error,
+                                                        const SizedBox(
+                                                          height: 10,
+                                                        ),
+                                                        Text(
+                                                          title,
+                                                          style: TextStyle(
+                                                            color: palette.ink,
+                                                            fontSize: 18,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                          ),
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                        if (subtitle.isNotEmpty)
+                                                          Text(
+                                                            subtitle,
+                                                            maxLines: 2,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: TextStyle(
+                                                              color: palette
+                                                                  .mutedInk,
+                                                              fontSize: 13,
+                                                              height: 1.3,
+                                                            ),
+                                                          ),
+                                                      ],
                                                     ),
                                                   ),
+                                                  const SizedBox(width: 12),
+                                                  GestureDetector(
+                                                    onTap: () async {
+                                                      if (video != null) {
+                                                        await HapticFeedback.selectionClick();
+                                                        await ref
+                                                            .read(
+                                                              likeCoordinatorProvider,
+                                                            )
+                                                            .setLocalVideoLiked(
+                                                              videoId: video.id,
+                                                              liked:
+                                                                  !video.liked,
+                                                            );
+                                                        return;
+                                                      }
+                                                      if (remoteShare == null ||
+                                                          identity == null ||
+                                                          selectedProfileId ==
+                                                              null ||
+                                                          remoteLikedByViewer ||
+                                                          _isSendingLike) {
+                                                        return;
+                                                      }
+                                                      setState(
+                                                        () => _isSendingLike =
+                                                            true,
+                                                      );
+                                                      try {
+                                                        await ref
+                                                            .read(
+                                                              likeCoordinatorProvider,
+                                                            )
+                                                            .sendRemoteLike(
+                                                              identity:
+                                                                  identity,
+                                                              videoId:
+                                                                  remoteShare
+                                                                      .videoId,
+                                                              childProfileId:
+                                                                  selectedProfileId,
+                                                              mlsGroupIdHex:
+                                                                  remoteShare
+                                                                      .mlsGroupId,
+                                                            );
+                                                        ref.invalidate(
+                                                          offlineActionsProvider,
+                                                        );
+                                                        await HapticFeedback.selectionClick();
+                                                      } catch (error) {
+                                                        ref.invalidate(
+                                                          offlineActionsProvider,
+                                                        );
+                                                        if (!mounted) {
+                                                          return;
+                                                        }
+                                                        final messenger =
+                                                            ScaffoldMessenger.of(
+                                                              this.context,
+                                                            );
+                                                        messenger.showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              _likeErrorMessage(
+                                                                error,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        );
+                                                      } finally {
+                                                        if (mounted) {
+                                                          setState(
+                                                            () =>
+                                                                _isSendingLike =
+                                                                    false,
+                                                          );
+                                                        }
+                                                      }
+                                                    },
+                                                    child: AnimatedScale(
+                                                      duration:
+                                                          stateChangeDuration,
+                                                      curve: AppMotion
+                                                          .easeOutQuint,
+                                                      scale: isLiked
+                                                          ? 1.05
+                                                          : 1.0,
+                                                      child: AnimatedContainer(
+                                                        duration:
+                                                            stateChangeDuration,
+                                                        curve: AppMotion
+                                                            .easeOutQuint,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 10,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: isLiked
+                                                              ? const Color(
+                                                                  0xFFFFE4E8,
+                                                                )
+                                                              : Colors.white
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.78,
+                                                                    ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                20,
+                                                              ),
+                                                          border: Border.all(
+                                                            color: isLiked
+                                                                ? const Color(
+                                                                    0xFFFFC7D0,
+                                                                  )
+                                                                : palette
+                                                                      .panelBorder,
+                                                          ),
+                                                        ),
+                                                        child: Column(
+                                                          children: [
+                                                            Icon(
+                                                              isLiked
+                                                                  ? Icons
+                                                                        .favorite_rounded
+                                                                  : Icons
+                                                                        .favorite_border_rounded,
+                                                              size: 28,
+                                                              color: isLiked
+                                                                  ? const Color(
+                                                                      0xFFFF6B7A,
+                                                                    )
+                                                                  : palette
+                                                                        .mutedInk,
+                                                            ),
+                                                            if (remoteShare !=
+                                                                null)
+                                                              Padding(
+                                                                padding:
+                                                                    const EdgeInsets.only(
+                                                                      top: 4,
+                                                                    ),
+                                                                child: Text(
+                                                                  '$remoteLikeCount',
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        palette
+                                                                            .ink,
+                                                                    fontSize:
+                                                                        12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w800,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 14),
+                                              _PlaybackMetricRow(
+                                                palette: palette,
+                                                metrics: playbackMetrics,
+                                                isRemote: remoteShare != null,
+                                              ),
+                                              if (remoteShare != null) ...[
+                                                const SizedBox(height: 14),
+                                                _PlaybackLikeSummary(
+                                                  likes: likes,
+                                                  likeCount: remoteLikeCount,
+                                                  palette: palette,
                                                 ),
-                                              );
-                                            } finally {
-                                              if (mounted) {
-                                                setState(
-                                                  () =>
-                                                      _isSendingReaction =
-                                                          false,
-                                                );
-                                              }
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ],
+                                                const SizedBox(height: 14),
+                                                _ReactionSection(
+                                                  palette: palette,
+                                                  reactions: reactionSummaries,
+                                                  selectedEmojis:
+                                                      viewerReactions,
+                                                  isSendingReaction:
+                                                      _isSendingReaction,
+                                                  onSelect: (emoji) async {
+                                                    if (identity == null ||
+                                                        selectedProfileId ==
+                                                            null ||
+                                                        _isSendingReaction ||
+                                                        viewerReactions
+                                                            .contains(emoji)) {
+                                                      return;
+                                                    }
+                                                    setState(
+                                                      () => _isSendingReaction =
+                                                          true,
+                                                    );
+                                                    try {
+                                                      await ref
+                                                          .read(
+                                                            reactionCoordinatorProvider,
+                                                          )
+                                                          .sendRemoteReaction(
+                                                            identity: identity,
+                                                            videoId: remoteShare
+                                                                .videoId,
+                                                            childProfileId:
+                                                                selectedProfileId,
+                                                            mlsGroupIdHex:
+                                                                remoteShare
+                                                                    .mlsGroupId,
+                                                            emoji: emoji,
+                                                          );
+                                                      ref.invalidate(
+                                                        offlineActionsProvider,
+                                                      );
+                                                      await HapticFeedback.selectionClick();
+                                                    } catch (error) {
+                                                      ref.invalidate(
+                                                        offlineActionsProvider,
+                                                      );
+                                                      if (!mounted) {
+                                                        return;
+                                                      }
+                                                      ScaffoldMessenger.of(
+                                                        this.context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            _reactionErrorMessage(
+                                                              error,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      );
+                                                    } finally {
+                                                      if (mounted) {
+                                                        setState(
+                                                          () =>
+                                                              _isSendingReaction =
+                                                                  false,
+                                                        );
+                                                      }
+                                                    }
+                                                  },
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ),
                                       ),
@@ -1269,9 +1321,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_downloadErrorMessage(error))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_downloadErrorMessage(error, remoteShare: remoteShare)),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isDownloadingRemote = false);
@@ -1354,19 +1408,25 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       return 'Checking the saved copy so playback stays smooth and safe.';
     }
     if (remoteShare.status == 'failed') {
-      return 'The earlier download didn\'t finish cleanly. Repair it to watch this family clip.';
+      return summarizeDownloadError(remoteShare.downloadError);
     }
     return 'Download this family clip and press play when it is ready.';
   }
 
-  String _downloadErrorMessage(Object error) {
-    final message = error.toString().toLowerCase();
-    if (message.contains('network') ||
-        message.contains('socket') ||
-        message.contains('timeout')) {
+  String _downloadErrorMessage(
+    Object error, {
+    RemoteShareProjection? remoteShare,
+  }) {
+    final summary = summarizeDownloadError(
+      remoteShare?.downloadError?.isNotEmpty == true
+          ? remoteShare!.downloadError
+          : '$error',
+    );
+    if (summary.contains('relay or media server was unreachable')) {
       return 'We couldn\'t download that clip right now. Check your connection and try again.';
     }
-    if (message.contains('decrypt') || message.contains('cache')) {
+    if (summary.contains('unlocking the encrypted video package') ||
+        summary.contains('saved copy did not pass verification')) {
       return 'The saved copy needs another pass. Try the download again in a moment.';
     }
     return 'We couldn\'t download that clip yet. Please try again.';

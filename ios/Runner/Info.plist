@@ -27,9 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Nook uses the camera to record videos and scan family invite QR codes.</string>
+	<string>Tubestr uses the camera to record videos and scan family invite QR codes.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Nook uses the microphone to record audio with your videos.</string>
+	<string>Tubestr uses the microphone to record audio with your videos.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

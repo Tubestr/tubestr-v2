@@ -67,7 +67,7 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 - [x] Add a fuller likes UX (for example a dedicated likes section/list) beyond the current count-only/player entry point
 - [ ] Decide whether remote unlike semantics are required for launch or explicitly defer them
 - [ ] Improve remote download / retry / error / approval states and friend-family activity visibility
-- [ ] Add safety explainer/help copy that clearly tells parents how moderation and sharing protections work
+- [x] Add safety explainer/help copy that clearly tells parents how moderation and sharing protections work
 - [ ] Add logging/error reporting hooks for launch diagnostics
 - [ ] Harden retry/background behavior beyond the current startup/resume/manual reconnect paths
 
@@ -82,10 +82,12 @@ This workspace started empty on 2026-03-15, so the implementation plan covers bo
 
 - Parent/child identity scope changed in v2: child-key backup/recovery is not an MVP gap because children no longer have independent Nostr keys. The remaining identity blocker is the parent key story.
 - The secure-storage foundation already exists for launch-critical identity work: `IdentityService` persists the parent identity via `flutter_secure_storage`, and `ParentAuthService` hashes/stores the Parent Zone PIN there as well.
-- Current code evidence now covers most of the parent-key UX: onboarding can restore from pasted/scanned backup keys, the parent flow shows explicit backup messaging, and both onboarding + Parent Zone expose reveal/hide/copy/share key export cards. This line stays in progress until we validate the full recovery story on real Apple devices and decide whether sign-out/reset should also clear synced identity copies.
+- Current code evidence now covers most of the parent-key UX: onboarding can restore from pasted/scanned backup keys, the parent flow shows explicit backup messaging, and both onboarding + Parent Zone expose reveal/hide/copy/share key export cards. Reset/sign-out semantics are now explicit in code and copy: the reset flow clears both the local secure-storage copy and the synced Apple-keychain copy Tubestr uses for automatic restore on that device. This line stays in progress until we validate the full recovery story on real Apple devices.
 - Engagement now has a fuller UX surface: the player shows a likes summary, feed cards surface engagement at a glance, playback metrics are visible, and reactions publish/project alongside likes. The remaining product decision is whether remote unlike semantics matter for launch.
 - View counts appear absent from both projection/state and UI. They should not block MVP unless product/ranking needs change.
 - Automated verification is stronger than the checklist originally implied: the in-memory two-family harness already covers invite -> welcome -> share -> sync -> download/decrypt -> like -> report -> delete propagation, and dedicated report-coordinator tests cover family-group plus Safety HQ routing. The remaining verification gap is real-device proof, especially on iOS.
+- Safety HQ launch language is now intentionally conservative in-app: the current client only provisions a local placeholder group, not a backend-enrolled moderation service. Parent Zone copy now says that explicitly so launch UX matches `docs/safety-hq-frontend-plan.md`.
+- BUD-09 coverage is currently best effort only. Deleting a shared video attempts blob-abuse reporting to the stored Blossom servers, but app-local moderation state remains authoritative for launch.
 - User-facing retry/error handling is partially present today through feed status badges, player/capture-specific share/download messaging, and Parent Zone offline-queue surfaces. The remaining work is consistency and polish, not a complete lack of states.
 - Logging/diagnostics are still thin overall. The one notable exception is editor export, which already writes a diagnostics log when FFmpeg plans fail.
 - A broad redesign pass is now in progress for launch polish: Home is being made more capture/edit-led for kids, and Parent Zone is being split into a calmer control-room mode with quieter typography, clearer status triage, and less decorative overlap with the child-facing app.

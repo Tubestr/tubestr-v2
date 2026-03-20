@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
+import '../models/launch_diagnostics.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 
 class ParentZoneDiagnosticsSection extends ConsumerWidget {
@@ -22,13 +23,27 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
     ref.watch(syncDiagnosticsRevisionProvider);
     final diagnostics = ref.read(syncCoordinatorProvider).debugSnapshot();
     final dump = ref.read(syncCoordinatorProvider).debugDescribeState();
+    final queuedActions =
+        ref.watch(offlineActionsProvider).valueOrNull ?? const [];
+    final shareHistory =
+        ref.watch(shareHistoryProvider).valueOrNull ?? const [];
+    final reports = ref.watch(reportsProvider).valueOrNull ?? const [];
+    final remoteShares =
+        ref.watch(remoteSharesProvider).valueOrNull ?? const [];
+    final launchSnapshot = buildLaunchDiagnosticsSnapshot(
+      queuedActions: queuedActions,
+      shareHistory: shareHistory,
+      reports: reports,
+      remoteShares: remoteShares,
+    );
     final recentHistory = diagnostics.recentHistory.reversed
         .take(10)
         .toList(growable: false);
     final hasIssues =
         diagnostics.lastRefreshError != null ||
         diagnostics.subscriptionErrorCount > 0 ||
-        diagnostics.unsubscribeFailureCount > 0;
+        diagnostics.unsubscribeFailureCount > 0 ||
+        launchSnapshot.hasIssues;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
@@ -97,12 +112,13 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                   ),
                   FilledButton.tonal(
                     onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       await Clipboard.setData(ClipboardData(text: dump));
                       if (!context.mounted) {
                         return;
                       }
                       await HapticFeedback.lightImpact();
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(
                           content: Text('Copied relay sync diagnostics'),
                         ),
@@ -119,6 +135,44 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Launch Triage',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              _InlineStatus(
+                icon: launchSnapshot.hasIssues
+                    ? Icons.error_outline_rounded
+                    : Icons.task_alt_rounded,
+                color: launchSnapshot.hasIssues
+                    ? palette.warning
+                    : palette.success,
+                title: launchSnapshot.hasIssues
+                    ? '${launchSnapshot.totalIssueCount} launch issue(s) need attention'
+                    : 'No queued launch issues right now',
+                detail: launchSnapshot.hasIssues
+                    ? '${launchSnapshot.queuedActions.length} queued action(s) · ${launchSnapshot.shareIssues.length} share issue(s) · ${launchSnapshot.reportIssues.length} report issue(s) · ${launchSnapshot.downloadIssues.length} download issue(s)'
+                    : 'Shares, reports, and remote downloads look clear from this device.',
+              ),
+              if (launchSnapshot.actionsByType.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                for (final count in launchSnapshot.actionsByType)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '${count.label}: ${count.count}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
@@ -148,6 +202,75 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Delivery Issues',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              if (!launchSnapshot.hasIssues)
+                Text(
+                  'Nothing is waiting for retry from shares, reports, or remote downloads.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                )
+              else ...[
+                if (launchSnapshot.shareIssues.isNotEmpty) ...[
+                  Text('Shares', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  for (final entry in launchSnapshot.shareIssues)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '${entry.title} · ${describeShareStatus(entry.status)}${entry.error == null || entry.error!.isEmpty ? '' : ' · ${entry.error}'}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+                if (launchSnapshot.reportIssues.isNotEmpty) ...[
+                  if (launchSnapshot.shareIssues.isNotEmpty)
+                    const SizedBox(height: 8),
+                  Text(
+                    'Reports',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  for (final report in launchSnapshot.reportIssues)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '${report.reason} · ${describeReportStatus(report.status)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+                if (launchSnapshot.downloadIssues.isNotEmpty) ...[
+                  if (launchSnapshot.shareIssues.isNotEmpty ||
+                      launchSnapshot.reportIssues.isNotEmpty)
+                    const SizedBox(height: 8),
+                  Text(
+                    'Remote downloads',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  for (final share in launchSnapshot.downloadIssues)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '${share.title} · ${summarizeDownloadError(share.downloadError)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+              ],
             ],
           ),
         ),

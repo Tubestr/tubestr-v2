@@ -267,24 +267,28 @@ class FamilyConnectionService {
 
     final completer = Completer<String>();
     late final StreamSubscription<Nip01Event> subscription;
-    subscription = response.stream.listen((event) {
-      if (event.pubKey != publicKeyHex ||
-          event.kind != MarmotKinds.keyPackage ||
-          event.id != eventId) {
-        return;
-      }
-      if (!completer.isCompleted) {
-        completer.complete(Nip01EventModel.fromEntity(event).toJsonString());
-      }
-    }, onError: (Object error, StackTrace stackTrace) {
-      if (!completer.isCompleted) {
-        completer.completeError(error, stackTrace);
-      }
-    });
+    subscription = response.stream.listen(
+      (event) {
+        if (event.pubKey != publicKeyHex ||
+            event.kind != MarmotKinds.keyPackage ||
+            event.id != eventId) {
+          return;
+        }
+        if (!completer.isCompleted) {
+          completer.complete(Nip01EventModel.fromEntity(event).toJsonString());
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!completer.isCompleted) {
+          completer.completeError(error, stackTrace);
+        }
+      },
+    );
 
     try {
-      final eventJson =
-          await completer.future.timeout(_keyPackageResolveTimeout);
+      final eventJson = await completer.future.timeout(
+        _keyPackageResolveTimeout,
+      );
       return [eventJson];
     } on TimeoutException {
       throw StateError(

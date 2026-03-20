@@ -39,6 +39,9 @@ class FakeBlossomClient extends BlossomClient {
   final List<List<String>> attempts = [];
   final List<String> reportedServers = [];
   final List<String> reportedEventJsons = [];
+  final List<String> deletedServers = [];
+  final List<String> deletedHashes = [];
+  final List<String?> deleteAuthHeaders = [];
   final List<String> uploadServers = [];
   final List<String?> uploadAuthHeaders = [];
   final Set<String> failingUploadServers = <String>{};
@@ -81,6 +84,17 @@ class FakeBlossomClient extends BlossomClient {
   }) async {
     reportedServers.add(server);
     reportedEventJsons.add(eventJson);
+  }
+
+  @override
+  Future<void> deleteBlob({
+    required String server,
+    required String hash,
+    BlossomUploadAuth? auth,
+  }) async {
+    deletedServers.add(server);
+    deletedHashes.add(hash);
+    deleteAuthHeaders.add(auth?.authorizationHeaderValue);
   }
 }
 
@@ -325,6 +339,7 @@ class FakeNostrService implements NostrService {
   String? lastGiftWrapRecipient;
   String? lastPublishedDisplayName;
   final List<String> publishedEventJsons = [];
+  final List<List<String>?> publishedEventRelays = [];
   int? lastCreatedSignedEventKind;
   String? lastCreatedSignedEventContent;
   List<List<String>>? lastCreatedSignedEventTags;
@@ -477,6 +492,9 @@ class FakeNostrService implements NostrService {
     }
     lastPublishedEventJson = eventJson;
     publishedEventJsons.add(eventJson);
+    publishedEventRelays.add(
+      relays == null ? null : List<String>.from(relays, growable: false),
+    );
     return 'event-id';
   }
 

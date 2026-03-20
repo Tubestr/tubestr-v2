@@ -32,7 +32,7 @@ class GroupInvitePacket {
 
   String get shareText =>
       '''
-Nook Family Invite
+Tubestr Family Invite
 Parent: ${inviterDisplayName?.trim().isNotEmpty == true ? inviterDisplayName!.trim() : publicKeyHex}
 
 Open this link on the other parent's device:

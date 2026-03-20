@@ -26,6 +26,8 @@ import 'package:mytube/services/offline/offline_action_processor.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/safety/moderation_coordinator.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
+import 'package:mytube/services/safety/safety_hq_service.dart';
+import 'package:mytube/services/share/managed_video_upload_service.dart';
 import 'package:mytube/services/share/share_history_service.dart';
 import 'package:mytube/services/share/video_lifecycle_coordinator.dart';
 import 'package:mytube/services/share/video_share_coordinator.dart';
@@ -883,11 +885,17 @@ class FamilyAppHarness {
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
     );
+    final safetyHqService = SafetyHqService(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+    );
     final reportCoordinator = ReportCoordinator(
       database: database,
       mdkService: mdk,
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
+      safetyHqService: safetyHqService,
     );
     final lifecycleCoordinator = VideoLifecycleCoordinator(
       mdkService: mdk,
@@ -918,6 +926,7 @@ class FamilyAppHarness {
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
       shareHistoryService: shareHistoryService,
+      managedVideoUploadService: ManagedVideoUploadService(database: database),
     );
     final offlineActionProcessor = OfflineActionProcessor(
       store: offlineActionStore,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
@@ -23,7 +24,7 @@ class OnboardingLoadingScreen extends ConsumerWidget {
             child: OnboardingBootstrapStatusCard(
               palette: palette,
               icon: Icons.hourglass_top_rounded,
-              title: 'Opening Nook',
+              title: 'Opening ${AppConstants.appName}',
               message: 'Getting your family space ready on this device.',
               child: const CircularProgressIndicator(),
             ),
@@ -53,7 +54,7 @@ class OnboardingErrorScreen extends ConsumerWidget {
             child: OnboardingBootstrapStatusCard(
               palette: palette,
               icon: Icons.refresh_rounded,
-              title: 'Nook needs another moment',
+              title: '${AppConstants.appName} needs another moment',
               message: _friendlyBootstrapError(error),
               child: FilledButton.icon(
                 onPressed: () {

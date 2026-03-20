@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../models/parent_zone_models.dart';
 
@@ -105,7 +106,7 @@ class ParentZoneSidebar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: Text(
-              'Nook v2.0',
+              '${AppConstants.appName} v2.0',
               style: TextStyle(fontSize: 12, color: palette.mutedInk),
             ),
           ),

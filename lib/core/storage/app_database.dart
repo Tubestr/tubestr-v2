@@ -426,6 +426,12 @@ class AppDatabase extends _$AppDatabase {
     await (delete(profiles)..where((tbl) => tbl.id.equals(profileId))).go();
   }
 
+  Future<List<LocalVideo>> getLocalVideosForProfile(String profileId) {
+    return (select(
+      localVideos,
+    )..where((tbl) => tbl.profileId.equals(profileId))).get();
+  }
+
   Future<String?> getPrimaryGroupIdForProfile(String profileId) async {
     final row =
         await (select(profileGroups)
@@ -847,6 +853,25 @@ class AppDatabase extends _$AppDatabase {
             : Value(localThumbPath),
       ),
     );
+  }
+
+  Future<bool> hasManagedDeletionRetentionEvidence({
+    required String videoId,
+    required Set<String> blobHashes,
+  }) async {
+    final allReports = await select(reports).get();
+    for (final report in allReports) {
+      if (report.videoId == videoId) {
+        return true;
+      }
+      final blobHash = report.blobHash?.trim();
+      if (blobHash != null &&
+          blobHash.isNotEmpty &&
+          blobHashes.contains(blobHash)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> clearRemoteMediaCachePath({required String remoteShareId}) {

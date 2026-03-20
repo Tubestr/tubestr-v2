@@ -67,6 +67,7 @@ dependencies:
   google_mlkit_face_detection: ^0.13.2
   rust_lib_mytube:
     path: rust_builder
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

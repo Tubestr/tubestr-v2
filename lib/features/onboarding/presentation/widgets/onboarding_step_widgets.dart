@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/constants.dart';
 import '../../../../core/storage/app_database.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/parent_identity.dart';
@@ -164,7 +165,9 @@ class OnboardingIntroSlides extends StatelessWidget {
                           Text(
                             slide.title,
                             style: TextStyle(
-                              fontSize: MediaQuery.sizeOf(context).width < 400 ? 28.0 : 34.0,
+                              fontSize: MediaQuery.sizeOf(context).width < 400
+                                  ? 28.0
+                                  : 34.0,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -250,7 +253,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Welcome to Nook',
+              'Welcome to ${AppConstants.appName}',
               style: Theme.of(
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
@@ -294,17 +297,29 @@ class OnboardingParentKeyStep extends StatelessWidget {
     super.key,
     required this.identity,
     required this.displayNameController,
+    required this.birthYearController,
     required this.palette,
     required this.busy,
+    required this.consentAccepted,
+    required this.eligibilityMessage,
     required this.onGenerate,
+    required this.onBirthYearChanged,
+    required this.onConsentChanged,
+    required this.onOpenPrivacyPolicy,
     required this.onContinue,
   });
 
   final ParentIdentity? identity;
   final TextEditingController displayNameController;
+  final TextEditingController birthYearController;
   final KidPalette palette;
   final bool busy;
+  final bool consentAccepted;
+  final String? eligibilityMessage;
   final VoidCallback onGenerate;
+  final ValueChanged<String> onBirthYearChanged;
+  final ValueChanged<bool> onConsentChanged;
+  final VoidCallback onOpenPrivacyPolicy;
   final VoidCallback onContinue;
 
   @override
@@ -350,6 +365,74 @@ class OnboardingParentKeyStep extends StatelessWidget {
                 hintText: 'Lee & Emma',
               ),
             ),
+            if (identity == null) ...[
+              const SizedBox(height: 14),
+              TextField(
+                controller: birthYearController,
+                enabled: !busy,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                onChanged: onBirthYearChanged,
+                decoration: const InputDecoration(
+                  labelText: 'Parent birth year',
+                  hintText: '1988',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: palette.panel.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(
+                          value: consentAccepted,
+                          onChanged: busy
+                              ? null
+                              : (value) => onConsentChanged(value ?? false),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Text(
+                              'I am 18 or older and I agree to the Tubestr privacy policy on behalf of any children whose profiles I create.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: busy ? null : onOpenPrivacyPolicy,
+                        icon: const Icon(Icons.open_in_new_rounded),
+                        label: const Text('Read privacy policy'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (eligibilityMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  eligibilityMessage!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: palette.warning,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
             const SizedBox(height: 32),
             if (identity != null) ...[
               OnboardingParentPublicKeyCard(
@@ -402,7 +485,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: FilledButton(
-                    onPressed: onGenerate,
+                    onPressed: eligibilityMessage == null ? onGenerate : null,
                     child: const Text('Generate Parent Key'),
                   ),
                 ),
@@ -462,7 +545,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Paste your saved `nsec1...` key or 64-character backup key. If this device already has your parent account in secure storage or iCloud Keychain, Nook will pick it up automatically on launch.',
+              'Paste your saved `nsec1...` key or 64-character backup key. If this device still has your parent account saved in secure storage or synced Apple Keychain, ${AppConstants.appName} will pick it up automatically on launch. The reset flow clears that saved copy, so keep your own backup key too.',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -810,7 +893,7 @@ class OnboardingPermissionsStep extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Nook uses the camera for recording videos and scanning family invites, and the microphone for video sound.',
+              '${AppConstants.appName} uses the camera for recording videos and scanning family invites, and the microphone for video sound.',
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -963,7 +1046,7 @@ class OnboardingCompleteStep extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your family\'s Nook is ready.',
+              'Your family\'s ${AppConstants.appName} is ready.',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -1048,7 +1131,7 @@ class _OnboardingIntroSlideData {
 
 String _parentBackupShareText(ParentIdentity identity) {
   return '''
-Nook Parent Backup Key
+Tubestr Parent Backup Key
 
 Keep this private. Anyone with this key can control your family account.
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/constants.dart';
 import 'core/di/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -14,7 +15,7 @@ class MyTubeApp extends ConsumerWidget {
     final themeDescriptor = ref.watch(activeThemeProvider);
 
     return MaterialApp.router(
-      title: 'MyTube',
+      title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(themeDescriptor),
       routerConfig: router,

@@ -5,6 +5,7 @@ import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
+import 'package:mytube/services/safety/safety_hq_service.dart';
 
 import '../../test_support/service_fakes.dart';
 
@@ -12,6 +13,7 @@ void main() {
   late AppDatabase database;
   late FakeMdkService mdk;
   late FakeNostrService nostr;
+  late SafetyHqService safetyHqService;
   late ReportCoordinator coordinator;
 
   const identity = ParentIdentity(
@@ -26,11 +28,17 @@ void main() {
     database = AppDatabase.forTesting(NativeDatabase.memory());
     mdk = FakeMdkService();
     nostr = FakeNostrService();
+    safetyHqService = SafetyHqService(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+    );
     coordinator = ReportCoordinator(
       database: database,
       mdkService: mdk,
       nostrService: nostr,
       offlineActionStore: OfflineActionStore(database: database),
+      safetyHqService: safetyHqService,
     );
 
     await database.upsertProfile(
@@ -140,6 +148,10 @@ void main() {
         AppConstants.safetyGroupIdSettingKey,
         'safety-group',
       );
+      await safetyHqService.saveProvisionedRelays([
+        'wss://relay.safety.example',
+        'wss://relay.backup.example',
+      ]);
 
       final result = await coordinator.submitReport(
         identity: identity,
@@ -162,7 +174,39 @@ void main() {
       expect(result.safetyQueued, isFalse);
       expect(savedReport.status, 'delivered');
       expect(nostr.publishedEventJsons, hasLength(2));
+      expect(nostr.publishedEventRelays, [
+        ['wss://relay.example'],
+        ['wss://relay.safety.example', 'wss://relay.backup.example'],
+      ]);
       expect(savedReport.deliveredAt, isNotNull);
+    },
+  );
+
+  test(
+    'submitReport keeps Safety HQ queued until backend enrollment is acknowledged',
+    () async {
+      await database.putSetting(
+        AppConstants.safetyGroupIdSettingKey,
+        'safety-group',
+      );
+
+      final result = await coordinator.submitReport(
+        identity: identity,
+        videoId: 'video-awaiting-ack',
+        subjectChildId: 'child-1',
+        blobHash: 'blob-awaiting-ack',
+        reporterChildId: 'child-1',
+        reason: 'unsafe',
+        level: 3,
+        recipientType: 'family',
+      );
+
+      expect(result.status, 'queued_safety');
+      expect(result.familyPublished, isTrue);
+      expect(result.safetyPublished, isFalse);
+      expect(result.safetyQueued, isTrue);
+      expect(mdk.createdMessageGroupIds, ['family-group']);
+      expect(nostr.publishedEventJsons, hasLength(1));
     },
   );
 
@@ -219,4 +263,48 @@ void main() {
     )..where((tbl) => tbl.videoId.equals('video-6'))).getSingle();
     expect(report.status, 'queued_offline');
   });
+
+  test(
+    'flushQueuedSafetyReports waits for backend enrollment acknowledgement',
+    () async {
+      await coordinator.submitReport(
+        identity: identity,
+        videoId: 'video-queued-flush',
+        subjectChildId: 'child-1',
+        blobHash: 'blob-queued-flush',
+        reporterChildId: 'child-1',
+        reason: 'unsafe',
+        level: 3,
+        recipientType: 'family',
+      );
+      await database.putSetting(
+        AppConstants.safetyGroupIdSettingKey,
+        'safety-group',
+      );
+
+      final blockedFlush = await coordinator.flushQueuedSafetyReports(
+        identity: identity,
+      );
+
+      expect(blockedFlush, 0);
+      expect(mdk.createdMessageGroupIds, ['family-group']);
+
+      await database.putSetting(AppConstants.safetyJoinedKey, 'true');
+      await safetyHqService.saveProvisionedRelays([
+        'wss://relay.safety.example',
+      ]);
+
+      final flushed = await coordinator.flushQueuedSafetyReports(
+        identity: identity,
+      );
+
+      expect(flushed, 1);
+      expect(mdk.createdMessageGroupIds, ['family-group', 'safety-group']);
+      expect(nostr.publishedEventJsons, hasLength(2));
+      expect(nostr.publishedEventRelays, [
+        ['wss://relay.example'],
+        ['wss://relay.safety.example'],
+      ]);
+    },
+  );
 }

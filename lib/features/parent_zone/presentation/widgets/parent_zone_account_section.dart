@@ -14,7 +14,12 @@ class ParentZoneAccountSection extends ConsumerWidget {
     required this.onSaveDisplayName,
     required this.onPublishDisplayName,
     required this.onUpdatePin,
+    required this.onOpenSupport,
+    required this.onOpenPrivacyPolicy,
+    required this.onOpenTerms,
     required this.onResetApp,
+    required this.onDeleteAccount,
+    required this.isDeletingAccount,
   });
 
   final TextEditingController displayNameController;
@@ -22,7 +27,12 @@ class ParentZoneAccountSection extends ConsumerWidget {
   final VoidCallback onSaveDisplayName;
   final Future<void> Function() onPublishDisplayName;
   final VoidCallback onUpdatePin;
+  final Future<void> Function() onOpenSupport;
+  final Future<void> Function() onOpenPrivacyPolicy;
+  final Future<void> Function() onOpenTerms;
   final Future<void> Function() onResetApp;
+  final Future<void> Function() onDeleteAccount;
+  final bool isDeletingAccount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,10 +86,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 ],
               ),
               const Divider(height: 28),
-              Text(
-                'Parent PIN',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
+              Text('Parent PIN', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
               Text(
                 'Update the four-digit code that protects the parent workspace.',
@@ -102,6 +109,50 @@ class ParentZoneAccountSection extends ConsumerWidget {
               FilledButton(
                 onPressed: onUpdatePin,
                 child: const Text('Update PIN'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Delete Parent Account',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Permanently delete Tubestr account records tied to this parent address from Tubestr-operated backend systems, then sign this device out. Any App Store or Play subscription must still be cancelled separately with Apple or Google.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+              ),
+              const SizedBox(height: 12),
+              _InlineInfo(
+                icon: Icons.delete_forever_rounded,
+                color: palette.danger,
+                title: 'Permanent server-side deletion',
+                detail:
+                    'This removes backend account records for this parent address. Media already copied onto other approved family devices may still remain there until those recipients delete it too.',
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  foregroundColor: palette.danger,
+                  backgroundColor: palette.danger.withValues(alpha: 0.10),
+                ),
+                onPressed: isDeletingAccount
+                    ? null
+                    : () async {
+                        await onDeleteAccount();
+                      },
+                child: Text(
+                  isDeletingAccount
+                      ? 'Deleting parent account...'
+                      : 'Delete parent account',
+                ),
               ),
             ],
           ),
@@ -170,9 +221,56 @@ class ParentZoneAccountSection extends ConsumerWidget {
                   warningText:
                       'Keep this private. Anyone with this key can control your family account.',
                   shareText:
-                      'Nook Parent Backup Key\n\nKeep this private. Anyone with this key can control your family account.\n\n${identity.nsec}',
+                      'Tubestr Parent Backup Key\n\nKeep this private. Anyone with this key can control your family account.\n\n${identity.nsec}',
                 ),
               ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Policies & Support',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Open the public support, privacy, and terms pages that families and App Review should be able to find from inside the app.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await onOpenSupport();
+                    },
+                    icon: const Icon(Icons.support_agent_rounded),
+                    label: const Text('Support'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await onOpenPrivacyPolicy();
+                    },
+                    icon: const Icon(Icons.privacy_tip_outlined),
+                    label: const Text('Privacy Policy'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await onOpenTerms();
+                    },
+                    icon: const Icon(Icons.gavel_rounded),
+                    label: const Text('Terms'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -187,7 +285,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Sign out and wipe this device\'s local Nook data, including cached media, queued actions, and the parent PIN.',
+                'Reset Tubestr on this device and remove the saved parent account, cached media, queued actions, and Parent Zone PIN. This also clears the synced Apple-keychain copy Tubestr uses for automatic restore on this device.',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -198,7 +296,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 color: palette.danger,
                 title: 'This cannot be undone on this device',
                 detail:
-                    'Make sure your parent recovery key is saved somewhere safe before you continue.',
+                    'Make sure your parent recovery key is saved somewhere safe. After reset, this device will not auto-restore the parent account until you import that key again.',
               ),
               const SizedBox(height: 12),
               FilledButton.tonal(

@@ -249,7 +249,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'This is the app-managed moderation inbox for higher-risk reports.',
+                    'Keep higher-risk reports separate from the main family thread while the real moderation service is still being wired up.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -271,12 +271,59 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       await onProvisionSafetyHq();
                       onRefresh();
                     },
-                    child: const Text('Provision Safety HQ'),
+                    child: const Text('Set Up Safety HQ'),
                   ),
                 ],
               ),
             );
           },
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'How Safety Reporting Works',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Parents can verify what stays private, what reaches the other family, and where media abuse reports are sent.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+              ),
+              const SizedBox(height: 12),
+              const _ReportingExplainerRow(
+                icon: Icons.phone_android_rounded,
+                title: 'Level 1 stays here',
+                detail:
+                    'Gentle feedback stays on this device so a child can talk with a grown-up later.',
+              ),
+              const SizedBox(height: 10),
+              const _ReportingExplainerRow(
+                icon: Icons.family_restroom_rounded,
+                title: 'Level 2 alerts the parent on this device',
+                detail:
+                    'Stronger concerns stay private to this family and show up in Parent Zone only.',
+              ),
+              const SizedBox(height: 10),
+              const _ReportingExplainerRow(
+                icon: Icons.groups_rounded,
+                title: 'Level 3 alerts both families',
+                detail:
+                    'The family group gets the report first. Safety HQ keeps a separate copy when it has been set up.',
+              ),
+              const SizedBox(height: 10),
+              const _ReportingExplainerRow(
+                icon: Icons.cloud_upload_rounded,
+                title: 'BUD-09 abuse signals are best effort',
+                detail:
+                    'If a parent deletes a shared video, Tubestr also asks the media servers to flag that blob, but the in-app moderation state remains the source of truth.',
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -295,17 +342,19 @@ class _SafetyStatusBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _InlineStatus(
-          icon: status.isJoined ? Icons.shield_rounded : Icons.shield_outlined,
-          color: status.isJoined ? Colors.green : Colors.orange,
+          icon: status.usesLocalPlaceholder
+              ? Icons.shield_rounded
+              : Icons.shield_outlined,
+          color: status.usesLocalPlaceholder ? Colors.green : Colors.orange,
           title: 'Status: ${status.label}',
           detail: status.lastSyncAt == null
-              ? 'No recent update yet.'
-              : 'Last updated ${status.lastSyncAt!.toLocal()}',
+              ? status.detail
+              : '${status.detail} Last updated ${status.lastSyncAt!.toLocal()}',
         ),
         if (status.groupId != null && status.groupId!.isNotEmpty) ...[
           const SizedBox(height: 10),
           Text(
-            'Group ID',
+            'Local group ID',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: palette.onSurface.withValues(alpha: 0.6),
             ),
@@ -313,6 +362,44 @@ class _SafetyStatusBody extends StatelessWidget {
           const SizedBox(height: 4),
           Text(status.groupId!, style: Theme.of(context).textTheme.bodySmall),
         ],
+      ],
+    );
+  }
+}
+
+class _ReportingExplainerRow extends StatelessWidget {
+  const _ReportingExplainerRow({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(detail, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
       ],
     );
   }

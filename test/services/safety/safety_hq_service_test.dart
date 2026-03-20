@@ -55,10 +55,12 @@ void main() {
 
       expect(group, isNotNull);
       expect(group!.name, AppConstants.safetyHqGroupName);
-      expect(status.isJoined, isTrue);
+      expect(status.isJoined, isFalse);
       expect(status.isQueued, isFalse);
       expect(status.groupId, 'safety-group');
       expect(status.lastSyncAt, isNotNull);
+      expect(status.label, 'Awaiting backend ack');
+      expect(status.usesLocalPlaceholder, isTrue);
     },
   );
 
@@ -80,6 +82,45 @@ void main() {
     expect(group, isNotNull);
     expect(group!.mlsGroupIdHex, 'existing-safety');
     expect(status.groupId, 'existing-safety');
+    expect(status.isJoined, isFalse);
+    expect(status.label, 'Awaiting backend ack');
+  });
+
+  test('loadStatus explains queued state conservatively', () async {
+    await service.queueJoin();
+
+    final status = await service.loadStatus();
+
+    expect(status.isQueued, isTrue);
+    expect(status.isJoined, isFalse);
+    expect(status.label, 'Queued');
+    expect(status.detail, contains('Finish provisioning'));
+  });
+
+  test('acknowledgeBackendEnrollment marks Safety HQ as joined', () async {
+    await service.acknowledgeBackendEnrollment(groupId: 'safety-group');
+
+    final status = await service.loadStatus();
+
+    expect(status.isQueued, isFalse);
     expect(status.isJoined, isTrue);
+    expect(status.groupId, 'safety-group');
+    expect(status.label, 'Provisioned');
+    expect(status.usesLocalPlaceholder, isFalse);
+  });
+
+  test('saveProvisionedRelays persists the backend relay set', () async {
+    await service.saveProvisionedRelays([
+      'wss://relay.safety.example',
+      '',
+      '  wss://relay.backup.example  ',
+    ]);
+
+    final relays = await service.loadProvisionedRelays();
+
+    expect(relays, [
+      'wss://relay.safety.example',
+      'wss://relay.backup.example',
+    ]);
   });
 }

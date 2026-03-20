@@ -473,9 +473,7 @@ class SyncCoordinator {
               trigger: trigger,
             );
             _publishDiagnosticsRevision();
-            debugPrint(
-              'Sync subscription error: ${_safeErrorSummary(error)}',
-            );
+            debugPrint('Sync subscription error: ${_safeErrorSummary(error)}');
           },
         ),
       );

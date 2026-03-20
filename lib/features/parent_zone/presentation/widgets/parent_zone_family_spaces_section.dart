@@ -92,11 +92,11 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 onTap: identity == null || busy
                     ? null
                     : () => _showPasteInviteSheet(
-                          context,
-                          controller: inviteImportController,
-                          busy: isCreatingWelcome,
-                          onSubmit: onProcessInviteInput,
-                        ),
+                        context,
+                        controller: inviteImportController,
+                        busy: isCreatingWelcome,
+                        onSubmit: onProcessInviteInput,
+                      ),
               ),
             ],
           ),

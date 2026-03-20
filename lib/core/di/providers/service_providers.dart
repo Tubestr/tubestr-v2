@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../services/account/child_profile_deletion_service.dart';
 import '../../../services/auth/parent_auth_service.dart';
+import '../../../services/account/parent_account_deletion_service.dart';
 import '../../../services/app_reset_service.dart';
 import '../../../services/blossom/blossom_client.dart';
 import '../../../services/approval/content_scan_service.dart';
@@ -10,6 +12,7 @@ import '../../../services/approval/media_signal_extraction_service.dart';
 import '../../../services/approval/video_approval_service.dart';
 import '../../../services/connections/family_connection_service.dart';
 import '../../../services/editor/editor_export_service.dart';
+import '../../../services/engagement/beta_funnel_service.dart';
 import '../../../services/engagement/like_coordinator.dart';
 import '../../../services/engagement/playback_metrics_coordinator.dart';
 import '../../../services/engagement/reaction_coordinator.dart';
@@ -23,6 +26,7 @@ import '../../../services/offline/offline_action_store.dart';
 import '../../../services/safety/moderation_coordinator.dart';
 import '../../../services/safety/report_coordinator.dart';
 import '../../../services/safety/safety_hq_service.dart';
+import '../../../services/share/managed_video_upload_service.dart';
 import '../../../services/share/share_history_service.dart';
 import '../../../services/share/video_lifecycle_coordinator.dart';
 import '../../../services/share/video_share_coordinator.dart';
@@ -33,6 +37,15 @@ import 'foundation_providers.dart';
 final identityServiceProvider = Provider<IdentityService>((ref) {
   return IdentityService(
     secureStorage: ref.watch(secureStorageProvider),
+    database: ref.watch(appDatabaseProvider),
+  );
+});
+
+final betaFunnelServiceProvider = Provider<BetaFunnelService>((ref) {
+  return BetaFunnelService(
+    dio: ref.watch(dioProvider),
+    nostrService: ref.watch(nostrServiceProvider),
+    identityService: ref.watch(identityServiceProvider),
     database: ref.watch(appDatabaseProvider),
   );
 });
@@ -48,6 +61,14 @@ final editorExportServiceProvider = Provider<EditorExportService>((ref) {
 final parentAuthServiceProvider = Provider<ParentAuthService>((ref) {
   return ParentAuthService(ref.watch(secureStorageProvider));
 });
+
+final parentAccountDeletionServiceProvider =
+    Provider<ParentAccountDeletionService>((ref) {
+      return ParentAccountDeletionService(
+        dio: ref.watch(dioProvider),
+        nostrService: ref.watch(nostrServiceProvider),
+      );
+    });
 
 final appResetServiceProvider = Provider<AppResetService>((ref) {
   return AppResetService(
@@ -147,11 +168,35 @@ final videoShareCoordinatorProvider = Provider((ref) {
     nostrService: ref.watch(nostrServiceProvider),
     offlineActionStore: ref.watch(offlineActionStoreProvider),
     shareHistoryService: ref.watch(shareHistoryServiceProvider),
+    managedVideoUploadService: ref.watch(managedVideoUploadServiceProvider),
+    onFirstPrivateShareSent:
+        ({required sharedGroupCount, required queuedGroupCount}) {
+          return ref
+              .read(betaFunnelServiceProvider)
+              .trackFirstPrivateShareSent(
+                sharedGroupCount: sharedGroupCount,
+                queuedGroupCount: queuedGroupCount,
+              );
+        },
   );
 });
 
 final shareHistoryServiceProvider = Provider((ref) {
   return ShareHistoryService(database: ref.watch(appDatabaseProvider));
+});
+
+final managedVideoUploadServiceProvider = Provider((ref) {
+  return ManagedVideoUploadService(database: ref.watch(appDatabaseProvider));
+});
+
+final childProfileDeletionServiceProvider = Provider((ref) {
+  return ChildProfileDeletionService(
+    database: ref.watch(appDatabaseProvider),
+    blossomClient: ref.watch(blossomClientProvider),
+    nostrService: ref.watch(nostrServiceProvider),
+    shareHistoryService: ref.watch(shareHistoryServiceProvider),
+    managedVideoUploadService: ref.watch(managedVideoUploadServiceProvider),
+  );
 });
 
 final videoLifecycleCoordinatorProvider = Provider((ref) {
@@ -189,6 +234,7 @@ final reportCoordinatorProvider = Provider((ref) {
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
     offlineActionStore: ref.watch(offlineActionStoreProvider),
+    safetyHqService: ref.watch(safetyHqServiceProvider),
   );
 });
 

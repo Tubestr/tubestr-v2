@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
@@ -63,6 +64,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   bool _isCreatingWelcome = false;
   bool _isAcceptingWelcome = false;
   bool _isResettingApp = false;
+  bool _isDeletingAccount = false;
   bool _approvalRequired = false;
   Uri? _queuedDeepLinkUri;
   Timer? _pendingWelcomePollTimer;
@@ -301,7 +303,10 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       context: context,
       builder: (context) {
         final payloadUri = Uri.tryParse(payload);
-        final qrSize = (MediaQuery.sizeOf(context).width - 120).clamp(0.0, 240.0);
+        final qrSize = (MediaQuery.sizeOf(context).width - 120).clamp(
+          0.0,
+          240.0,
+        );
         return SimpleDialog(
           title: Text(title, textAlign: TextAlign.center),
           children: [
@@ -402,6 +407,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       final result = await ref
           .read(familyConnectionServiceProvider)
           .createInvite(identity: identity);
+      unawaited(ref.read(betaFunnelServiceProvider).trackFamilyInviteCreated());
       if (!mounted) {
         return;
       }
@@ -412,7 +418,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         payload: result.payload,
         shareText:
             '''
-Nook Family Invite
+Tubestr Family Invite
 
 Open this link on the other parent's device:
 ${result.payload}
@@ -471,6 +477,13 @@ ${result.payload}
       final result = await ref
           .read(familyConnectionServiceProvider)
           .connectFromInvite(identity: identity, invitePayload: invitePayload);
+      unawaited(
+        ref
+            .read(betaFunnelServiceProvider)
+            .trackFamilyInviteConnected(
+              publishedWelcomeCount: result.publishedWelcomeCount,
+            ),
+      );
       if (!mounted) {
         return;
       }
@@ -573,13 +586,59 @@ ${result.payload}
     await ref
         .read(identityServiceProvider)
         .createChildProfile(name: name, theme: _childTheme);
+    unawaited(
+      ref
+          .read(betaFunnelServiceProvider)
+          .trackChildProfileCreated(surface: 'parent_zone'),
+    );
     _nameController.clear();
     await HapticFeedback.mediumImpact();
   }
 
   Future<void> _deleteChild(String profileId) async {
-    await ref.read(appDatabaseProvider).deleteProfileById(profileId);
+    final profiles = ref.read(profilesProvider).valueOrNull ?? const [];
+    final profile = profiles.where((p) => p.id == profileId).firstOrNull;
+    final childName = profile?.name ?? 'this child profile';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('Delete $childName?'),
+          content: const Text(
+            'This will permanently remove the child profile and delete any videos and media stored on behalf of this profile from Tubestr-managed servers. Clips already delivered to other family members remain on their devices.\n\nThis cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete profile'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    final result = await ref
+        .read(childProfileDeletionServiceProvider)
+        .deleteProfile(profileId: profileId, identity: identity);
     await HapticFeedback.mediumImpact();
+    if (!mounted) {
+      return;
+    }
+    final message = result.usedManagedCleanup
+        ? 'Profile deleted. ${result.deletedBlobCount} file${result.deletedBlobCount == 1 ? '' : 's'} removed from Tubestr servers.'
+        : 'Profile deleted.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _approveVideo(String videoId) async {
@@ -611,6 +670,7 @@ ${result.payload}
   }
 
   Future<void> _saveDisplayName() async {
+    final messenger = ScaffoldMessenger.of(context);
     final next = _displayNameController.text.trim();
     if (next.isEmpty) {
       return;
@@ -621,9 +681,7 @@ ${result.payload}
       return;
     }
     await HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Saved display name')));
+    messenger.showSnackBar(const SnackBar(content: Text('Saved display name')));
   }
 
   Future<void> _publishDisplayName() async {
@@ -687,8 +745,10 @@ ${result.payload}
     await HapticFeedback.lightImpact();
     final message = switch ((flushed, totalBefore)) {
       (0, 0) => 'No queued actions to retry',
-      (0, _) => '$totalBefore action${totalBefore == 1 ? '' : 's'} still waiting — check your connection',
-      (_, _) => 'Sent $flushed of $totalBefore queued action${totalBefore == 1 ? '' : 's'}',
+      (0, _) =>
+        '$totalBefore action${totalBefore == 1 ? '' : 's'} still waiting — check your connection',
+      (_, _) =>
+        'Sent $flushed of $totalBefore queued action${totalBefore == 1 ? '' : 's'}',
     };
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
@@ -755,6 +815,7 @@ ${result.payload}
   }
 
   Future<void> _publishBlossomServers(List<String> servers) async {
+    final messenger = ScaffoldMessenger.of(context);
     final identity = ref.read(parentIdentityProvider).valueOrNull;
     if (identity == null) {
       return;
@@ -766,12 +827,13 @@ ${result.payload}
       return;
     }
     await HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       const SnackBar(content: Text('Published Blossom server list')),
     );
   }
 
   Future<void> _updatePin() async {
+    final messenger = ScaffoldMessenger.of(context);
     final pin = _pinManagementController.text.trim();
     if (pin.length < 4) {
       return;
@@ -782,9 +844,7 @@ ${result.payload}
       return;
     }
     await HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('PIN updated')));
+    messenger.showSnackBar(const SnackBar(content: Text('PIN updated')));
   }
 
   Future<void> _provisionSafetyHq() async {
@@ -808,8 +868,8 @@ ${result.payload}
       SnackBar(
         content: Text(
           group == null
-              ? 'Safety HQ already provisioned'
-              : 'Provisioned ${group.name}',
+              ? 'Safety HQ is already set up on this device'
+              : 'Set up ${group.name} on this device',
         ),
       ),
     );
@@ -822,7 +882,7 @@ ${result.payload}
         return AlertDialog(
           title: const Text('Sign out & reset app?'),
           content: const Text(
-            'This will remove the parent account from this device, clear the Parent Zone PIN, wipe local videos and cached shares, and reset Nook back to onboarding. Make sure your recovery key is saved first.',
+            'This will remove the saved parent account from this device, clear the Parent Zone PIN, wipe local videos and cached shares, and clear the synced Apple-keychain copy Tubestr uses for automatic restore here. Make sure your recovery key is saved first.',
           ),
           actions: [
             TextButton(
@@ -841,6 +901,10 @@ ${result.payload}
       return;
     }
 
+    await _performLocalReset();
+  }
+
+  Future<void> _performLocalReset() async {
     setState(() => _isResettingApp = true);
     try {
       await ref.read(syncCoordinatorProvider).stop();
@@ -873,6 +937,7 @@ ${result.payload}
       }
       setState(() {
         _isResettingApp = false;
+        _isDeletingAccount = false;
         _isUnlocked = false;
         _checkingPin = false;
         _needsPinSetup = false;
@@ -888,7 +953,10 @@ ${result.payload}
       if (!mounted) {
         return;
       }
-      setState(() => _isResettingApp = false);
+      setState(() {
+        _isResettingApp = false;
+        _isDeletingAccount = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -897,6 +965,104 @@ ${result.payload}
         ),
       );
     }
+  }
+
+  Future<void> _deleteParentAccount() async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Create or restore the parent account on this device before deleting it.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete parent account?'),
+          content: Text(
+            'This permanently deletes Tubestr backend account records for ${identity.npub}. This also signs the device out after deletion succeeds. Any App Store or Play subscription must still be cancelled separately in Apple or Google billing settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Keep account'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete account'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _isDeletingAccount = true);
+    try {
+      await ref
+          .read(parentAccountDeletionServiceProvider)
+          .deleteAccount(identity: identity);
+      if (!mounted) {
+        return;
+      }
+      await _performLocalReset();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Parent account deleted from Tubestr backend records.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isDeletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is FormatException
+                ? error.message
+                : 'We couldn\'t delete the parent account yet. Please try again.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openSupportPage() {
+    return _openExternalPage(AppConstants.supportUrl);
+  }
+
+  Future<void> _openPrivacyPolicy() {
+    return _openExternalPage(AppConstants.privacyUrl);
+  }
+
+  Future<void> _openTermsPage() {
+    return _openExternalPage(AppConstants.termsUrl);
+  }
+
+  Future<void> _openExternalPage(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final launched = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!mounted || launched) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(content: Text('We could not open $url just yet.')),
+    );
   }
 
   Future<void> _manageGroup(MdkGroupSummary group) async {
@@ -956,7 +1122,12 @@ ${result.payload}
         onSaveDisplayName: _saveDisplayName,
         onPublishDisplayName: _publishDisplayName,
         onUpdatePin: _updatePin,
+        onOpenSupport: _openSupportPage,
+        onOpenPrivacyPolicy: _openPrivacyPolicy,
+        onOpenTerms: _openTermsPage,
         onResetApp: _resetApp,
+        onDeleteAccount: _deleteParentAccount,
+        isDeletingAccount: _isDeletingAccount || _isResettingApp,
       ),
       ParentZoneSection.network => ParentZoneNetworkSection(
         relayController: _relayController,
@@ -1305,30 +1476,31 @@ ${result.payload}
                   ? MediaQuery.sizeOf(context).width * 0.85
                   : 300.0;
               return AnimatedPositioned(
-            duration: AppMotion.duration(context, AppMotion.layoutChange),
-            curve: AppMotion.easeOutQuint,
-            left: _sidebarOpen ? 0 : -sidebarWidth,
-            top: 0,
-            bottom: 0,
-            width: sidebarWidth,
-            child: ParentZoneSidebar(
-              palette: palette,
-              parentLabel: (parentLabel == null || parentLabel.trim().isEmpty)
-                  ? 'Family controls'
-                  : parentLabel.trim(),
-              accountHint: _needsPinSetup
-                  ? 'PIN setup required'
-                  : 'Protected by parent PIN',
-              selected: _section,
-              onSelect: (section) async {
-                await HapticFeedback.selectionClick();
-                setState(() {
-                  _section = section;
-                  _sidebarOpen = false;
-                });
-              },
-            ),
-          );
+                duration: AppMotion.duration(context, AppMotion.layoutChange),
+                curve: AppMotion.easeOutQuint,
+                left: _sidebarOpen ? 0 : -sidebarWidth,
+                top: 0,
+                bottom: 0,
+                width: sidebarWidth,
+                child: ParentZoneSidebar(
+                  palette: palette,
+                  parentLabel:
+                      (parentLabel == null || parentLabel.trim().isEmpty)
+                      ? 'Family controls'
+                      : parentLabel.trim(),
+                  accountHint: _needsPinSetup
+                      ? 'PIN setup required'
+                      : 'Protected by parent PIN',
+                  selected: _section,
+                  onSelect: (section) async {
+                    await HapticFeedback.selectionClick();
+                    setState(() {
+                      _section = section;
+                      _sidebarOpen = false;
+                    });
+                  },
+                ),
+              );
             },
           ),
           if (_isResettingApp)

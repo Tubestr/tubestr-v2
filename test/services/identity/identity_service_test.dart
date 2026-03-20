@@ -152,4 +152,25 @@ void main() {
       );
     },
   );
+
+  test(
+    'clearIdentity removes both local and synced parent key copies',
+    () async {
+      const privateKeyHex =
+          '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+
+      await service.importParentIdentity(privateKeyHex);
+      await service.clearIdentity();
+
+      expect(await service.loadIdentity(), isNull);
+      expect(
+        testPlatform.buckets['local']![AppConstants.parentIdentityStorageKey],
+        isNull,
+      );
+      expect(
+        testPlatform.buckets['synced']![AppConstants.parentIdentityStorageKey],
+        isNull,
+      );
+    },
+  );
 }

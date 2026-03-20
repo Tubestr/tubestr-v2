@@ -10,6 +10,7 @@ import 'package:mytube/services/approval/content_scan_service.dart';
 import 'package:mytube/services/approval/media_signal_extraction_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
+import 'package:mytube/services/share/managed_video_upload_service.dart';
 import 'package:mytube/services/share/share_history_service.dart';
 import 'package:mytube/services/share/video_share_coordinator.dart';
 
@@ -101,6 +102,9 @@ void main() {
         nostrService: nostrService,
         offlineActionStore: OfflineActionStore(database: database),
         shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
       );
 
       final beforeShare = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -173,6 +177,7 @@ void main() {
       nostrService: nostrService,
       offlineActionStore: OfflineActionStore(database: database),
       shareHistoryService: ShareHistoryService(database: database),
+      managedVideoUploadService: ManagedVideoUploadService(database: database),
     );
 
     await expectLater(
@@ -230,6 +235,7 @@ void main() {
       nostrService: FakeNostrService(),
       offlineActionStore: OfflineActionStore(database: database),
       shareHistoryService: ShareHistoryService(database: database),
+      managedVideoUploadService: ManagedVideoUploadService(database: database),
     );
 
     final groups = await coordinator.loadEligibleShareGroups();
@@ -304,6 +310,9 @@ void main() {
         nostrService: nostrService,
         offlineActionStore: OfflineActionStore(database: database),
         shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
       );
 
       final result = await coordinator.shareLocalVideoToEligibleGroups(
@@ -382,6 +391,9 @@ void main() {
           ],
         offlineActionStore: OfflineActionStore(database: database),
         shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
       );
 
       final event = await coordinator.createUploadedShareMessage(
@@ -474,6 +486,9 @@ void main() {
         nostrService: nostrService,
         offlineActionStore: OfflineActionStore(database: database),
         shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
       );
 
       await coordinator.createUploadedShareMessage(
@@ -571,6 +586,9 @@ void main() {
           ],
         offlineActionStore: OfflineActionStore(database: database),
         shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
       );
 
       await coordinator.createUploadedShareMessage(
@@ -639,6 +657,7 @@ void main() {
         ..blossomServers = const ['https://blossom.example'],
       offlineActionStore: OfflineActionStore(database: database),
       shareHistoryService: ShareHistoryService(database: database),
+      managedVideoUploadService: ManagedVideoUploadService(database: database),
     );
 
     await coordinator.shareLocalVideoToEligibleGroups(

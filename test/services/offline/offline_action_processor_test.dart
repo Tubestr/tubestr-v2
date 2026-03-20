@@ -14,6 +14,8 @@ import 'package:mytube/services/identity/parent_profile_service.dart';
 import 'package:mytube/services/offline/offline_action_processor.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
+import 'package:mytube/services/safety/safety_hq_service.dart';
+import 'package:mytube/services/share/managed_video_upload_service.dart';
 import 'package:mytube/services/share/share_history_service.dart';
 import 'package:mytube/services/share/video_share_coordinator.dart';
 
@@ -102,6 +104,9 @@ void main() {
           nostrService: nostr,
           offlineActionStore: store,
           shareHistoryService: ShareHistoryService(database: database),
+          managedVideoUploadService: ManagedVideoUploadService(
+            database: database,
+          ),
         ),
         likeCoordinator: LikeCoordinator(
           database: database,
@@ -120,6 +125,11 @@ void main() {
           mdkService: mdk,
           nostrService: nostr,
           offlineActionStore: store,
+          safetyHqService: SafetyHqService(
+            database: database,
+            mdkService: mdk,
+            nostrService: nostr,
+          ),
         ),
       );
 

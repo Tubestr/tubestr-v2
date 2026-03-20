@@ -499,7 +499,10 @@ void main() {
       final diagnostics = coordinator.debugSnapshot();
       expect(diagnostics.started, isFalse);
       expect(diagnostics.activeSubscriptions, isEmpty);
-      expect(nostr.unsubscribedSubscriptionIds, contains('mytube.family.sync.0'));
+      expect(
+        nostr.unsubscribedSubscriptionIds,
+        contains('mytube.family.sync.0'),
+      );
       expect(
         diagnostics.recentHistory.any(
           (entry) =>
@@ -641,7 +644,8 @@ void main() {
           Nip01Event(
             id: 'too-old',
             pubKey: 'sender-pubkey',
-            createdAt: recentEventCreatedAt - const Duration(days: 30).inSeconds,
+            createdAt:
+                recentEventCreatedAt - const Duration(days: 30).inSeconds,
             kind: MarmotKinds.groupCommit,
             tags: const [
               ['h', 'nostr-group-1'],
