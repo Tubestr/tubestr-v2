@@ -227,7 +227,94 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(localVideos, localVideos.reviewReasons);
       }
     },
+    beforeOpen: (details) async {
+      // On iOS the app container UUID changes on every update, breaking
+      // absolute paths stored in the database. Detect and fix stale paths.
+      final Directory docsDir;
+      final Directory supportDir;
+      try {
+        docsDir = await getApplicationDocumentsDirectory();
+        supportDir = await getApplicationSupportDirectory();
+      } on Object {
+        // path_provider unavailable (e.g. in tests) — skip fixup.
+        return;
+      }
+      final currentPrefix = docsDir.path;
+      final currentSupportPrefix = supportDir.path;
+
+      // Fix local video paths (stored under Documents/)
+      final videoRows = await customSelect(
+        'SELECT id, file_path, thumb_path FROM local_videos',
+      ).get();
+
+      for (final row in videoRows) {
+        final id = row.read<String>('id');
+        final filePath = row.read<String>('file_path');
+        final thumbPath = row.read<String>('thumb_path');
+
+        final newFilePath = _rebaseIosPath(filePath, currentPrefix);
+        final newThumbPath = _rebaseIosPath(thumbPath, currentPrefix);
+
+        if (newFilePath != filePath || newThumbPath != thumbPath) {
+          await customUpdate(
+            'UPDATE local_videos SET file_path = ?, thumb_path = ? WHERE id = ?',
+            variables: [
+              Variable.withString(newFilePath),
+              Variable.withString(newThumbPath),
+              Variable.withString(id),
+            ],
+            updates: {localVideos},
+          );
+        }
+      }
+
+      // Fix remote asset cache paths (stored under Library/Application Support/)
+      final assetRows = await customSelect(
+        'SELECT id, local_media_path, local_thumb_path FROM remote_assets '
+        'WHERE local_media_path IS NOT NULL OR local_thumb_path IS NOT NULL',
+      ).get();
+
+      for (final row in assetRows) {
+        final id = row.read<int>('id');
+        final mediaPath = row.readNullable<String>('local_media_path');
+        final thumbPath = row.readNullable<String>('local_thumb_path');
+
+        final newMediaPath = mediaPath == null
+            ? null
+            : _rebaseIosPath(mediaPath, currentSupportPrefix,
+                marker: 'Application Support/');
+        final newThumbPath = thumbPath == null
+            ? null
+            : _rebaseIosPath(thumbPath, currentSupportPrefix,
+                marker: 'Application Support/');
+
+        if (newMediaPath != mediaPath || newThumbPath != thumbPath) {
+          await customUpdate(
+            'UPDATE remote_assets SET local_media_path = ?, local_thumb_path = ? WHERE id = ?',
+            variables: [
+              Variable.withString(newMediaPath ?? ''),
+              Variable.withString(newThumbPath ?? ''),
+              Variable.withInt(id),
+            ],
+            updates: {remoteAssets},
+          );
+        }
+      }
+    },
   );
+
+  static String _rebaseIosPath(
+    String storedPath,
+    String currentBaseDir, {
+    String marker = 'Documents/',
+  }) {
+    if (storedPath.isEmpty) return storedPath;
+    if (storedPath.startsWith(currentBaseDir)) return storedPath;
+    final idx = storedPath.indexOf(marker);
+    if (idx < 0) return storedPath;
+    final relativePart = storedPath.substring(idx + marker.length);
+    return p.join(currentBaseDir, relativePart);
+  }
 
   Stream<List<Profile>> watchProfiles() {
     return (select(
