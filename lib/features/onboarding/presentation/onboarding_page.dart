@@ -4,8 +4,8 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
@@ -13,6 +13,7 @@ import '../../../domain/models/parent_identity.dart';
 import '../../../shared_ui/components/confetti_view.dart';
 import '../../../shared_ui/components/nook_decorations.dart';
 import '../../../shared_ui/components/qr_scanner_sheet.dart';
+import '../../../shared_ui/components/external_page_view.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../app_shell/presentation/app_shell.dart';
 import 'models/onboarding_flow_state.dart';
@@ -164,17 +165,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 
   Future<void> _openPrivacyPolicy() async {
-    final launched = await launchUrl(
-      Uri.parse('https://www.tubestr.app/privacy'),
-      mode: LaunchMode.externalApplication,
+    await openExternalPageWithFallback(
+      context,
+      title: 'Privacy Policy',
+      url: AppConstants.privacyUrl,
     );
-    if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('We could not open the privacy policy link just yet.'),
-        ),
-      );
-    }
   }
 
   void _refreshParentState() {
@@ -337,7 +332,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         return;
       }
       setState(() => _flow = _flow.copyWith(busy: false));
-      _finish();
+      await _finish();
     } catch (_) {
       if (!mounted) {
         return;
@@ -352,11 +347,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     }
   }
 
-  void _finish() {
+  Future<void> _finish() async {
     final onboardingMode =
         widget.identity != null || _flow.recoverySucceeded == true
         ? 'restore_parent'
         : 'new_parent';
+    await ref.read(safetyHqServiceProvider).queueJoin();
     unawaited(
       ref
           .read(betaFunnelServiceProvider)
@@ -510,34 +506,36 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               ],
             ),
           ),
-          SafeArea(
-            child: AnimatedSwitcher(
-              duration: AppMotion.duration(context, AppMotion.layoutChange),
-              switchInCurve: AppMotion.easeOutQuint,
-              switchOutCurve: Curves.easeOut,
-              transitionBuilder: (child, animation) {
-                final offsetAnimation =
-                    Tween<Offset>(
-                      begin: AppMotion.offset(context, const Offset(0, 0.06)),
-                      end: Offset.zero,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: AppMotion.easeOutQuint,
-                      ),
-                    );
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: offsetAnimation,
-                    child: child,
-                  ),
-                );
-              },
-              child: _buildCurrentStep(
-                palette: palette,
-                profiles: profiles,
-                identity: identity,
+          Positioned.fill(
+            child: SafeArea(
+              child: AnimatedSwitcher(
+                duration: AppMotion.duration(context, AppMotion.layoutChange),
+                switchInCurve: AppMotion.easeOutQuint,
+                switchOutCurve: Curves.easeOut,
+                transitionBuilder: (child, animation) {
+                  final offsetAnimation =
+                      Tween<Offset>(
+                        begin: AppMotion.offset(context, const Offset(0, 0.06)),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: AppMotion.easeOutQuint,
+                        ),
+                      );
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: offsetAnimation,
+                      child: child,
+                    ),
+                  );
+                },
+                child: _buildCurrentStep(
+                  palette: palette,
+                  profiles: profiles,
+                  identity: identity,
+                ),
               ),
             ),
           ),

@@ -45,6 +45,7 @@ class FakeBlossomClient extends BlossomClient {
   final List<String> uploadServers = [];
   final List<String?> uploadAuthHeaders = [];
   final Set<String> failingUploadServers = <String>{};
+  final Set<String> failingDeleteServers = <String>{};
 
   @override
   Future<List<int>> downloadBlob({
@@ -92,6 +93,9 @@ class FakeBlossomClient extends BlossomClient {
     required String hash,
     BlossomUploadAuth? auth,
   }) async {
+    if (failingDeleteServers.contains(server)) {
+      throw StateError('delete failed for $server');
+    }
     deletedServers.add(server);
     deletedHashes.add(hash);
     deleteAuthHeaders.add(auth?.authorizationHeaderValue);
@@ -130,6 +134,7 @@ class FakeMdkService extends MdkService {
   List<String>? lastRemovedMemberPubkeys;
   String? lastCreateGroupName;
   String? lastCreateGroupDescription;
+  List<String> lastCreateGroupWithWelcomesMemberKeyPackageEventJsons = const [];
 
   @override
   Future<void> ensureInitialized() async {}
@@ -152,6 +157,9 @@ class FakeMdkService extends MdkService {
   }) async {
     lastCreateGroupName = name;
     lastCreateGroupDescription = description;
+    lastCreateGroupWithWelcomesMemberKeyPackageEventJsons = List<String>.from(
+      memberKeyPackageEventJsons,
+    );
     final result = createGroupResult!;
     return MdkCreateGroupResult(
       group: MdkGroupSummary(

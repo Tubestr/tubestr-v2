@@ -20,6 +20,7 @@ import '../../../services/identity/identity_service.dart';
 import '../../../services/identity/parent_profile_service.dart';
 import '../../../services/mdk/mdk_service.dart';
 import '../../../services/media/remote_media_service.dart';
+import '../../../services/media/local_media_library_service.dart';
 import '../../../services/nostr/nostr_service.dart';
 import '../../../services/offline/offline_action_processor.dart';
 import '../../../services/offline/offline_action_store.dart';
@@ -55,6 +56,7 @@ final editorExportServiceProvider = Provider<EditorExportService>((ref) {
     database: ref.watch(appDatabaseProvider),
     thumbnailService: ref.watch(thumbnailServiceProvider),
     videoApprovalService: ref.watch(videoApprovalServiceProvider),
+    localMediaLibraryService: ref.watch(localMediaLibraryServiceProvider),
   );
 });
 
@@ -134,6 +136,12 @@ final remoteMediaServiceProvider = Provider<RemoteMediaService>((ref) {
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
   );
+});
+
+final localMediaLibraryServiceProvider = Provider<LocalMediaLibraryService>((
+  ref,
+) {
+  return LocalMediaLibraryService();
 });
 
 final syncCoordinatorProvider = Provider<SyncCoordinator>((ref) {
@@ -253,6 +261,7 @@ final safetyHqServiceProvider = Provider((ref) {
     database: ref.watch(appDatabaseProvider),
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
+    dio: ref.watch(dioProvider),
   );
 });
 

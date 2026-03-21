@@ -46,12 +46,7 @@ class _AppShellState extends ConsumerState<AppShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      unawaited(
-        ref
-            .read(syncCoordinatorProvider)
-            .refreshSubscriptions(trigger: SyncRefreshTrigger.resume),
-      );
-      unawaited(_flushOperationalQueues());
+      unawaited(_resumeBackgroundTasks());
     }
   }
 
@@ -63,24 +58,8 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   Future<void> _startBackgroundTasks() async {
-    final identity = await ref.read(identityServiceProvider).loadIdentity();
-    if (identity == null) {
-      return;
-    }
-
-    final safetyGroup = await ref
-        .read(safetyHqServiceProvider)
-        .ensureProvisioned(identity: identity);
-    if (safetyGroup != null) {
-      await ref
-          .read(syncCoordinatorProvider)
-          .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
-    }
-    await ref
-        .read(reportCoordinatorProvider)
-        .flushQueuedSafetyReports(identity: identity);
+    await _reconcileSafetyHq();
     await _flushOperationalQueues();
-    ref.invalidate(safetyHqStatusProvider);
   }
 
   Future<void> _flushOperationalQueues() async {
@@ -88,6 +67,47 @@ class _AppShellState extends ConsumerState<AppShell>
     ref.invalidate(reportsProvider);
     ref.invalidate(offlineActionsProvider);
     ref.invalidate(shareHistoryProvider);
+  }
+
+  Future<void> _resumeBackgroundTasks() async {
+    await ref
+        .read(syncCoordinatorProvider)
+        .refreshSubscriptions(trigger: SyncRefreshTrigger.resume);
+    await _reconcileSafetyHq();
+    await _flushOperationalQueues();
+  }
+
+  Future<void> _reconcileSafetyHq() async {
+    final identity = await ref.read(identityServiceProvider).loadIdentity();
+    if (identity == null) {
+      ref.invalidate(safetyHqStatusProvider);
+      return;
+    }
+
+    try {
+      final safetyService = ref.read(safetyHqServiceProvider);
+      final statusBefore = await safetyService.refreshEnrollment();
+      if (statusBefore.isQueued || statusBefore.isProvisioning) {
+        final safetyGroup = await safetyService.ensureProvisioned(
+          identity: identity,
+        );
+        if (safetyGroup != null || statusBefore.isProvisioning) {
+          await ref
+              .read(syncCoordinatorProvider)
+              .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
+        }
+      }
+
+      final statusAfter = await safetyService.refreshEnrollment();
+      if (statusAfter.isJoined) {
+        await ref
+            .read(reportCoordinatorProvider)
+            .flushQueuedSafetyReports(identity: identity);
+      }
+    } catch (_) {
+      // Safety HQ setup should never block the rest of app startup or resume work.
+    }
+    ref.invalidate(safetyHqStatusProvider);
   }
 
   void _bindDeepLinks() {

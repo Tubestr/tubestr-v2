@@ -68,6 +68,7 @@ dependencies:
   rust_lib_mytube:
     path: rust_builder
   url_launcher: ^6.3.2
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:

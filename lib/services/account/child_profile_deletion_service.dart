@@ -13,12 +13,14 @@ class ChildProfileDeletionResult {
     required this.retainedUploadCount,
     required this.failedDeleteCount,
     required this.usedManagedCleanup,
+    required this.deletedProfile,
   });
 
   final int deletedBlobCount;
   final int retainedUploadCount;
   final int failedDeleteCount;
   final bool usedManagedCleanup;
+  final bool deletedProfile;
 }
 
 class ChildProfileDeletionService {
@@ -95,14 +97,18 @@ class ChildProfileDeletionService {
       failedDeleteCount = deletableTargets.length;
     }
 
-    await _database.deleteProfileById(profileId);
-    await _managedVideoUploadService.removeProfile(profileId);
+    final deletedProfile = failedDeleteCount == 0;
+    if (deletedProfile) {
+      await _database.deleteProfileById(profileId);
+      await _managedVideoUploadService.removeProfile(profileId);
+    }
 
     return ChildProfileDeletionResult(
       deletedBlobCount: deletedBlobCount,
       retainedUploadCount: retainedUploads.length,
       failedDeleteCount: failedDeleteCount,
       usedManagedCleanup: usedManagedCleanup,
+      deletedProfile: deletedProfile,
     );
   }
 

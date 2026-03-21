@@ -61,6 +61,7 @@ void main() {
       expect(result.deletedBlobCount, 3);
       expect(result.retainedUploadCount, 0);
       expect(result.failedDeleteCount, 0);
+      expect(result.deletedProfile, isTrue);
       expect(blossom.deletedHashes, ['blob-1', 'blob-1', 'thumb-1']);
       expect(blossom.deletedServers, [
         'https://blossom-a.example',
@@ -131,6 +132,7 @@ void main() {
     expect(result.deletedBlobCount, 0);
     expect(result.retainedUploadCount, 1);
     expect(blossom.deletedHashes, isEmpty);
+    expect(result.deletedProfile, isTrue);
   });
 
   test('deleteProfile retains uploads referenced by reports', () async {
@@ -186,5 +188,54 @@ void main() {
     expect(result.deletedBlobCount, 0);
     expect(result.retainedUploadCount, 1);
     expect(blossom.deletedHashes, isEmpty);
+    expect(result.deletedProfile, isTrue);
   });
+
+  test(
+    'deleteProfile keeps retryable state when remote cleanup fails',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'child-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'avatar.png',
+      );
+
+      final managedUploads = ManagedVideoUploadService(database: database);
+      await managedUploads.recordUpload(
+        videoId: 'video-1',
+        profileId: 'child-1',
+        videoBlob: const ManagedUploadedBlob(
+          hash: 'blob-1',
+          servers: ['https://blossom.example'],
+        ),
+        thumbBlob: const ManagedUploadedBlob(
+          hash: 'thumb-1',
+          servers: ['https://blossom.example'],
+        ),
+      );
+
+      final blossom = FakeBlossomClient(unavailableServer: 'unused')
+        ..failingDeleteServers.add('https://blossom.example');
+      final service = ChildProfileDeletionService(
+        database: database,
+        blossomClient: blossom,
+        nostrService: FakeNostrService(),
+        shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: managedUploads,
+      );
+
+      final result = await service.deleteProfile(
+        profileId: 'child-1',
+        identity: identity,
+      );
+
+      expect(result.failedDeleteCount, 2);
+      expect(result.deletedProfile, isFalse);
+      expect(await database.watchProfiles().first, isNotEmpty);
+      expect(await managedUploads.loadForProfile('child-1'), isNotEmpty);
+    },
+  );
 }

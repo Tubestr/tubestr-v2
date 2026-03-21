@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/storage/app_database.dart';
@@ -129,6 +130,7 @@ void main() {
             database: database,
             mdkService: mdk,
             nostrService: nostr,
+            dio: Dio(),
           ),
         ),
       );

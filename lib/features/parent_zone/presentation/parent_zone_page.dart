@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
@@ -14,6 +13,7 @@ import '../../../core/nostr/nostr_key_format.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/marmot/invite_transport_models.dart';
 import '../../../domain/models/remote_share_projection.dart';
+import '../../../shared_ui/components/external_page_view.dart';
 import '../../../shared_ui/components/qr_scanner_sheet.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../../services/mdk/mdk_service.dart';
@@ -625,20 +625,23 @@ ${result.payload}
       return;
     }
 
+    final messenger = ScaffoldMessenger.of(context);
     final identity = ref.read(parentIdentityProvider).valueOrNull;
     final result = await ref
         .read(childProfileDeletionServiceProvider)
         .deleteProfile(profileId: profileId, identity: identity);
-    await HapticFeedback.mediumImpact();
     if (!mounted) {
       return;
     }
-    final message = result.usedManagedCleanup
-        ? 'Profile deleted. ${result.deletedBlobCount} file${result.deletedBlobCount == 1 ? '' : 's'} removed from Tubestr servers.'
-        : 'Profile deleted.';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (result.deletedProfile) {
+      await HapticFeedback.mediumImpact();
+    }
+    final message = result.deletedProfile
+        ? result.usedManagedCleanup
+              ? 'Profile deleted. ${result.deletedBlobCount} file${result.deletedBlobCount == 1 ? '' : 's'} removed from Tubestr servers.'
+              : 'Profile deleted.'
+        : 'We could not finish deleting $childName yet because ${result.failedDeleteCount} file${result.failedDeleteCount == 1 ? '' : 's'} could not be removed from Tubestr servers. Try again when the connection is stable.';
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _approveVideo(String videoId) async {
@@ -853,26 +856,45 @@ ${result.payload}
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
-    final group = await ref
-        .read(safetyHqServiceProvider)
-        .ensureProvisioned(identity: identity);
-    await ref
-        .read(syncCoordinatorProvider)
-        .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
-    ref.invalidate(safetyHqStatusProvider);
-    if (!mounted) {
-      return;
-    }
-    await HapticFeedback.mediumImpact();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          group == null
-              ? 'Safety HQ is already set up on this device'
-              : 'Set up ${group.name} on this device',
+    final safetyService = ref.read(safetyHqServiceProvider);
+    try {
+      await safetyService.queueJoin();
+      final group = await safetyService.ensureProvisioned(identity: identity);
+      await ref
+          .read(syncCoordinatorProvider)
+          .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
+      final status = await safetyService.refreshEnrollment();
+      if (status.isJoined) {
+        await ref
+            .read(reportCoordinatorProvider)
+            .flushQueuedSafetyReports(identity: identity);
+      }
+      ref.invalidate(safetyHqStatusProvider);
+      if (!mounted) {
+        return;
+      }
+      await HapticFeedback.mediumImpact();
+      final message = status.isJoined
+          ? 'Safety HQ is connected and ready.'
+          : group != null
+          ? 'Safety HQ is connecting. We sent the setup welcome to the moderation service.'
+          : 'Safety HQ is still connecting. Leave the app online for a moment and check again.';
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      ref.invalidate(safetyHqStatusProvider);
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            error is FormatException
+                ? error.message
+                : 'We couldn\'t set up Safety HQ yet. Please try again.',
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   Future<void> _resetApp() async {
@@ -1040,29 +1062,25 @@ ${result.payload}
   }
 
   Future<void> _openSupportPage() {
-    return _openExternalPage(AppConstants.supportUrl);
+    return _openExternalPage(title: 'Support', url: AppConstants.supportUrl);
   }
 
   Future<void> _openPrivacyPolicy() {
-    return _openExternalPage(AppConstants.privacyUrl);
+    return _openExternalPage(
+      title: 'Privacy Policy',
+      url: AppConstants.privacyUrl,
+    );
   }
 
   Future<void> _openTermsPage() {
-    return _openExternalPage(AppConstants.termsUrl);
+    return _openExternalPage(title: 'Terms', url: AppConstants.termsUrl);
   }
 
-  Future<void> _openExternalPage(String url) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final launched = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!mounted || launched) {
-      return;
-    }
-    messenger.showSnackBar(
-      SnackBar(content: Text('We could not open $url just yet.')),
-    );
+  Future<void> _openExternalPage({
+    required String title,
+    required String url,
+  }) async {
+    await openExternalPageWithFallback(context, title: title, url: url);
   }
 
   Future<void> _manageGroup(MdkGroupSummary group) async {

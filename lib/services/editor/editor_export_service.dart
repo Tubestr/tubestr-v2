@@ -7,13 +7,13 @@ import 'package:ffmpeg_kit_flutter_new_video/return_code.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/storage/app_database.dart';
 import '../../domain/models/editor_resources.dart';
 import '../../domain/models/editor_session.dart';
 import '../approval/video_approval_service.dart';
+import '../media/local_media_library_service.dart';
 import '../media/thumbnail_service.dart';
 import '../media/video_probe_service.dart';
 import 'editor_resource_catalog.dart';
@@ -87,6 +87,7 @@ class EditorExportService {
     required AppDatabase database,
     required ThumbnailService thumbnailService,
     required VideoApprovalService videoApprovalService,
+    required LocalMediaLibraryService localMediaLibraryService,
     AssetBundle? assetBundle,
     Uuid? uuid,
     ExecuteFfmpegWithArguments? executeFfmpeg,
@@ -94,6 +95,7 @@ class EditorExportService {
   }) : _database = database,
        _thumbnailService = thumbnailService,
        _videoApprovalService = videoApprovalService,
+       _localMediaLibraryService = localMediaLibraryService,
        _assetBundle = assetBundle ?? rootBundle,
        _uuid = uuid ?? const Uuid(),
        _executeFfmpeg = executeFfmpeg ?? _defaultExecuteFfmpeg,
@@ -103,6 +105,7 @@ class EditorExportService {
   final AppDatabase _database;
   final ThumbnailService _thumbnailService;
   final VideoApprovalService _videoApprovalService;
+  final LocalMediaLibraryService _localMediaLibraryService;
   final AssetBundle _assetBundle;
   final Uuid _uuid;
   final ExecuteFfmpegWithArguments _executeFfmpeg;
@@ -115,15 +118,12 @@ class EditorExportService {
     ui.Size? preferredDisplaySize,
     int? preferredRotationDegrees,
   }) async {
-    final root = await getApplicationSupportDirectory();
-    final exportsDir = Directory(p.join(root.path, 'editor_exports'));
-    final stagingDir = Directory(p.join(root.path, 'editor_staging'));
-    await exportsDir.create(recursive: true);
-    await stagingDir.create(recursive: true);
+    final stagingDir = await _localMediaLibraryService
+        .ensureEditorStagingDirectory();
 
-    final outputPath = p.join(
-      exportsDir.path,
-      'edit_${DateTime.now().millisecondsSinceEpoch}.mp4',
+    final outputPath = await _localMediaLibraryService.createManagedVideoPath(
+      prefix: 'edit',
+      extension: '.mp4',
     );
     final sourceMediaInfo =
         await _probeSourceMediaInfo(session.sourcePath) ??
@@ -155,9 +155,9 @@ class EditorExportService {
       final attempt = attempts[i];
       final attemptOutputPath = i == 0
           ? outputPath
-          : p.join(
-              exportsDir.path,
-              'edit_${DateTime.now().millisecondsSinceEpoch}_fallback_$i.mp4',
+          : await _localMediaLibraryService.createManagedVideoPath(
+              prefix: 'edit_fallback_$i',
+              extension: '.mp4',
             );
       final stagedOverlayImagePath = await _stageOverlayImage(
         session: attempt.session,

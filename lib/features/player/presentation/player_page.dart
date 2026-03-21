@@ -40,6 +40,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   late final PlayerRouteArgs _routeArgs;
   late final ProviderSubscription<PlayerRouteState> _routeStateSubscription;
   final List<StreamSubscription<Object?>> _playerSubscriptions = [];
+  StreamSubscription<VideoParams>? _videoParamsSubscription;
   String? _openedPath;
   bool _isDownloadingRemote = false;
   bool _isRepairingRemoteCache = false;
@@ -49,6 +50,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   int? _videoWidth;
   int? _videoHeight;
   double? _probeDisplayAspectRatio;
+  VideoParams _videoParams = const VideoParams();
   String? _lastRemoteValidationId;
 
   // Controls visibility
@@ -115,6 +117,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         if (mounted) setState(() => _videoHeight = v);
       }),
     );
+    _videoParamsSubscription = _player.stream.videoParams.listen((value) {
+      if (!mounted) {
+        return;
+      }
+      if (_hasUsableVideoParams(value)) {
+        setState(() => _videoParams = value);
+      }
+    });
     _routeStateSubscription = ref.listenManual<PlayerRouteState>(
       playerRouteStateProvider(_routeArgs),
       (previous, next) {
@@ -138,6 +148,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
     _hideTimer?.cancel();
     _routeStateSubscription.close();
+    unawaited(_videoParamsSubscription?.cancel());
     for (final subscription in _playerSubscriptions) {
       subscription.cancel();
     }
@@ -152,7 +163,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _peakPosition = Duration.zero;
     _lastObservedPosition = Duration.zero;
     _replayDetected = false;
+    _videoWidth = null;
+    _videoHeight = null;
     _probeDisplayAspectRatio = null;
+    _videoParams = const VideoParams();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       if (path == null || path.isEmpty) {
@@ -209,24 +223,104 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     return '$m:$s';
   }
 
-  double _resolvedAspectRatio() {
-    final width = _videoWidth;
-    final height = _videoHeight;
-    if (width != null && height != null && width > 0 && height > 0) {
-      // media_kit (mpv backend on desktop, native on mobile) may or may not
-      // account for rotation in stream.width/height. Use the probe result
-      // as the source of truth when available — it always gives us the
-      // correct display dimensions regardless of backend.
-      if (_probeDisplayAspectRatio != null) {
-        return _probeDisplayAspectRatio!;
-      }
-      return width / height;
+  double _resolvedAspectRatio(PlayerRouteState routeState) {
+    final videoParamsAspectRatio = _videoParamsDisplayAspectRatio();
+    if (videoParamsAspectRatio != null && videoParamsAspectRatio > 0) {
+      return videoParamsAspectRatio;
     }
-    // Probe result available before stream dimensions arrive
     if (_probeDisplayAspectRatio != null) {
       return _probeDisplayAspectRatio!;
     }
+    final width = _videoWidth;
+    final height = _videoHeight;
+    if (width != null && height != null && width > 0 && height > 0) {
+      return width / height;
+    }
+    final persistedAspectRatio =
+        routeState.video?.aspectRatio ?? routeState.remoteShare?.aspectRatio;
+    if (persistedAspectRatio != null && persistedAspectRatio > 0) {
+      return persistedAspectRatio;
+    }
     return 9 / 16;
+  }
+
+  bool _hasUsableVideoParams(VideoParams value) {
+    final hasDimensions =
+        (value.w != null && value.w! > 0 && value.h != null && value.h! > 0) ||
+        (value.dw != null &&
+            value.dw! > 0 &&
+            value.dh != null &&
+            value.dh! > 0);
+    final hasRotation = value.rotate != null;
+    final hasAspect = value.aspect != null && value.aspect! > 0;
+    return hasDimensions || hasRotation || hasAspect;
+  }
+
+  Size _orientedSize({
+    required double width,
+    required double height,
+    required int rotationDegrees,
+  }) {
+    final normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
+    if (normalizedRotation == 90 || normalizedRotation == 270) {
+      return Size(height, width);
+    }
+    return Size(width, height);
+  }
+
+  Size? _preferredDisplaySize() {
+    final rotation = _videoParams.rotate ?? 0;
+    final w = _videoParams.w;
+    final h = _videoParams.h;
+    if (w != null && h != null && w > 0 && h > 0) {
+      return _orientedSize(
+        width: w.toDouble(),
+        height: h.toDouble(),
+        rotationDegrees: rotation,
+      );
+    }
+
+    if (_videoWidth != null &&
+        _videoHeight != null &&
+        _videoWidth! > 0 &&
+        _videoHeight! > 0) {
+      return Size(_videoWidth!.toDouble(), _videoHeight!.toDouble());
+    }
+
+    final dw = _videoParams.dw;
+    final dh = _videoParams.dh;
+    if (dw != null && dh != null && dw > 0 && dh > 0) {
+      return _orientedSize(
+        width: dw.toDouble(),
+        height: dh.toDouble(),
+        rotationDegrees: rotation,
+      );
+    }
+
+    return null;
+  }
+
+  double? _videoParamsDisplayAspectRatio() {
+    final preferredDisplaySize = _preferredDisplaySize();
+    if (preferredDisplaySize != null &&
+        preferredDisplaySize.width > 0 &&
+        preferredDisplaySize.height > 0) {
+      return preferredDisplaySize.width / preferredDisplaySize.height;
+    }
+    return _videoParams.aspect;
+  }
+
+  Size _fitPlayerSizeWithin(Size viewport, double aspectRatio) {
+    if (viewport.width <= 0 || viewport.height <= 0 || aspectRatio <= 0) {
+      return viewport;
+    }
+    final viewportAspect = viewport.width / viewport.height;
+    if (viewportAspect > aspectRatio) {
+      final height = viewport.height;
+      return Size(height * aspectRatio, height);
+    }
+    final width = viewport.width;
+    return Size(width, width / aspectRatio);
   }
 
   Future<void> _ensureRemoteMediaReady(
@@ -333,6 +427,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final mediaQuery = MediaQuery.of(context);
     final isWide = mediaQuery.size.width >= 900;
     final maxPlayerWidth = isWide ? 860.0 : mediaQuery.size.width - 28;
+    final playerAspectRatio = _resolvedAspectRatio(routeState);
     _lastRouteState = routeState;
     final video = routeState.video;
     final remoteShare = routeState.remoteShare;
@@ -391,7 +486,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
     final showPlayerSheet =
         mediaPath != null && (remoteShare == null || remoteShare.isDownloaded);
-    final playerBottomInset = showPlayerSheet ? 120.0 : 28.0;
+    final playerHorizontalInset = isWide ? 24.0 : 8.0;
+    final playerTopInset = mediaQuery.padding.top + 18.0;
+    final playerBottomInset =
+        mediaQuery.padding.bottom + (showPlayerSheet ? 72.0 : 20.0);
 
     return Scaffold(
       backgroundColor: palette.backgroundBottom,
@@ -431,155 +529,177 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             Center(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
-                  14,
-                  mediaQuery.padding.top + 72,
-                  14,
-                  mediaQuery.padding.bottom + playerBottomInset,
+                  playerHorizontalInset,
+                  playerTopInset,
+                  playerHorizontalInset,
+                  playerBottomInset,
                 ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxPlayerWidth),
-                  child: AspectRatio(
-                    aspectRatio: _resolvedAspectRatio(),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: palette.panel.withValues(alpha: 0.96),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: palette.panelBorder),
-                        boxShadow: [
-                          BoxShadow(
-                            color: palette.accent.withValues(alpha: 0.12),
-                            blurRadius: 26,
-                            offset: const Offset(0, 14),
+                child: LayoutBuilder(
+                  builder: (context, viewport) {
+                    final playerViewport = Size(
+                      viewport.maxWidth.clamp(0.0, maxPlayerWidth),
+                      viewport.maxHeight,
+                    );
+                    final playerSize = _fitPlayerSizeWithin(
+                      playerViewport,
+                      playerAspectRatio,
+                    );
+                    return Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: playerSize.width,
+                        height: playerSize.height,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: palette.panel.withValues(alpha: 0.96),
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(color: palette.panelBorder),
+                            boxShadow: [
+                              BoxShadow(
+                                color: palette.accent.withValues(alpha: 0.12),
+                                blurRadius: 26,
+                                offset: const Offset(0, 14),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(26),
-                        child: mediaPath != null
-                            ? Video(controller: _videoController)
-                            : Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  if (hasRemoteThumb)
-                                    MediaThumbnailFrame(
-                                      file: remoteThumbFile!,
-                                      borderRadius: BorderRadius.circular(26),
-                                      padding: const EdgeInsets.all(12),
-                                    )
-                                  else
-                                    DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            palette.accent.withValues(
-                                              alpha: 0.12,
-                                            ),
-                                            palette.accentSecondary.withValues(
-                                              alpha: 0.10,
-                                            ),
-                                            palette.panel.withValues(
-                                              alpha: 0.92,
-                                            ),
-                                          ],
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                        ),
-                                      ),
-                                    ),
-                                  DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          palette.ink.withValues(alpha: 0.06),
-                                          palette.ink.withValues(alpha: 0.24),
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                      ),
-                                    ),
-                                  ),
-                                  Center(
-                                    child: ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 340,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              remoteShare == null
-                                                  ? Icons
-                                                        .play_circle_outline_rounded
-                                                  : Icons
-                                                        .cloud_download_rounded,
-                                              size: 72,
-                                              color: palette.accent,
-                                            ),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              statusTitle,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: palette.ink,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              statusDetail,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: palette.mutedInk,
-                                                fontSize: 14,
-                                                height: 1.35,
-                                              ),
-                                            ),
-                                            if (remoteShare != null) ...[
-                                              const SizedBox(height: 16),
-                                              FilledButton.icon(
-                                                onPressed: _isDownloadingRemote
-                                                    ? null
-                                                    : () =>
-                                                          _downloadRemoteShare(
-                                                            remoteShare,
-                                                          ),
-                                                icon: _isDownloadingRemote
-                                                    ? const SizedBox(
-                                                        width: 16,
-                                                        height: 16,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              strokeWidth: 2,
-                                                            ),
-                                                      )
-                                                    : const Icon(
-                                                        Icons.download_rounded,
-                                                      ),
-                                                label: Text(
-                                                  _isDownloadingRemote
-                                                      ? 'Downloading...'
-                                                      : remoteShare.status ==
-                                                            'failed'
-                                                      ? 'Repair Download'
-                                                      : 'Download Now',
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(26),
+                            child: mediaPath != null
+                                ? Video(controller: _videoController)
+                                : Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      if (hasRemoteThumb)
+                                        MediaThumbnailFrame(
+                                          file: remoteThumbFile!,
+                                          borderRadius: BorderRadius.circular(
+                                            26,
+                                          ),
+                                          padding: const EdgeInsets.all(12),
+                                        )
+                                      else
+                                        DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                palette.accent.withValues(
+                                                  alpha: 0.12,
                                                 ),
+                                                palette.accentSecondary
+                                                    .withValues(alpha: 0.10),
+                                                palette.panel.withValues(
+                                                  alpha: 0.92,
+                                                ),
+                                              ],
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                            ),
+                                          ),
+                                        ),
+                                      DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              palette.ink.withValues(
+                                                alpha: 0.06,
+                                              ),
+                                              palette.ink.withValues(
+                                                alpha: 0.24,
                                               ),
                                             ],
-                                          ],
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                      Center(
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 340,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  remoteShare == null
+                                                      ? Icons
+                                                            .play_circle_outline_rounded
+                                                      : Icons
+                                                            .cloud_download_rounded,
+                                                  size: 72,
+                                                  color: palette.accent,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  statusTitle,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: palette.ink,
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  statusDetail,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: palette.mutedInk,
+                                                    fontSize: 14,
+                                                    height: 1.35,
+                                                  ),
+                                                ),
+                                                if (remoteShare != null) ...[
+                                                  const SizedBox(height: 16),
+                                                  FilledButton.icon(
+                                                    onPressed:
+                                                        _isDownloadingRemote
+                                                        ? null
+                                                        : () =>
+                                                              _downloadRemoteShare(
+                                                                remoteShare,
+                                                              ),
+                                                    icon: _isDownloadingRemote
+                                                        ? const SizedBox(
+                                                            width: 16,
+                                                            height: 16,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2,
+                                                                ),
+                                                          )
+                                                        : const Icon(
+                                                            Icons
+                                                                .download_rounded,
+                                                          ),
+                                                    label: Text(
+                                                      _isDownloadingRemote
+                                                          ? 'Downloading...'
+                                                          : remoteShare
+                                                                    .status ==
+                                                                'failed'
+                                                          ? 'Repair Download'
+                                                          : 'Download Now',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
             ),

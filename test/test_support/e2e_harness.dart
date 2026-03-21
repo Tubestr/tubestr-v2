@@ -4,9 +4,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:dio/dio.dart';
 import 'package:mytube/core/constants.dart';
 import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
@@ -889,6 +889,7 @@ class FamilyAppHarness {
       database: database,
       mdkService: mdk,
       nostrService: nostr,
+      dio: Dio(),
     );
     final reportCoordinator = ReportCoordinator(
       database: database,

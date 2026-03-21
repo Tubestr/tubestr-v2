@@ -319,7 +319,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
   final VoidCallback onGenerate;
   final ValueChanged<String> onBirthYearChanged;
   final ValueChanged<bool> onConsentChanged;
-  final VoidCallback onOpenPrivacyPolicy;
+  final Future<void> Function() onOpenPrivacyPolicy;
   final VoidCallback onContinue;
 
   @override
@@ -414,7 +414,11 @@ class OnboardingParentKeyStep extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
-                        onPressed: busy ? null : onOpenPrivacyPolicy,
+                        onPressed: busy
+                            ? null
+                            : () async {
+                                await onOpenPrivacyPolicy();
+                              },
                         icon: const Icon(Icons.open_in_new_rounded),
                         label: const Text('Read privacy policy'),
                       ),

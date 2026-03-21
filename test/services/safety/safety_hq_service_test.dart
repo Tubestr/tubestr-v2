@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/constants.dart';
@@ -8,10 +9,22 @@ import 'package:mytube/services/safety/safety_hq_service.dart';
 
 import '../../test_support/service_fakes.dart';
 
+class _SafetyHttpInterceptor extends Interceptor {
+  _SafetyHttpInterceptor(this._handler);
+
+  final Response<dynamic> Function(RequestOptions options) _handler;
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    handler.resolve(_handler(options));
+  }
+}
+
 void main() {
   late AppDatabase database;
   late FakeMdkService mdk;
   late FakeNostrService nostr;
+  late Dio dio;
   late SafetyHqService service;
 
   const identity = ParentIdentity(
@@ -25,19 +38,46 @@ void main() {
   setUp(() async {
     database = AppDatabase.forTesting(NativeDatabase.memory());
     mdk = FakeMdkService()
-      ..createGroupSummaryResult = const MdkGroupSummary(
-        mlsGroupIdHex: 'safety-group',
-        nostrGroupIdHex: 'nostr-safety-group',
-        name: AppConstants.safetyHqGroupName,
-        description: 'App-managed moderation inbox.',
-        memberCount: 1,
-        adminPubkeysHex: ['parent-pubkey'],
+      ..createGroupResult = const MdkCreateGroupResult(
+        group: MdkGroupSummary(
+          mlsGroupIdHex: 'safety-group',
+          nostrGroupIdHex: 'nostr-safety-group',
+          name: AppConstants.safetyHqGroupName,
+          description: 'Backend-backed moderation inbox.',
+          memberCount: 2,
+          adminPubkeysHex: ['parent-pubkey'],
+        ),
+        welcomeRumorJsons: ['{"id":"welcome-rumor"}'],
       );
     nostr = FakeNostrService();
+    dio = Dio()
+      ..interceptors.add(
+        _SafetyHttpInterceptor((options) {
+          if (options.method == 'GET' &&
+              options.path ==
+                  'https://api.tubestr.app/v1/safety-hq/bootstrap') {
+            return Response<Map<String, dynamic>>(
+              requestOptions: options,
+              data: const {
+                'service_public_key_hex': 'backend-pubkey',
+                'signed_key_package_event_json': '{"kind":443,"id":"kp"}',
+                'key_package_event_id': 'kp',
+                'relays': ['wss://relay.example', 'wss://relay.safety.example'],
+                'version': 'v1',
+                'generated_at': '2026-03-20T00:00:00Z',
+              },
+            );
+          }
+          throw StateError(
+            'Unexpected request: ${options.method} ${options.path}',
+          );
+        }),
+      );
     service = SafetyHqService(
       database: database,
       mdkService: mdk,
       nostrService: nostr,
+      dio: dio,
     );
   });
 
@@ -46,7 +86,7 @@ void main() {
   });
 
   test(
-    'ensureProvisioned creates and stores Safety HQ group when queued',
+    'ensureProvisioned fetches bootstrap, creates welcomes, and tracks pending enrollment',
     () async {
       await service.queueJoin();
 
@@ -58,20 +98,34 @@ void main() {
       expect(status.isJoined, isFalse);
       expect(status.isQueued, isFalse);
       expect(status.groupId, 'safety-group');
-      expect(status.lastSyncAt, isNotNull);
-      expect(status.label, 'Awaiting backend ack');
-      expect(status.usesLocalPlaceholder, isTrue);
+      expect(status.servicePublicKeyHex, 'backend-pubkey');
+      expect(status.label, 'Connecting');
+      expect(status.isProvisioning, isTrue);
+      expect(mdk.lastCreateGroupWithWelcomesMemberKeyPackageEventJsons, [
+        '{"kind":443,"id":"kp"}',
+      ]);
+      expect(nostr.lastGiftWrapRecipient, 'backend-pubkey');
+      final relays = await service.loadProvisionedRelays();
+      expect(relays, ['wss://relay.example', 'wss://relay.safety.example']);
     },
   );
 
-  test('ensureProvisioned reuses existing Safety HQ group', () async {
+  test('ensureProvisioned reuses an in-flight Safety HQ group', () async {
+    await database.putSetting(
+      AppConstants.safetyGroupIdSettingKey,
+      'existing-safety',
+    );
+    await database.putSetting(
+      AppConstants.safetyServicePubkeySettingKey,
+      'backend-pubkey',
+    );
     mdk.groupSummariesResult = const [
       MdkGroupSummary(
         mlsGroupIdHex: 'existing-safety',
         nostrGroupIdHex: 'nostr-existing-safety',
         name: AppConstants.safetyHqGroupName,
         description: 'Already here',
-        memberCount: 1,
+        memberCount: 2,
         adminPubkeysHex: ['parent-pubkey'],
       ),
     ];
@@ -83,7 +137,7 @@ void main() {
     expect(group!.mlsGroupIdHex, 'existing-safety');
     expect(status.groupId, 'existing-safety');
     expect(status.isJoined, isFalse);
-    expect(status.label, 'Awaiting backend ack');
+    expect(status.label, 'Connecting');
   });
 
   test('loadStatus explains queued state conservatively', () async {
@@ -94,20 +148,31 @@ void main() {
     expect(status.isQueued, isTrue);
     expect(status.isJoined, isFalse);
     expect(status.label, 'Queued');
-    expect(status.detail, contains('Finish provisioning'));
+    expect(status.detail, contains('queued'));
   });
 
-  test('acknowledgeBackendEnrollment marks Safety HQ as joined', () async {
-    await service.acknowledgeBackendEnrollment(groupId: 'safety-group');
+  test(
+    'refreshEnrollment marks Safety HQ as joined once backend becomes a member',
+    () async {
+      await database.putSetting(
+        AppConstants.safetyGroupIdSettingKey,
+        'safety-group',
+      );
+      await database.putSetting(
+        AppConstants.safetyServicePubkeySettingKey,
+        'backend-pubkey',
+      );
+      mdk.groupMembersResult = const ['parent-pubkey', 'backend-pubkey'];
 
-    final status = await service.loadStatus();
+      final status = await service.refreshEnrollment();
 
-    expect(status.isQueued, isFalse);
-    expect(status.isJoined, isTrue);
-    expect(status.groupId, 'safety-group');
-    expect(status.label, 'Provisioned');
-    expect(status.usesLocalPlaceholder, isFalse);
-  });
+      expect(status.isQueued, isFalse);
+      expect(status.isJoined, isTrue);
+      expect(status.groupId, 'safety-group');
+      expect(status.label, 'Provisioned');
+      expect(status.isProvisioning, isFalse);
+    },
+  );
 
   test('saveProvisionedRelays persists the backend relay set', () async {
     await service.saveProvisionedRelays([

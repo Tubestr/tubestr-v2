@@ -249,7 +249,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Keep higher-risk reports separate from the main family thread while the real moderation service is still being wired up.',
+                    'Keep higher-risk reports separate from the main family thread and deliver them to Tubestr moderation once Safety HQ is connected.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -259,7 +259,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     data: (status) => _SafetyStatusBody(status: status),
                     loading: () => const LinearProgressIndicator(minHeight: 2),
                     error: (error, _) => Text(
-                      'Safety HQ needs another moment to connect.',
+                      'Safety HQ needs another moment to refresh.',
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -271,7 +271,13 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       await onProvisionSafetyHq();
                       onRefresh();
                     },
-                    child: const Text('Set Up Safety HQ'),
+                    child: Text(
+                      safetyStatus.valueOrNull?.isJoined == true
+                          ? 'Refresh Safety HQ'
+                          : safetyStatus.valueOrNull?.isProvisioning == true
+                          ? 'Check Safety HQ'
+                          : 'Set Up Safety HQ',
+                    ),
                   ),
                 ],
               ),
@@ -342,10 +348,12 @@ class _SafetyStatusBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _InlineStatus(
-          icon: status.usesLocalPlaceholder
-              ? Icons.shield_rounded
+          icon: status.isJoined
+              ? Icons.verified_user_rounded
+              : status.isProvisioning
+              ? Icons.sync_rounded
               : Icons.shield_outlined,
-          color: status.usesLocalPlaceholder ? Colors.green : Colors.orange,
+          color: status.isJoined ? Colors.green : Colors.orange,
           title: 'Status: ${status.label}',
           detail: status.lastSyncAt == null
               ? status.detail

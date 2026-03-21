@@ -16,6 +16,7 @@ class AppConstants {
   static const safetyJoinQueuedKey = 'safety_join_queued';
   static const safetyJoinedKey = 'safety_joined';
   static const safetyGroupIdSettingKey = 'safety_group_id';
+  static const safetyServicePubkeySettingKey = 'safety_service_pubkey';
   static const safetyRelayListSettingKey = 'safety_relay_list';
   static const safetyLastSyncAtSettingKey = 'safety_last_sync_at';
   static const safetyHqGroupName = 'Safety HQ';
