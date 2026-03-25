@@ -736,11 +736,10 @@ String _secondsString(Duration duration) {
 }
 
 String _escapeFilterPath(String path) {
-  return path
-      .replaceAll(r'\', r'\\')
-      .replaceAll(':', r'\:')
-      .replaceAll("'", r"\'")
-      .replaceAll(' ', r'\ ');
+  // Within FFmpeg single-quoted filter option values, all characters are
+  // literal except the single-quote itself. To embed a literal single-quote,
+  // end the quoted section, add an escaped quote, and restart quoting.
+  return path.replaceAll("'", r"'\''");
 }
 
 Future<FfmpegExecutionResult> _defaultExecuteFfmpeg(
