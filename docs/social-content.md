@@ -136,7 +136,7 @@ Your data lives on your device first. The network is for sharing, not for storag
 
 **Tweet 13 (CTA)**
 
-Tubestr is live on Android (v1.0.3). iOS is next.
+Tubestr is live on Android (v1.0.3) and iOS (TestFlight).
 
 Private family video sharing. Nostr identity. MLS encryption. Blossom media storage. No ads, no algorithms, no corporate custody of your family moments.
 
@@ -234,3 +234,124 @@ We'd love feedback from the Nostr community, especially on:
 Happy to answer technical questions in the comments.
 
 **TL;DR:** Tubestr is a private family video app. Nostr provides decentralized identity and relay transport. MLS provides group encryption with forward secrecy. Blossom stores encrypted media blobs. Parents own their keys. Kids see a fun video app. No corporate servers in the loop.
+
+---
+
+## Reddit Post (r/vibecoding)
+
+**Title:** I vibecoded a full video sharing app with zero backend code. The secret: a protocol called Nostr.
+
+**Body:**
+
+I just shipped a family video sharing app (Tubestr) and I want to talk about the thing that made it possible as a vibecoding project: I never had to build a backend.
+
+No Express server. No database migrations. No auth system. No WebSocket server. No Docker containers. No AWS bill. I vibecoded the entire thing as a Flutter client and plugged it into an open protocol called Nostr. If you haven't heard of it, here's why it should be in your vibecoding toolkit.
+
+### What is Nostr in 30 seconds
+
+Nostr is a protocol, not a platform. It has two concepts:
+
+1. **Keys.** Your identity is a cryptographic keypair. You generate it locally. That's it. No signup, no email, no OAuth. One line of code gives you a user identity.
+
+2. **Relays.** These are dumb WebSocket servers that store and forward JSON events. Anyone can run one. Dozens of public ones already exist. You connect, publish events, subscribe to events. That's the entire API.
+
+An "event" is just a JSON object: a kind number (like an event type), some content, some tags, and a cryptographic signature from the author's key. That's the whole data model.
+
+### Why this is vibecoding gold
+
+Here's what I *didn't* have to build, prompt, or debug:
+
+**No auth system.** Identity is a keypair generated on-device. No registration endpoint, no password hashing, no session tokens, no "forgot password" flow, no OAuth integration. I prompt my AI to generate a keypair and store it in secure storage. Done. Users are real cryptographic identities from line one.
+
+**No backend server.** Nostr relays are the backend. They're already running, publicly available, and free to use. I didn't write a single line of server code. My app connects to relays, publishes signed events, and subscribes to events from other users. The relay doesn't need to know what my app does. It just stores JSON blobs and serves them back on request.
+
+**No database design.** Events *are* the database. Each event has a kind (integer), content (string), tags (key-value pairs), and a timestamp. Need to store a video share? Publish a kind:4543 event. Need to store a like? Kind:4546. Need to query all shares from a specific user? Subscribe with a filter: `{kinds: [4543], authors: ["<pubkey>"]}`. The relay handles the query. I didn't design a schema, write migrations, or set up an ORM.
+
+**No API design.** There's no REST API, no GraphQL schema, no endpoint versioning. The entire interaction model is publish/subscribe over WebSockets. Publish an event, subscribe to events matching a filter. Two operations. That's the whole API surface for your AI to learn.
+
+**No file storage infra.** For media (videos, thumbnails), there's a companion system called Blossom -- content-addressed blob storage over HTTP. Upload a file, get back a SHA-256 hash. Download by hash. That's it. Multiple public Blossom servers already exist. I didn't spin up S3 buckets or configure CDNs.
+
+**No DevOps.** No containers. No CI/CD for a backend. No load balancer. No scaling conversations. The relays handle it. The Blossom servers handle it. My app is a pure client.
+
+### What I actually spent my time on
+
+Instead of fighting infrastructure, I got to vibecode the things that matter:
+
+- A kid-friendly camera and video editor (trim, filters, stickers, text, audio)
+- A parent control panel with content approval and moderation
+- A home feed showing family videos
+- Encrypted group sharing (MLS protocol -- standard group encryption)
+- An offline queue that syncs when connectivity returns
+- On-device content safety scanning
+
+All the product stuff. All the UX stuff. Zero infrastructure stuff.
+
+### The AI prompting angle
+
+Nostr is absurdly easy to explain to an AI coding assistant. The entire publish flow is:
+
+```
+1. Create a JSON event with kind, content, tags, and timestamp
+2. Sign it with the user's private key
+3. Send it to connected relays via WebSocket
+```
+
+The entire read flow is:
+
+```
+1. Send a filter (kinds, authors, tags, time range) to a relay
+2. Receive matching events
+```
+
+That's it. There's no complex API surface for the AI to hallucinate endpoints for. There's no auth middleware to get wrong. The data model is flat JSON events. Every event is self-authenticating (the signature proves who created it). Your AI assistant can grok the entire protocol in one prompt.
+
+Compare that to prompting an AI to set up a full-stack app: Express routes, middleware chains, database schemas, connection pooling, JWT validation, CORS config, error handling... that's where vibecoded projects go to die. Every layer is another place for the AI to introduce a subtle bug you'll spend hours debugging.
+
+### NDK: the client library
+
+The Nostr ecosystem has a mature client library called **NDK** (Nostr Developer Kit). It handles relay connections, event publishing, subscriptions, caching, and key management. In Flutter, there's a dart NDK package. In JS/TS, there's `@nostr-dev-kit/ndk`.
+
+You point your AI at NDK and say "use this to publish and subscribe to events." That's the entire integration. I didn't need to write WebSocket management code, reconnection logic, or relay failover. NDK does it.
+
+### "But isn't this decentralized/crypto stuff complicated?"
+
+Not for the builder. Here's the mental model:
+
+- **Users** = keypairs (like SSH keys, but for your app)
+- **Data** = signed JSON events published to relays
+- **Storage** = relays (text/metadata) + Blossom (files/media)
+- **Queries** = filters sent to relays over WebSocket
+
+If you can prompt an AI to make a todo app with a REST API and Postgres, you can prompt it to make a todo app on Nostr. Except the Nostr version doesn't need a server, a database, or auth middleware. It's *less* complexity, not more.
+
+The "decentralized" part just means your users aren't locked into your server. They hold their own keys. Their data lives on relays they choose. If your app disappears tomorrow, their identity and data still exist. That's a feature, not a complication.
+
+### What I shipped
+
+**Tubestr** -- a private family video sharing app for parents and kids.
+
+- Parents hold a Nostr keypair (their identity)
+- Family groups are encrypted with MLS (an IETF standard for group encryption)
+- Videos are encrypted on-device, uploaded to Blossom servers, decryption keys shared via the encrypted group
+- Kids capture, edit, and watch videos in a playful UI
+- Parents manage profiles, approve content, moderate, and control everything
+- Works offline, syncs when connected
+- Live on Android (v1.0.3) and iOS (TestFlight)
+
+The entire networking layer is Nostr relays. The entire storage layer is Blossom. I wrote zero backend code.
+
+### Getting started
+
+If you want to try Nostr for your next vibecoding project:
+
+1. **Pick a client library.** `@nostr-dev-kit/ndk` for JS/TS, `ndk` for Dart/Flutter, `rust-nostr` for Rust.
+2. **Generate a keypair.** One function call. That's your user.
+3. **Connect to a relay.** `wss://relay.damus.io` or `wss://nos.lol` are good public ones.
+4. **Publish an event.** JSON object, sign it, send it.
+5. **Subscribe to events.** Send a filter, receive matching events.
+
+You now have a multi-user, networked app with persistent storage and user authentication. No backend deployed. No database provisioned. No auth service configured.
+
+Tell your AI assistant: "We're using Nostr. Users are keypairs. Data is signed JSON events published to WebSocket relays. Use NDK for the client library." Then vibecode your actual product.
+
+**TL;DR:** Nostr eliminates the backend from vibecoding. Identity is a keypair (no auth to build). Data is signed JSON events on WebSocket relays (no database or API to build). Files go to Blossom (no S3 to configure). Your AI assistant can learn the entire protocol in one prompt. I shipped a full encrypted video sharing app without writing a single line of server code.
