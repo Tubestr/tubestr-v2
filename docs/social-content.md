@@ -144,7 +144,7 @@ Your keys. Your family. Your videos.
 
 ---
 
-## Reddit Post (r/nostr, r/privacy, r/selfhosted)
+## Reddit Post (r/nostr)
 
 **Title:** We built a family video sharing app on Nostr + MLS encryption. Here's the technical deep dive on why.
 
@@ -223,7 +223,7 @@ The app is local-first. Everything works offline. Captures, edits, shares, likes
 
 ### Current Status
 
-Tubestr v1.0.3 is live on Android (GitHub releases + Zapstore). iOS is next. The stack is Flutter + Riverpod + Drift (local SQLite) + NDK + mdk-core (Rust via FFI) + Blossom.
+Tubestr v1.0.3 is live on Android (GitHub releases + Zapstore) and iOS (TestFlight). The stack is Flutter + Riverpod + Drift (local SQLite) + NDK + mdk-core (Rust via FFI) + Blossom.
 
 We'd love feedback from the Nostr community, especially on:
 - The custom kind allocations (4543-4548)
@@ -234,6 +234,151 @@ We'd love feedback from the Nostr community, especially on:
 Happy to answer technical questions in the comments.
 
 **TL;DR:** Tubestr is a private family video app. Nostr provides decentralized identity and relay transport. MLS provides group encryption with forward secrecy. Blossom stores encrypted media blobs. Parents own their keys. Kids see a fun video app. No corporate servers in the loop.
+
+---
+
+## Reddit Post (r/privacy, r/selfhosted)
+
+**Title:** We built a family video app you can fully self-host. Your relay, your blob server, your keys. No cloud dependency.
+
+**Body:**
+
+Hey r/privacy and r/selfhosted,
+
+I want to show you something we built that I think hits the intersection of both communities. **Tubestr** is a private family video sharing app for parents and kids. The entire server-side infrastructure is self-hostable, and the app is designed so your family's videos never touch a server in plaintext.
+
+### The Setup (for the impatient)
+
+To run Tubestr on entirely self-hosted infrastructure, you need two things:
+
+1. **A Nostr relay** -- a lightweight WebSocket server that stores and forwards signed JSON events
+2. **A Blossom server** -- a simple HTTP blob server for media files (videos, thumbnails)
+
+That's it. No application server. No database you manage. No auth service. The relay and Blossom server are the entire backend, and both are trivial to self-host.
+
+### Self-Hosting a Nostr Relay
+
+A Nostr relay is a WebSocket server that accepts signed JSON events, stores them, and serves them back based on filters. Several mature implementations exist:
+
+- **strfry** -- C++, single binary, extremely fast, handles millions of events. Config is one file.
+- **nostr-rs-relay** -- Rust, SQLite-backed, low resource usage. Good for a home server or Raspberry Pi.
+- **nostream** -- TypeScript/Node, PostgreSQL-backed, more ops-friendly if you already run Postgres.
+
+A minimal relay runs on practically anything. A Raspberry Pi with an SD card can handle a family's traffic without breaking a sweat. You're talking single-digit megabytes of JSON events for metadata (the actual videos go elsewhere).
+
+**Setup is genuinely simple:**
+
+```bash
+# Example with strfry (single binary)
+git clone https://github.com/hoytech/strfry.git
+cd strfry && make setup-golpe && make -j4
+./strfry relay  # running on ws://localhost:7777
+```
+
+Or with Docker:
+
+```bash
+docker run -p 7777:7777 -v strfry-data:/app/strfry-db dockurr/strfry
+```
+
+Point your reverse proxy at it, add a TLS cert (Let's Encrypt), and you have a production relay at `wss://relay.yourfamily.net`.
+
+In Tubestr, parents go to the **Relay Management** section in Parent Zone and add your relay URL. The app publishes all events (shares, likes, group state) to your relay and subscribes from it. You can add multiple relays for redundancy, or use just your own for maximum control.
+
+### Self-Hosting a Blossom Server
+
+Blossom is content-addressed blob storage over HTTP. Files go in, addressed by SHA-256 hash. Files come out by hash. That's the entire API.
+
+- **blossom-server** -- the reference Go implementation. Single binary, filesystem-backed storage.
+- **bouquet** -- Rust alternative, also filesystem-backed.
+
+```bash
+# Example with blossom-server
+git clone https://github.com/hoytech/blossom-server.git
+cd blossom-server && go build
+./blossom-server  # running on http://localhost:3000
+```
+
+Throw it behind Nginx with TLS and you have `https://blossom.yourfamily.net`. Storage is just files on disk. Back them up however you back up any files -- rsync, ZFS snapshots, Borg, whatever you already use.
+
+In Tubestr, parents configure their Blossom server list in Parent Zone. The app uploads encrypted video blobs to your server and downloads them from it.
+
+**Storage math:** A typical family video is 30-90 seconds. At reasonable quality that's 20-80 MB per clip. A 1 TB drive holds tens of thousands of family videos. You won't outgrow a basic home server for years.
+
+### What the Servers Actually See
+
+Here's the privacy part that matters: **your self-hosted servers never see plaintext content.**
+
+Videos are encrypted on-device with AES-GCM *before* upload to Blossom. The encryption key is generated per-video and delivered to family members through an MLS-encrypted group message on your Nostr relay. MLS (Messaging Layer Security, RFC 9420) provides group encryption with forward secrecy.
+
+So even if someone compromises your Blossom server, they get encrypted blobs. Even if someone compromises your relay, they get encrypted event payloads. The decryption keys only exist on family members' devices, derived from the MLS group secret.
+
+**Threat model summary:**
+- Relay operator (you) sees: encrypted JSON event payloads, public keys, timestamps, event kinds
+- Blossom operator (you) sees: encrypted binary blobs addressed by hash
+- Neither sees: video content, thumbnail content, message text, who liked what
+- Only family group members can decrypt: video files, share metadata, reactions, moderation actions
+
+### The Full Self-Hosted Stack
+
+Here's what a fully self-hosted Tubestr deployment looks like:
+
+```
+Family Phone A ──┐
+                 ├──WSS──▶ [Your Nostr Relay]  (events, metadata, group state)
+Family Phone B ──┘         e.g. strfry on a Pi
+                 │
+                 ├──HTTPS─▶ [Your Blossom Server]  (encrypted video blobs)
+                 │          e.g. blossom-server on same Pi or NAS
+```
+
+Total infrastructure: one small server (or two if you want separation). Both services are lightweight, single-process, and designed to run unattended.
+
+**What you control:**
+- The relay where your family's events are stored (you can restrict it to only accept events from your family's public keys)
+- The blob server where encrypted videos live (you can restrict uploads to authenticated users)
+- Backup strategy (it's just a SQLite file and a directory of blobs)
+- Network access (run it on your LAN only, or expose it through a VPN/Tailscale for remote family)
+
+**What you don't have to manage:**
+- No application server or custom backend code
+- No database migrations (the relay handles its own storage)
+- No user management (identity is cryptographic keypairs, managed on-device)
+- No auth service (events are self-authenticating via cryptographic signatures; Blossom uses Nostr-signed auth tokens)
+
+### How It Compares to Other Self-Hosted Options
+
+| | Tubestr (self-hosted) | Immich / PhotoPrism | Jellyfin | Nextcloud |
+|---|---|---|---|---|
+| Server sees plaintext | No (E2E encrypted) | Yes | Yes | Yes (unless Veracrypt etc.) |
+| Auth system to manage | No (keypairs) | Yes | Yes | Yes |
+| Database to manage | No (relay handles it) | Yes (Postgres) | Yes (SQLite/Postgres) | Yes (MySQL/Postgres) |
+| Kid-safe UX | Yes (designed for it) | No | No | No |
+| Parent controls | Yes (approvals, moderation) | No | Limited | No |
+| Works offline on mobile | Yes (local-first) | Limited | No (streaming) | Limited |
+| Decentralized / portable | Yes (switch relays anytime) | No (server-bound) | No | No |
+
+The trade-off: Tubestr is purpose-built for family video sharing, not a general-purpose photo/file tool. If you want a full photo library, use Immich. If you want a family video space where your kids can safely create, edit, and share clips under your control with E2E encryption and zero server-side plaintext -- that's what we built.
+
+### For the Paranoid (in the best way)
+
+If you want to go further:
+
+- **LAN-only mode:** Run your relay and Blossom server on your local network. Family devices connect over WiFi. Nothing leaves your house.
+- **VPN/Tailscale:** Expose your relay and Blossom server only through a VPN. Remote family members connect through the tunnel.
+- **Restricted relay:** Configure your relay to only accept events signed by your family's known public keys. Strangers can't even publish to it.
+- **Restricted Blossom:** Configure upload auth to only accept Nostr-signed tokens from your family's keys. No anonymous uploads.
+- **Air-gapped backup:** Since Blossom is just files on disk and the relay is a SQLite file, you can rsync to an offline backup drive on a schedule.
+
+### Current Status
+
+Tubestr v1.0.3 is live on Android (GitHub releases + Zapstore) and iOS (TestFlight). The app works with public relays and Blossom servers out of the box (no self-hosting required to get started), but the entire infrastructure is replaceable with your own.
+
+The stack: Flutter + Riverpod + Drift (local SQLite) + NDK (Nostr client) + mdk-core (MLS encryption, Rust via FFI) + Blossom.
+
+Happy to answer questions about the self-hosting setup, the encryption model, or anything else.
+
+**TL;DR:** Tubestr is a private family video app. Self-host a Nostr relay (strfry, one binary) and a Blossom server (another single binary) and you own the entire stack. All content is E2E encrypted with MLS before it leaves the device -- your servers never see plaintext. Kids get a fun video app, parents get full control, and no data leaves your infrastructure unencrypted.
 
 ---
 
