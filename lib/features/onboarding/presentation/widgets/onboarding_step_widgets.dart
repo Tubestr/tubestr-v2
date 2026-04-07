@@ -34,6 +34,66 @@ class OnboardingCenteredStep extends StatelessWidget {
   }
 }
 
+class OnboardingProgressBar extends StatelessWidget {
+  const OnboardingProgressBar({
+    super.key,
+    required this.currentStep,
+    required this.totalSteps,
+    required this.palette,
+    this.label,
+  });
+
+  final int currentStep;
+  final int totalSteps;
+  final KidPalette palette;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (label != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                label!,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: palette.mutedInk,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          Row(
+            children: List.generate(totalSteps, (index) {
+              final isCompleted = index < currentStep;
+              final isCurrent = index == currentStep;
+              return Expanded(
+                child: AnimatedContainer(
+                  duration: AppMotion.duration(context, AppMotion.stateChange),
+                  curve: AppMotion.easeOutQuint,
+                  height: 4,
+                  margin: EdgeInsets.only(right: index < totalSteps - 1 ? 4 : 0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(2),
+                    color: isCompleted
+                        ? palette.accent
+                        : isCurrent
+                            ? palette.accent.withValues(alpha: 0.55)
+                            : palette.accent.withValues(alpha: 0.15),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class OnboardingIntroSlides extends StatelessWidget {
   const OnboardingIntroSlides({
     super.key,
@@ -54,28 +114,44 @@ class OnboardingIntroSlides extends StatelessWidget {
 
   static const _slides = [
     _OnboardingIntroSlideData(
-      icon: Icons.auto_awesome,
-      title: 'Curated For Kids',
-      subtitle: 'A safe, joyful space for your family\'s videos',
+      icon: Icons.family_restroom_rounded,
+      title: 'Your Family\'s Private Space',
+      subtitle:
+          'Nook is a video app built just for families. No ads, no algorithms, no strangers.',
+      stepLabel: null,
       colors: [Color(0xFFE8794E), Color(0xFFF9B45E)],
     ),
     _OnboardingIntroSlideData(
-      icon: Icons.videocam_rounded,
-      title: 'Create Magical Moments',
-      subtitle: 'Record, edit, and share with the people you trust',
+      icon: Icons.key_rounded,
+      title: 'Create Your Parent Key',
+      subtitle:
+          'First, you\'ll set up a secure parent identity. This key is yours alone and controls your family\'s account.',
+      stepLabel: 'Step 1',
       colors: [Color(0xFF6E63A8), Color(0xFFE2C76C)],
     ),
     _OnboardingIntroSlideData(
-      icon: Icons.shield_rounded,
-      title: 'Stay In Control',
-      subtitle: 'Parent tools for moderation, connections, and privacy',
+      icon: Icons.child_care_rounded,
+      title: 'Add Your Kids',
+      subtitle:
+          'Create a profile for each child with their own colorful theme. Each kid gets a personalized experience.',
+      stepLabel: 'Step 2',
       colors: [Color(0xFF3FAE6F), Color(0xFF7A684A)],
     ),
     _OnboardingIntroSlideData(
-      icon: Icons.people_rounded,
-      title: 'Private By Design',
-      subtitle: 'No algorithms, no ads-just family',
+      icon: Icons.videocam_rounded,
+      title: 'Record & Edit Together',
+      subtitle:
+          'Kids can capture videos, add stickers, music, and effects in the Edit Studio. Creativity without the risk.',
+      stepLabel: 'Step 3',
       colors: [Color(0xFF9C7AA8), Color(0xFFF2A7B7)],
+    ),
+    _OnboardingIntroSlideData(
+      icon: Icons.shield_rounded,
+      title: 'You Approve Everything',
+      subtitle:
+          'Every video goes through you first. Review, approve, and share only with family members you trust.',
+      stepLabel: 'Step 4',
+      colors: [Color(0xFF4A90D9), Color(0xFF67B8A7)],
     ),
   ];
 
@@ -139,6 +215,28 @@ class OnboardingIntroSlides extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          if (slide.stepLabel != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                slide.stepLabel!,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           AnimatedScale(
                             duration: AppMotion.duration(
                               context,
@@ -160,24 +258,28 @@ class OnboardingIntroSlides extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 28),
-                          Text(
-                            slide.title,
-                            style: TextStyle(
-                              fontSize: MediaQuery.sizeOf(context).width < 400 ? 28.0 : 34.0,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          const SizedBox(height: 24),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              slide.title,
+                              style: TextStyle(
+                                fontSize: MediaQuery.sizeOf(context).width < 400 ? 26.0 : 30.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 12),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            padding: const EdgeInsets.symmetric(horizontal: 28),
                             child: Text(
                               slide.subtitle,
                               style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 16,
+                                height: 1.4,
+                                color: Colors.white.withValues(alpha: 0.92),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -219,7 +321,7 @@ class OnboardingIntroSlides extends StatelessWidget {
             height: 52,
             child: FilledButton(
               onPressed: onNext,
-              child: Text(page < _slides.length - 1 ? 'Next' : 'Start Setup'),
+              child: Text(page < _slides.length - 1 ? 'Next' : 'Let\'s Get Started'),
             ),
           ),
         ),
@@ -250,17 +352,18 @@ class OnboardingRoleSelectStep extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Welcome to Nook',
+              'Let\'s Set Up Your Family',
               style: Theme.of(
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'How would you like to get started?',
+              'First, we need to create your parent account. This only takes a minute.',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
             SizedBox(
@@ -269,7 +372,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onNewParent,
                 icon: const Icon(Icons.auto_awesome),
-                label: const Text('I\'m a new parent'),
+                label: const Text('Create new account'),
               ),
             ),
             const SizedBox(height: 16),
@@ -279,7 +382,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onRestore,
                 icon: const Icon(Icons.restore_rounded),
-                label: const Text('Restore my account'),
+                label: const Text('I have a backup key'),
               ),
             ),
           ],
@@ -327,7 +430,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Parent Identity',
+              'Create Your Parent Key',
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -335,7 +438,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'We\'ll generate a secure cryptographic key that identifies you as the parent.',
+              'Your parent key is like your family\'s master password. It proves you\'re the parent and lets you manage everything.',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -454,7 +557,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Restore Parent Account',
+              'Welcome Back',
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -462,7 +565,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Paste your saved `nsec1...` key or 64-character backup key. If this device already has your parent account in secure storage or iCloud Keychain, Nook will pick it up automatically on launch.',
+              'Paste your backup key to restore your parent account on this device. You can also scan the QR code if you saved one.',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -645,14 +748,14 @@ class OnboardingChildProfilesStep extends StatelessWidget {
         children: [
           const SizedBox(height: 40),
           Text(
-            'Child Profiles',
+            'Who\'s in Your Family?',
             style: Theme.of(
               context,
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Add at least one child profile to get started.',
+            'Add a profile for each child. They\'ll each get their own themed space to watch and create videos.',
             style: Theme.of(
               context,
             ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -803,14 +906,14 @@ class OnboardingPermissionsStep extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Allow Camera & Mic',
+              'One Last Thing',
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Nook uses the camera for recording videos and scanning family invites, and the microphone for video sound.',
+              'To record videos and scan family invite codes, Nook needs access to the camera and microphone.',
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -956,17 +1059,18 @@ class OnboardingCompleteStep extends StatelessWidget {
             Icon(Icons.verified_rounded, size: 72, color: palette.success),
             const SizedBox(height: 24),
             Text(
-              'All Set!',
+              'You\'re All Set!',
               style: Theme.of(
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Your family\'s Nook is ready.',
+              'Your family\'s private video space is ready. Time to start creating together!',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -1038,11 +1142,13 @@ class _OnboardingIntroSlideData {
     required this.title,
     required this.subtitle,
     required this.colors,
+    this.stepLabel,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final String? stepLabel;
   final List<Color> colors;
 }
 

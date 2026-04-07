@@ -306,6 +306,25 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     });
   }
 
+  int get _progressIndex => switch (_flow.step) {
+    OnboardingStep.intro => 0,
+    OnboardingStep.roleSelect => 0,
+    OnboardingStep.parentKey => 1,
+    OnboardingStep.restoreKey => 1,
+    OnboardingStep.recovery => 1,
+    OnboardingStep.childProfiles => 2,
+    OnboardingStep.permissions => 3,
+    OnboardingStep.complete => 4,
+  };
+
+  String? get _progressLabel => switch (_flow.step) {
+    OnboardingStep.roleSelect => 'Getting started',
+    OnboardingStep.parentKey || OnboardingStep.restoreKey || OnboardingStep.recovery => 'Parent account',
+    OnboardingStep.childProfiles => 'Child profiles',
+    OnboardingStep.permissions => 'Almost done',
+    _ => null,
+  };
+
   Widget _buildCurrentStep({
     required KidPalette palette,
     required List<Profile> profiles,
@@ -319,7 +338,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         palette: palette,
         onPageChanged: _setIntroPage,
         onNext: () {
-          if (_flow.introPage < 3) {
+          if (_flow.introPage < 4) {
             _introController.nextPage(
               duration: AppMotion.duration(context, AppMotion.layoutChange),
               curve: AppMotion.easeOutQuint,
@@ -421,34 +440,54 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             ),
           ),
           SafeArea(
-            child: AnimatedSwitcher(
-              duration: AppMotion.duration(context, AppMotion.layoutChange),
-              switchInCurve: AppMotion.easeOutQuint,
-              switchOutCurve: Curves.easeOut,
-              transitionBuilder: (child, animation) {
-                final offsetAnimation =
-                    Tween<Offset>(
-                      begin: AppMotion.offset(context, const Offset(0, 0.06)),
-                      end: Offset.zero,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: AppMotion.easeOutQuint,
-                      ),
-                    );
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: offsetAnimation,
-                    child: child,
+            child: Column(
+              children: [
+                if (_flow.step != OnboardingStep.intro &&
+                    _flow.step != OnboardingStep.complete)
+                  OnboardingProgressBar(
+                    currentStep: _progressIndex,
+                    totalSteps: 4,
+                    palette: palette,
+                    label: _progressLabel,
                   ),
-                );
-              },
-              child: _buildCurrentStep(
-                palette: palette,
-                profiles: profiles,
-                identity: identity,
-              ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.duration(
+                      context,
+                      AppMotion.layoutChange,
+                    ),
+                    switchInCurve: AppMotion.easeOutQuint,
+                    switchOutCurve: Curves.easeOut,
+                    transitionBuilder: (child, animation) {
+                      final offsetAnimation =
+                          Tween<Offset>(
+                            begin: AppMotion.offset(
+                              context,
+                              const Offset(0, 0.06),
+                            ),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: AppMotion.easeOutQuint,
+                            ),
+                          );
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: offsetAnimation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: _buildCurrentStep(
+                      palette: palette,
+                      profiles: profiles,
+                      identity: identity,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
