@@ -347,4 +347,88 @@ void main() {
       expect(videoFilter, contains('scale=720:1280'));
     },
   );
+
+  test(
+    'buildEditorExportPlan combines overlay and soundtrack in a single filter_complex',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 12),
+          trimRange: EditorTrimRange(
+            start: Duration(seconds: 1),
+            end: Duration(seconds: 9),
+          ),
+          filterPresetId: 'warm',
+          audioSelection: EditorAudioSelection(
+            trackId: 'track_01',
+            assetPath: 'assets/editor/music/track_01.mp3',
+            volume: 0.5,
+          ),
+          adjustments: EditorAdjustments(sharpness: 0.5, vignette: 0.3),
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        stagedOverlayImagePath: '/tmp/overlay.png',
+        sourceHasAudio: true,
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+      );
+
+      // Overlay image is input 2 (audio is input 1).
+      expect(plan.arguments, contains('/tmp/overlay.png'));
+      final filterComplex =
+          plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+      expect(filterComplex, contains('[2:v]overlay=0:0:format=auto[vout]'));
+      expect(filterComplex, contains('[0:a]volume=1.000[original]'));
+      expect(filterComplex, contains('[1:a]volume=0.500[music]'));
+      expect(
+        filterComplex,
+        contains(
+          '[original][music]amix=inputs=2:duration=first:dropout_transition=2[aout]',
+        ),
+      );
+      expect(
+        plan.arguments,
+        containsAllInOrder(['-map', '[vout]', '-map', '[aout]', '-shortest']),
+      );
+      // Video effects should be in the filter_complex, not -vf.
+      expect(plan.arguments, isNot(contains('-vf')));
+      expect(filterComplex, contains('lut3d=file='));
+      expect(filterComplex, contains('unsharp='));
+      expect(filterComplex, contains('vignette='));
+    },
+  );
+
+  test(
+    'buildEditorExportPlan does not corrupt lut3d paths containing spaces',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+          filterPresetId: 'warm',
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/Application Support/editor staging',
+        assetBundle: _FakeAssetBundle(),
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+      );
+
+      final videoFilter = plan.arguments[plan.arguments.indexOf('-vf') + 1];
+      // The path is wrapped in single quotes within the filter string.
+      // Spaces must NOT be backslash-escaped inside single quotes, otherwise
+      // FFmpeg will look for a path with literal backslash characters.
+      expect(videoFilter, isNot(contains(r'\ ')));
+      expect(videoFilter, contains("lut3d=file='"));
+    },
+  );
 }
