@@ -402,7 +402,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       type: EditorOverlayType.sticker,
       stickerId: stickerId,
       stickerAssetPath: assetPath,
-      transform: const StickerTransform(),
+      transform: const StickerTransform(position: Offset(0.5, 0.35)),
     );
     final overlays = [..._session.overlays, sticker];
     setState(() {
@@ -2573,6 +2573,8 @@ class _StickerOverlay extends StatelessWidget {
   final GestureScaleStartCallback onScaleStart;
   final GestureScaleUpdateCallback onScaleUpdate;
 
+  static const _touchPadding = 24.0;
+
   @override
   Widget build(BuildContext context) {
     final transform = overlay.transform;
@@ -2580,34 +2582,42 @@ class _StickerOverlay extends StatelessWidget {
     final stickerPath = overlay.stickerAssetPath!;
     final isBundledAsset = stickerPath.startsWith('assets/');
     return Positioned(
-      left: (transform.position.dx * previewSize.width) - (stickerSize / 2),
-      top: (transform.position.dy * previewSize.height) - (stickerSize / 2),
+      left: (transform.position.dx * previewSize.width) -
+          (stickerSize / 2) -
+          _touchPadding,
+      top: (transform.position.dy * previewSize.height) -
+          (stickerSize / 2) -
+          _touchPadding,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         onScaleStart: onScaleStart,
         onScaleUpdate: onScaleUpdate,
-        child: Transform.rotate(
-          angle: transform.rotationDegrees * math.pi / 180,
-          child: Container(
-            width: stickerSize,
-            height: stickerSize,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: selected
-                  ? Border.all(color: Colors.white, width: 2)
-                  : null,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 16,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: isBundledAsset
-                  ? Image.asset(stickerPath, fit: BoxFit.contain)
-                  : Image.file(File(stickerPath), fit: BoxFit.contain),
+        child: Padding(
+          padding: const EdgeInsets.all(_touchPadding),
+          child: Transform.rotate(
+            angle: transform.rotationDegrees * math.pi / 180,
+            child: Container(
+              width: stickerSize,
+              height: stickerSize,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: selected
+                    ? Border.all(color: Colors.white, width: 2)
+                    : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 16,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: isBundledAsset
+                    ? Image.asset(stickerPath, fit: BoxFit.contain)
+                    : Image.file(File(stickerPath), fit: BoxFit.contain),
+              ),
             ),
           ),
         ),
