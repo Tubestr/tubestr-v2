@@ -2,7 +2,8 @@ import 'dart:convert';
 
 class GroupInvitePacket {
   static const type = 'mytube/group_invite_packet';
-  static const deepLinkScheme = 'nook';
+  static const deepLinkScheme = 'tubestr';
+  static const legacyDeepLinkScheme = 'nook';
   static const deepLinkHost = 'family-invite';
 
   const GroupInvitePacket({
@@ -32,7 +33,7 @@ class GroupInvitePacket {
 
   String get shareText =>
       '''
-Nook Family Invite
+Tubestr Family Invite
 Parent: ${inviterDisplayName?.trim().isNotEmpty == true ? inviterDisplayName!.trim() : publicKeyHex}
 
 Open this link on the other parent's device:
@@ -91,7 +92,7 @@ ${encode()}
   static GroupInvitePacket? _tryDecodeDeepLink(String raw) {
     final uri = Uri.tryParse(raw);
     if (uri == null ||
-        uri.scheme.toLowerCase() != deepLinkScheme ||
+        !isSupportedScheme(uri.scheme) ||
         uri.host.toLowerCase() != deepLinkHost) {
       return null;
     }
@@ -103,5 +104,10 @@ ${encode()}
     return GroupInvitePacket.fromJson(
       jsonDecode(decoded) as Map<String, dynamic>,
     );
+  }
+
+  static bool isSupportedScheme(String? scheme) {
+    final normalized = scheme?.trim().toLowerCase();
+    return normalized == deepLinkScheme || normalized == legacyDeepLinkScheme;
   }
 }

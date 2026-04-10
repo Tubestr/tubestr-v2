@@ -76,7 +76,7 @@ final playerRouteStateProvider =
       final video = args.videoId == null
           ? null
           : videos.firstWhereOrNull((item) => item.id == args.videoId) ??
-              ref.watch(localVideoByIdProvider(args.videoId!)).valueOrNull;
+                ref.watch(localVideoByIdProvider(args.videoId!)).valueOrNull;
       final videoProfile = video == null
           ? null
           : profiles.firstWhereOrNull(

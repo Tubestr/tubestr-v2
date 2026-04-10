@@ -4,9 +4,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:dio/dio.dart';
 import 'package:mytube/core/constants.dart';
 import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
@@ -26,6 +26,8 @@ import 'package:mytube/services/offline/offline_action_processor.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/safety/moderation_coordinator.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
+import 'package:mytube/services/safety/safety_hq_service.dart';
+import 'package:mytube/services/share/managed_video_upload_service.dart';
 import 'package:mytube/services/share/share_history_service.dart';
 import 'package:mytube/services/share/video_lifecycle_coordinator.dart';
 import 'package:mytube/services/share/video_share_coordinator.dart';
@@ -883,11 +885,18 @@ class FamilyAppHarness {
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
     );
+    final safetyHqService = SafetyHqService(
+      database: database,
+      mdkService: mdk,
+      nostrService: nostr,
+      dio: Dio(),
+    );
     final reportCoordinator = ReportCoordinator(
       database: database,
       mdkService: mdk,
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
+      safetyHqService: safetyHqService,
     );
     final lifecycleCoordinator = VideoLifecycleCoordinator(
       mdkService: mdk,
@@ -918,6 +927,7 @@ class FamilyAppHarness {
       nostrService: nostr,
       offlineActionStore: offlineActionStore,
       shareHistoryService: shareHistoryService,
+      managedVideoUploadService: ManagedVideoUploadService(database: database),
     );
     final offlineActionProcessor = OfflineActionProcessor(
       store: offlineActionStore,

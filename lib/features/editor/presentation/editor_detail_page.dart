@@ -1020,15 +1020,10 @@ class _MinimalHeader extends StatelessWidget {
 }
 
 class _FrostedCircleButton extends StatelessWidget {
-  const _FrostedCircleButton({
-    required this.child,
-    this.onTap,
-    this.accentGradient,
-  });
+  const _FrostedCircleButton({required this.child, this.onTap});
 
   final Widget child;
   final VoidCallback? onTap;
-  final Gradient? accentGradient;
 
   @override
   Widget build(BuildContext context) {
@@ -1042,10 +1037,7 @@ class _FrostedCircleButton extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              gradient: accentGradient,
-              color: accentGradient == null
-                  ? Colors.black.withValues(alpha: 0.35)
-                  : null,
+              color: Colors.black.withValues(alpha: 0.35),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
             ),

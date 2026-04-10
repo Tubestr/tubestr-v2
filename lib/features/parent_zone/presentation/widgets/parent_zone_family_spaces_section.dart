@@ -92,11 +92,11 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 onTap: identity == null || busy
                     ? null
                     : () => _showPasteInviteSheet(
-                          context,
-                          controller: inviteImportController,
-                          busy: isCreatingWelcome,
-                          onSubmit: onProcessInviteInput,
-                        ),
+                        context,
+                        controller: inviteImportController,
+                        busy: isCreatingWelcome,
+                        onSubmit: onProcessInviteInput,
+                      ),
               ),
             ],
           ),
@@ -396,7 +396,7 @@ void _showPasteInviteSheet(
                 maxLines: 4,
                 decoration: const InputDecoration(
                   labelText: 'Invite link or code',
-                  hintText: 'nook://family-invite?...',
+                  hintText: 'tubestr://family-invite?...',
                 ),
               ),
               const SizedBox(height: 16),

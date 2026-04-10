@@ -48,7 +48,7 @@ class ParentProfileService {
       ParentProfile(
         publicKeyHex: identity.publicKeyHex,
         displayName: normalized,
-        about: 'Parent account for MyTube',
+        about: 'Parent account for Tubestr',
         updatedAt: DateTime.now(),
       ),
     );
@@ -69,7 +69,7 @@ class ParentProfileService {
     return ParentProfile(
       publicKeyHex: identity.publicKeyHex,
       displayName: normalized,
-      about: 'Parent account for MyTube',
+      about: 'Parent account for Tubestr',
       updatedAt: DateTime.now(),
     );
   }
@@ -92,7 +92,7 @@ class ParentProfileService {
         final profile = ParentProfile(
           publicKeyHex: publicKeyHex,
           displayName: displayName,
-          about: 'Parent account for MyTube',
+          about: 'Parent account for Tubestr',
           updatedAt: DateTime.now(),
         );
         await _cacheProfile(profile);

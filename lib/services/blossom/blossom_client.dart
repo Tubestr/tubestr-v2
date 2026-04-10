@@ -197,4 +197,22 @@ class BlossomClient {
       options: Options(headers: {'content-type': 'application/json'}),
     );
   }
+
+  Future<void> deleteBlob({
+    required String server,
+    required String hash,
+    BlossomUploadAuth? auth,
+  }) async {
+    final normalized = server.endsWith('/')
+        ? server.substring(0, server.length - 1)
+        : server;
+    await _dio.delete<void>(
+      '$normalized/$hash',
+      options: Options(
+        headers: {
+          if (auth != null) 'authorization': auth.authorizationHeaderValue,
+        },
+      ),
+    );
+  }
 }

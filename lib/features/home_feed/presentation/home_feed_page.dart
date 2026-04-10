@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/remote_share_projection.dart';
@@ -43,13 +44,13 @@ class HomeFeedContent extends ConsumerWidget {
           bottom: false,
           child: Column(
             children: [
-              // Toolbar — "Nook" title + ProfileSwitcher
+              // Toolbar title + ProfileSwitcher
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
                 child: Row(
                   children: [
                     Text(
-                      'Nook',
+                      AppConstants.appName,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: palette.accent,
                         fontWeight: FontWeight.w800,
@@ -976,8 +977,9 @@ class _SharedGroupHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupSummary =
-        ref.watch(mdkGroupSummaryProvider(mlsGroupId)).valueOrNull;
+    final groupSummary = ref
+        .watch(mdkGroupSummaryProvider(mlsGroupId))
+        .valueOrNull;
     final label = groupSummary?.name ?? fallbackChildName;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),

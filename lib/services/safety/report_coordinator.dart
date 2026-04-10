@@ -11,6 +11,7 @@ import '../../domain/models/parent_identity.dart';
 import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
 import '../offline/offline_action_store.dart';
+import 'safety_hq_service.dart';
 
 class ReportSubmissionResult {
   const ReportSubmissionResult({
@@ -34,15 +35,18 @@ class ReportCoordinator {
     required MdkService mdkService,
     required NostrService nostrService,
     required OfflineActionStore offlineActionStore,
+    required SafetyHqService safetyHqService,
   }) : _database = database,
        _mdkService = mdkService,
        _nostrService = nostrService,
-       _offlineActionStore = offlineActionStore;
+       _offlineActionStore = offlineActionStore,
+       _safetyHqService = safetyHqService;
 
   final AppDatabase _database;
   final MdkService _mdkService;
   final NostrService _nostrService;
   final OfflineActionStore _offlineActionStore;
+  final SafetyHqService _safetyHqService;
   final Uuid _uuid = const Uuid();
 
   Future<void> fileReport({
@@ -162,6 +166,7 @@ class ReportCoordinator {
         AppConstants.safetyGroupIdSettingKey,
       );
       if (safetyJoined && safetyGroupId != null && safetyGroupId.isNotEmpty) {
+        final safetyRelays = await _loadSafetyPublishRelays(fallback: relays);
         await _publishReportToGroup(
           identity: identity,
           mlsGroupIdHex: safetyGroupId,
@@ -174,7 +179,7 @@ class ReportCoordinator {
           note: note,
           level: level,
           recipientType: 'safety_hq',
-          relays: relays,
+          relays: safetyRelays,
           createdAt: createdAt,
         );
         safetyPublished = true;
@@ -242,6 +247,7 @@ class ReportCoordinator {
     }
 
     final relays = await _nostrService.loadRelayList();
+    final safetyRelays = await _loadSafetyPublishRelays(fallback: relays);
     var deliveredCount = 0;
     for (final report in queuedReports) {
       // Preserve legacy behavior for pre-remap reports that were already sent
@@ -262,7 +268,7 @@ class ReportCoordinator {
         note: report.note,
         level: report.level,
         recipientType: 'safety_hq',
-        relays: relays,
+        relays: safetyRelays,
         createdAt: report.createdAt,
       );
       await _updateReportStatus(
@@ -365,5 +371,12 @@ class ReportCoordinator {
             : Value(deliveredAt),
       ),
     );
+  }
+
+  Future<List<String>> _loadSafetyPublishRelays({
+    required List<String> fallback,
+  }) async {
+    final persisted = await _safetyHqService.loadProvisionedRelays();
+    return persisted.isEmpty ? fallback : persisted;
   }
 }

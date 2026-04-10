@@ -5,6 +5,7 @@ import '../../../../core/di/providers.dart';
 import '../../../../core/storage/app_database.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/share_history_entry.dart';
+import '../models/launch_diagnostics.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 
 class ParentZoneActivitySection extends ConsumerWidget {
@@ -188,7 +189,7 @@ class _ShareHistoryRow extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${entry.childDisplayName} · ${entry.status}',
+                  '${entry.childDisplayName} · ${describeShareStatus(entry.status)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 2),
@@ -328,7 +329,7 @@ class _OutboundReportRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${report.status} · ${_formatTimestamp(report.createdAt)}',
+                  '${describeReportStatus(report.status)} · ${_formatTimestamp(report.createdAt)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

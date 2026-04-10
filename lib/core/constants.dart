@@ -1,5 +1,8 @@
 class AppConstants {
-  static const appName = 'MyTube';
+  static const appName = 'Tubestr';
+  static const supportUrl = 'https://www.tubestr.app/support';
+  static const privacyUrl = 'https://www.tubestr.app/privacy';
+  static const termsUrl = 'https://www.tubestr.app/terms';
   static const parentIdentityStorageKey = 'parent_identity_v1';
   static const parentPinStorageKey = 'parent_pin_hash_v1';
   static const parentDisplayNameSettingKey = 'parent_display_name';
@@ -7,11 +10,14 @@ class AppConstants {
   static const approvalRequiredSettingKey = 'approval_required';
   static const offlineActionQueueSettingKey = 'offline_action_queue';
   static const shareHistorySettingKey = 'share_history';
+  static const managedVideoUploadsSettingKey = 'managed_video_uploads';
   static const relayListSettingKey = 'relay_list';
   static const blossomServerListSettingKey = 'blossom_server_list';
   static const safetyJoinQueuedKey = 'safety_join_queued';
   static const safetyJoinedKey = 'safety_joined';
   static const safetyGroupIdSettingKey = 'safety_group_id';
+  static const safetyServicePubkeySettingKey = 'safety_service_pubkey';
+  static const safetyRelayListSettingKey = 'safety_relay_list';
   static const safetyLastSyncAtSettingKey = 'safety_last_sync_at';
   static const safetyHqGroupName = 'Safety HQ';
   static const defaultRelays = <String>[

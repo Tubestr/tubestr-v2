@@ -42,6 +42,17 @@ flutter test
 flutter run
 ```
 
+For Android debug builds and Rust bridge rebuilds, install the local toolchain first:
+
+```bash
+flutter doctor
+rustup --version
+cargo install cargo-ndk flutter_rust_bridge_codegen
+```
+
+The rebuild script expects the Android NDK at `ANDROID_NDK_HOME` or `NDK_HOME`.
+If neither is set, it falls back to `/opt/android-sdk/ndk/28.2.13676358`.
+
 Rebuild the Flutter Rust bridge, Android Rust `.so` files, debug APK, and reinstall on a USB device:
 
 ```bash
@@ -83,7 +94,7 @@ scripts/release_android.sh --push
 - `docs/plan.md` is the source of truth for live progress and implementation notes.
 - Riverpod is pinned to the 2.x line for now because current Flutter SDK package pinning conflicted with `drift_dev` when using Riverpod 3.x.
 - The generated Drift file lives at `lib/core/storage/app_database.g.dart`.
-- `flutter build apk --debug` currently succeeds in this environment.
+- `flutter build apk --debug` is part of the expected local validation path once Flutter, Rust, `cargo-ndk`, `flutter_rust_bridge_codegen`, and the Android NDK are installed.
 - If FRB or Rust bridge code changes, use `scripts/rebuild_android_bridge.sh` instead of `flutter run` alone.
 - Android release setup lives in `docs/android-github-releases.md`.
 - Zapstore notes live in `docs/zapstore-publishing.md`.

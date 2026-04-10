@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -13,6 +14,7 @@ import '../blossom/blossom_client.dart';
 import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
 import '../offline/offline_action_store.dart';
+import 'managed_video_upload_service.dart';
 import 'share_history_service.dart';
 
 class VideoShareCoordinator {
@@ -24,13 +26,21 @@ class VideoShareCoordinator {
     required NostrService nostrService,
     required OfflineActionStore offlineActionStore,
     required ShareHistoryService shareHistoryService,
+    required ManagedVideoUploadService managedVideoUploadService,
+    Future<void> Function({
+      required int sharedGroupCount,
+      required int queuedGroupCount,
+    })?
+    onFirstPrivateShareSent,
   }) : _blossomClient = blossomClient,
        _database = database,
        _videoApprovalService = videoApprovalService,
        _mdkService = mdkService,
        _nostrService = nostrService,
        _offlineActionStore = offlineActionStore,
-       _shareHistoryService = shareHistoryService;
+       _shareHistoryService = shareHistoryService,
+       _managedVideoUploadService = managedVideoUploadService,
+       _onFirstPrivateShareSent = onFirstPrivateShareSent;
 
   final BlossomClient _blossomClient;
   final AppDatabase _database;
@@ -39,6 +49,12 @@ class VideoShareCoordinator {
   final NostrService _nostrService;
   final OfflineActionStore _offlineActionStore;
   final ShareHistoryService _shareHistoryService;
+  final ManagedVideoUploadService _managedVideoUploadService;
+  final Future<void> Function({
+    required int sharedGroupCount,
+    required int queuedGroupCount,
+  })?
+  _onFirstPrivateShareSent;
 
   bool get isReady => [_blossomClient, _mdkService, _nostrService].length == 3;
 
@@ -333,6 +349,19 @@ class VideoShareCoordinator {
       ),
     ]);
 
+    await _managedVideoUploadService.recordUpload(
+      videoId: localVideo.id,
+      profileId: localVideo.profileId,
+      videoBlob: ManagedUploadedBlob(
+        hash: videoUpload.hash,
+        servers: videoUpload.servers,
+      ),
+      thumbBlob: ManagedUploadedBlob(
+        hash: thumbUpload.hash,
+        servers: thumbUpload.servers,
+      ),
+    );
+
     return createDraftShareMessageEvent(
       mlsGroupIdHex: mlsGroupIdHex,
       senderPublicKeyHex: identity.publicKeyHex,
@@ -473,12 +502,21 @@ class VideoShareCoordinator {
       throw StateError(errors.join('\n'));
     }
 
-    return ShareDispatchResult(
+    final result = ShareDispatchResult(
       sharedGroupIds: sharedGroupIds,
       queuedGroupIds: queuedGroupIds,
       eventIds: eventIds,
       errors: errors,
     );
+    if (result.sharedGroupCount > 0 && _onFirstPrivateShareSent != null) {
+      unawaited(
+        _onFirstPrivateShareSent(
+          sharedGroupCount: result.sharedGroupCount,
+          queuedGroupCount: result.queuedGroupCount,
+        ),
+      );
+    }
+    return result;
   }
 
   Future<BlossomUploadAuth> _createBlossomUploadAuth({

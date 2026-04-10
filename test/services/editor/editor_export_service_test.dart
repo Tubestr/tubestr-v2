@@ -1,9 +1,56 @@
+import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mytube/core/storage/app_database.dart';
+import 'package:mytube/domain/models/content_scan_summary.dart';
 import 'package:mytube/domain/models/editor_session.dart';
+import 'package:mytube/services/approval/content_scan_service.dart';
+import 'package:mytube/services/approval/media_signal_extraction_service.dart';
+import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/editor/editor_export_service.dart';
+import 'package:mytube/services/media/local_media_library_service.dart';
+import 'package:mytube/services/media/thumbnail_service.dart';
+
+class _FakeThumbnailService extends ThumbnailService {
+  @override
+  Future<String?> createVideoThumbnail({required String videoPath}) async {
+    return '$videoPath.jpg';
+  }
+}
+
+class _FakeVideoApprovalService extends VideoApprovalService {
+  _FakeVideoApprovalService({required super.database})
+    : super(
+        scanService: const ContentScanService(),
+        signalExtractionService: MediaSignalExtractionService(
+          extractSignals: (video) async => MediaSignalExtractionResult(
+            cvLabels: const [],
+            faceCount: 0,
+            loudness: 0,
+          ),
+        ),
+      );
+
+  @override
+  Future<ContentScanSummary> scanAndClassifyVideo({
+    required String videoId,
+  }) async {
+    return const ContentScanSummary(
+      scanVersion: 1,
+      riskLevel: 'low',
+      highestRiskCategory: null,
+      confidence: 0,
+      reviewReasons: [],
+      flags: [],
+      labels: [],
+      needsReview: false,
+      summary: 'clear',
+    );
+  }
+}
 
 class _FakeAssetBundle extends CachingAssetBundle {
   @override
@@ -429,6 +476,66 @@ void main() {
       // FFmpeg will look for a path with literal backslash characters.
       expect(videoFilter, isNot(contains(r'\ ')));
       expect(videoFilter, contains("lut3d=file='"));
+    },
+  );
+
+  test(
+    'EditorExportService saves remixes into the local videos library',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'profile-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'assets/avatar.png',
+      );
+
+      final tempRoot = await Directory.systemTemp.createTemp(
+        'editor-export-test',
+      );
+      addTearDown(() async {
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      });
+      final documentsDir = Directory('${tempRoot.path}/documents')
+        ..createSync(recursive: true);
+      final supportDir = Directory('${tempRoot.path}/support')
+        ..createSync(recursive: true);
+      final mediaLibrary = LocalMediaLibraryService(
+        documentsDirectoryProvider: () async => documentsDir,
+        supportDirectoryProvider: () async => supportDir,
+      );
+      final service = EditorExportService(
+        database: database,
+        thumbnailService: _FakeThumbnailService(),
+        videoApprovalService: _FakeVideoApprovalService(database: database),
+        localMediaLibraryService: mediaLibrary,
+        assetBundle: _FakeAssetBundle(),
+        executeFfmpeg: (arguments) async =>
+            const FfmpegExecutionResult(success: true),
+        probeSourceMediaInfo: (path) async =>
+            const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false),
+      );
+
+      final result = await service.export(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+        ),
+        profileId: 'profile-1',
+        title: 'Remix',
+      );
+      final saved = await database.getLocalVideoById(result.videoId);
+
+      expect(result.outputPath, contains('${documentsDir.path}/videos/'));
+      expect(saved?.filePath, result.outputPath);
     },
   );
 }

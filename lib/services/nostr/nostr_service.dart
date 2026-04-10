@@ -157,7 +157,7 @@ class NdkNostrService implements NostrService {
       content: jsonEncode(<String, String>{
         'name': displayName,
         'display_name': displayName,
-        'about': 'Parent account for MyTube',
+        'about': 'Parent account for Tubestr',
       }),
       createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );

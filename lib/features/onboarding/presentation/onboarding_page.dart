@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
@@ -10,17 +13,29 @@ import '../../../domain/models/parent_identity.dart';
 import '../../../shared_ui/components/confetti_view.dart';
 import '../../../shared_ui/components/nook_decorations.dart';
 import '../../../shared_ui/components/qr_scanner_sheet.dart';
+import '../../../shared_ui/components/external_page_view.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../app_shell/presentation/app_shell.dart';
 import 'models/onboarding_flow_state.dart';
 import 'widgets/onboarding_bootstrap_widgets.dart';
 import 'widgets/onboarding_step_widgets.dart';
 
-class AppBootstrapPage extends ConsumerWidget {
+class AppBootstrapPage extends ConsumerStatefulWidget {
   const AppBootstrapPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppBootstrapPage> createState() => _AppBootstrapPageState();
+}
+
+class _AppBootstrapPageState extends ConsumerState<AppBootstrapPage> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ref.read(betaFunnelServiceProvider).trackAppStarted());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final identityAsync = ref.watch(parentIdentityProvider);
     final profilesAsync = ref.watch(profilesProvider);
 
@@ -32,8 +47,8 @@ class AppBootstrapPage extends ConsumerWidget {
               return OnboardingPage(identity: identity);
             }
             final selectedId = ref.watch(selectedProfileIdProvider);
-            final profileExists = selectedId != null &&
-                profiles.any((p) => p.id == selectedId);
+            final profileExists =
+                selectedId != null && profiles.any((p) => p.id == selectedId);
             if (!profileExists && profiles.isNotEmpty) {
               Future.microtask(() {
                 ref.read(selectedProfileIdProvider.notifier).state =
@@ -65,8 +80,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   OnboardingFlowState _flow = const OnboardingFlowState();
   final _nameController = TextEditingController();
   final _displayNameController = TextEditingController();
+  final _birthYearController = TextEditingController();
   final _restoreKeyController = TextEditingController();
   final _introController = PageController();
+  bool _consentAccepted = false;
 
   @override
   void initState() {
@@ -80,6 +97,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   void dispose() {
     _nameController.dispose();
     _displayNameController.dispose();
+    _birthYearController.dispose();
     _restoreKeyController.dispose();
     _introController.dispose();
     super.dispose();
@@ -91,7 +109,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     if (oldWidget.identity != null && widget.identity == null) {
       _nameController.clear();
       _displayNameController.clear();
+      _birthYearController.clear();
       _restoreKeyController.clear();
+      _consentAccepted = false;
       _flow = const OnboardingFlowState();
     }
   }
@@ -114,6 +134,44 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     setState(() => _flow = _flow.copyWith(childTheme: theme));
   }
 
+  void _setConsentAccepted(bool value) {
+    if (_consentAccepted == value) {
+      return;
+    }
+    setState(() => _consentAccepted = value);
+  }
+
+  String? _parentEligibilityMessage() {
+    final trimmedYear = _birthYearController.text.trim();
+    final currentYear = DateTime.now().year;
+    if (trimmedYear.isEmpty) {
+      return 'Enter the parent account holder\'s birth year before continuing.';
+    }
+
+    final birthYear = int.tryParse(trimmedYear);
+    if (birthYear == null || trimmedYear.length != 4) {
+      return 'Enter a valid four-digit birth year.';
+    }
+    if (birthYear < 1900 || birthYear > currentYear) {
+      return 'Enter a birth year between 1900 and $currentYear.';
+    }
+    if (currentYear - birthYear < 18) {
+      return 'Tubestr parent accounts must be created by an adult who is 18 or older.';
+    }
+    if (!_consentAccepted) {
+      return 'Confirm the parent consent statement before generating the parent key.';
+    }
+    return null;
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    await openExternalPageWithFallback(
+      context,
+      title: 'Privacy Policy',
+      url: AppConstants.privacyUrl,
+    );
+  }
+
   void _refreshParentState() {
     ref.invalidate(parentIdentityProvider);
     ref.invalidate(parentDisplayNameProvider);
@@ -122,6 +180,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   Future<void> _createIdentity() async {
     final messenger = ScaffoldMessenger.of(context);
+    final eligibilityMessage = _parentEligibilityMessage();
+    if (eligibilityMessage != null) {
+      messenger.showSnackBar(SnackBar(content: Text(eligibilityMessage)));
+      return;
+    }
     setState(() => _flow = _flow.copyWith(busy: true));
     try {
       final identity = await ref
@@ -235,6 +298,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     await ref
         .read(identityServiceProvider)
         .createChildProfile(name: name, theme: _flow.childTheme);
+    unawaited(
+      ref
+          .read(betaFunnelServiceProvider)
+          .trackChildProfileCreated(surface: 'onboarding'),
+    );
     _nameController.clear();
     if (!mounted) {
       return;
@@ -264,7 +332,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         return;
       }
       setState(() => _flow = _flow.copyWith(busy: false));
-      _finish();
+      await _finish();
     } catch (_) {
       if (!mounted) {
         return;
@@ -279,7 +347,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     }
   }
 
-  void _finish() {
+  Future<void> _finish() async {
+    final onboardingMode =
+        widget.identity != null || _flow.recoverySucceeded == true
+        ? 'restore_parent'
+        : 'new_parent';
+    await ref.read(safetyHqServiceProvider).queueJoin();
+    unawaited(
+      ref
+          .read(betaFunnelServiceProvider)
+          .trackParentOnboardingCompleted(mode: onboardingMode),
+    );
     HapticFeedback.mediumImpact();
     setState(() {
       _flow = _flow.copyWith(
@@ -340,9 +418,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         key: const ValueKey('parentKey'),
         identity: identity,
         displayNameController: _displayNameController,
+        birthYearController: _birthYearController,
         palette: palette,
         busy: _flow.busy,
+        consentAccepted: _consentAccepted,
+        eligibilityMessage: identity == null
+            ? _parentEligibilityMessage()
+            : null,
         onGenerate: _createIdentity,
+        onBirthYearChanged: (_) => setState(() {}),
+        onConsentChanged: _setConsentAccepted,
+        onOpenPrivacyPolicy: _openPrivacyPolicy,
         onContinue: () => _goToStep(OnboardingStep.childProfiles),
       ),
       OnboardingStep.restoreKey => OnboardingRestoreKeyStep(
@@ -420,34 +506,36 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               ],
             ),
           ),
-          SafeArea(
-            child: AnimatedSwitcher(
-              duration: AppMotion.duration(context, AppMotion.layoutChange),
-              switchInCurve: AppMotion.easeOutQuint,
-              switchOutCurve: Curves.easeOut,
-              transitionBuilder: (child, animation) {
-                final offsetAnimation =
-                    Tween<Offset>(
-                      begin: AppMotion.offset(context, const Offset(0, 0.06)),
-                      end: Offset.zero,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: AppMotion.easeOutQuint,
-                      ),
-                    );
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: offsetAnimation,
-                    child: child,
-                  ),
-                );
-              },
-              child: _buildCurrentStep(
-                palette: palette,
-                profiles: profiles,
-                identity: identity,
+          Positioned.fill(
+            child: SafeArea(
+              child: AnimatedSwitcher(
+                duration: AppMotion.duration(context, AppMotion.layoutChange),
+                switchInCurve: AppMotion.easeOutQuint,
+                switchOutCurve: Curves.easeOut,
+                transitionBuilder: (child, animation) {
+                  final offsetAnimation =
+                      Tween<Offset>(
+                        begin: AppMotion.offset(context, const Offset(0, 0.06)),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: AppMotion.easeOutQuint,
+                        ),
+                      );
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: offsetAnimation,
+                      child: child,
+                    ),
+                  );
+                },
+                child: _buildCurrentStep(
+                  palette: palette,
+                  profiles: profiles,
+                  identity: identity,
+                ),
               ),
             ),
           ),

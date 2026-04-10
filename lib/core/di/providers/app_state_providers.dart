@@ -174,8 +174,9 @@ final remotePlaybackMetricsProvider =
           .watchRemotePlaybackMetrics(remoteShareId);
     });
 
-final safetyHqStatusProvider = FutureProvider((ref) {
-  return ref.watch(safetyHqServiceProvider).loadStatus();
+final safetyHqStatusProvider = FutureProvider((ref) async {
+  ref.watch(syncRevisionProvider);
+  return ref.watch(safetyHqServiceProvider).refreshEnrollment();
 });
 
 final pendingDeepLinkProvider = StateProvider<Uri?>((ref) => null);
@@ -211,8 +212,10 @@ final videosForSelectedProfileProvider = StreamProvider<List<LocalVideo>>((
   return ref.watch(appDatabaseProvider).watchVideosForProfile(profileId);
 });
 
-final localVideoByIdProvider =
-    StreamProvider.family<LocalVideo?, String>((ref, videoId) {
+final localVideoByIdProvider = StreamProvider.family<LocalVideo?, String>((
+  ref,
+  videoId,
+) {
   return ref.watch(appDatabaseProvider).watchLocalVideoById(videoId);
 });
 
