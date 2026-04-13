@@ -10,8 +10,10 @@ import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/remote_share_projection.dart';
+import '../../../core/storage/app_database.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
+import '../../../shared_ui/components/video_feed_row.dart';
 
 /// Home tab content — matches v1 HomeFeedView.
 class HomeFeedContent extends ConsumerWidget {
@@ -693,162 +695,12 @@ class _MyVideosSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final cols = constraints.maxWidth > 600 ? 3 : 2;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 3 / 4,
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, i) =>
-                  _VideoTile(video: items[i], palette: palette),
-            );
-          },
+        LocalVideoFeedRow(
+          items: items.cast<LocalVideo>(),
+          palette: palette,
+          onTap: (video) => context.push('/player/${video.id}'),
         ),
       ],
-    );
-  }
-}
-
-class _VideoTile extends ConsumerWidget {
-  const _VideoTile({required this.video, required this.palette});
-
-  final dynamic video;
-  final KidPalette palette;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final thumbFile = video.thumbPath.isEmpty
-        ? null
-        : File(video.thumbPath as String);
-    final hasThumb = thumbFile?.existsSync() == true;
-    final isPending = (video.approvalStatus as String) != 'approved';
-
-    return GestureDetector(
-      onTap: () => context.push('/player/${video.id}'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: hasThumb
-                        ? MediaThumbnailFrame(
-                            file: thumbFile!,
-                            borderRadius: BorderRadius.circular(20),
-                            background: LinearGradient(
-                              colors: [
-                                palette.accent.withValues(alpha: 0.18),
-                                palette.accentSecondary.withValues(alpha: 0.16),
-                                const Color(0xFF120F18),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            padding: const EdgeInsets.all(6),
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  palette.accent.withValues(alpha: 0.25),
-                                  palette.accentSecondary.withValues(
-                                    alpha: 0.25,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.play_arrow_rounded,
-                              size: 36,
-                              color: palette.accent,
-                            ),
-                          ),
-                  ),
-                ),
-                // Pending badge
-                if (isPending)
-                  Positioned(
-                    top: 6,
-                    left: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: palette.warning,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'Pending',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (video.liked as bool)
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF6B7A).withValues(alpha: 0.92),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.favorite_rounded,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            video.title as String,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.play_arrow_rounded, size: 14, color: palette.mutedInk),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  video.playCount == 0
-                      ? 'New clip'
-                      : '${video.playCount} ${video.playCount == 1 ? 'play' : 'plays'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: palette.mutedInk,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

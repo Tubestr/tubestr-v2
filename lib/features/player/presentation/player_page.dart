@@ -15,6 +15,7 @@ import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_playback_metrics.dart';
 import '../../../domain/models/video_reaction_summary.dart';
+import '../../editor/presentation/editor_detail_page.dart';
 import '../../parent_zone/presentation/models/launch_diagnostics.dart';
 import '../../../services/media/video_probe_service.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
@@ -765,6 +766,25 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           onTap: () => Navigator.of(context).pop(),
                         ),
                         const Spacer(),
+                        if (video != null)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _PlayerChromeButton(
+                              icon: Icons.auto_awesome_rounded,
+                              palette: palette,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.of(context).push(
+                                  AppMotion.modalRoute(
+                                    context: context,
+                                    builder: (_) => EditorDetailPage.fromVideo(
+                                      video: video,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         _SharePillButton(
                           isBusy: _isSharingLocal,
                           palette: palette,

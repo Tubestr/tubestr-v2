@@ -703,7 +703,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                 Navigator.of(context).push(
                   AppMotion.modalRoute(
                     context: context,
-                    builder: (_) => EditorDetailPage(video: video),
+                    builder: (_) => EditorDetailPage.fromVideo(video: video),
                   ),
                 );
               },

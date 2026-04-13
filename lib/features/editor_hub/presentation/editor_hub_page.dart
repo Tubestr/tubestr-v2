@@ -1,15 +1,20 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
+import '../../../domain/models/remote_share_projection.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
+import '../../../shared_ui/components/video_feed_row.dart';
 import '../../../shared_ui/motion/app_motion.dart';
+import '../../editor/domain/editor_source.dart';
 import '../../editor/presentation/editor_detail_page.dart';
 
 /// Editor tab content — gallery of videos available for editing.
@@ -20,6 +25,8 @@ class EditorHubContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = ref.watch(activeThemeProvider).palette;
     final videos = ref.watch(videosForSelectedProfileProvider);
+    final remoteShares =
+        ref.watch(remoteSharesProvider).valueOrNull ?? const [];
 
     return SafeArea(
       bottom: false,
@@ -35,7 +42,11 @@ class EditorHubContent extends ConsumerWidget {
 
           Expanded(
             child: videos.when(
-              data: (items) => _Body(items: items, palette: palette),
+              data: (items) => _Body(
+                items: items,
+                remoteShares: remoteShares,
+                palette: palette,
+              ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Padding(
@@ -69,14 +80,19 @@ class EditorHubContent extends ConsumerWidget {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.items, required this.palette});
+  const _Body({
+    required this.items,
+    required this.remoteShares,
+    required this.palette,
+  });
 
   final List<LocalVideo> items;
+  final List<RemoteShareProjection> remoteShares;
   final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
+    if (items.isEmpty && remoteShares.isEmpty) {
       return ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
         children: [
@@ -91,17 +107,26 @@ class _Body extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
       children: [
         _HasClipsHeader(items: items, palette: palette),
-        const SizedBox(height: 16),
-        _LatestClipPreview(video: items.first, palette: palette),
-        const SizedBox(height: 24),
-        Text(
-          'All clips',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 12),
-        _VideoGrid(items: items, palette: palette),
+        if (items.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          LocalVideoFeedRow(
+            items: items,
+            palette: palette,
+            onTap: (video) {
+              HapticFeedback.selectionClick();
+              Navigator.of(context).push(
+                AppMotion.modalRoute(
+                  context: context,
+                  builder: (_) => EditorDetailPage.fromVideo(video: video),
+                ),
+              );
+            },
+          ),
+        ],
+        if (remoteShares.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _SharedVideosSection(items: remoteShares, palette: palette),
+        ],
       ],
     );
   }
@@ -135,135 +160,6 @@ class _HasClipsHeader extends ConsumerWidget {
           tooltip: 'Capture',
         ),
       ],
-    );
-  }
-}
-
-/// Large preview card for the latest clip.
-class _LatestClipPreview extends StatelessWidget {
-  const _LatestClipPreview({required this.video, required this.palette});
-
-  final LocalVideo video;
-  final KidPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final thumbFile = video.thumbPath.isEmpty ? null : File(video.thumbPath);
-    final hasThumb = thumbFile?.existsSync() == true;
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        Navigator.of(context).push(
-          AppMotion.modalRoute(
-            context: context,
-            builder: (_) => EditorDetailPage(video: video),
-          ),
-        );
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: SizedBox(
-          height: 200,
-          width: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Thumbnail or gradient placeholder
-              if (hasThumb)
-                MediaThumbnailFrame(
-                  file: thumbFile!,
-                  borderRadius: BorderRadius.circular(0),
-                  background: LinearGradient(
-                    colors: [
-                      palette.accent.withValues(alpha: 0.18),
-                      palette.accentSecondary.withValues(alpha: 0.16),
-                      const Color(0xFF120F18),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                  padding: EdgeInsets.zero,
-                )
-              else
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        palette.accent.withValues(alpha: 0.3),
-                        palette.accentSecondary.withValues(alpha: 0.25),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.movie_creation_outlined,
-                    size: 48,
-                    color: palette.accent,
-                  ),
-                ),
-
-              // Scrim + "Edit this clip" overlay
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.65),
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          video.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      FilledButton.icon(
-                        onPressed: () {
-                          HapticFeedback.selectionClick();
-                          Navigator.of(context).push(
-                            AppMotion.modalRoute(
-                              context: context,
-                              builder: (_) => EditorDetailPage(video: video),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                        label: const Text('Edit this clip'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -430,151 +326,162 @@ class _StudioPill extends StatelessWidget {
   }
 }
 
-class _VideoGrid extends StatelessWidget {
-  const _VideoGrid({required this.items, required this.palette});
+class _SharedVideosSection extends StatelessWidget {
+  const _SharedVideosSection({required this.items, required this.palette});
 
-  final List<LocalVideo> items;
+  final List<RemoteShareProjection> items;
   final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 4 / 5,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, i) {
-        final video = items[i];
-        return _EditorVideoCard(video: video, palette: palette);
-      },
+    final grouped = groupBy(
+      items,
+      (RemoteShareProjection item) => item.mlsGroupId,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'From Friends & Family',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 12),
+        for (final entry in grouped.entries) ...[
+          _SharedGroupHeader(
+            mlsGroupId: entry.key,
+            fallbackChildName: entry.value.first.displayName,
+            palette: palette,
+          ),
+          SizedBox(
+            height: 172,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: entry.value.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final item = entry.value[index];
+                return _SharedVideoTile(item: item, palette: palette);
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ],
     );
   }
 }
 
-class _EditorVideoCard extends StatelessWidget {
-  const _EditorVideoCard({required this.video, required this.palette});
+class _SharedGroupHeader extends ConsumerWidget {
+  const _SharedGroupHeader({
+    required this.mlsGroupId,
+    required this.fallbackChildName,
+    required this.palette,
+  });
 
-  final LocalVideo video;
+  final String mlsGroupId;
+  final String fallbackChildName;
   final KidPalette palette;
 
   @override
-  Widget build(BuildContext context) {
-    final thumbFile = video.thumbPath.isEmpty ? null : File(video.thumbPath);
-    final hasThumb = thumbFile?.existsSync() == true;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: () {
-        HapticFeedback.selectionClick();
-        Navigator.of(context).push(
-          AppMotion.modalRoute(
-            context: context,
-            builder: (_) => EditorDetailPage(video: video),
-          ),
-        );
-      },
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              palette.accent.withValues(alpha: 0.15),
-              palette.accentSecondary.withValues(alpha: 0.12),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupSummary = ref
+        .watch(mdkGroupSummaryProvider(mlsGroupId))
+        .valueOrNull;
+    final label = groupSummary?.name ?? fallbackChildName;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        'From $label',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: palette.mutedInk,
+          fontWeight: FontWeight.w700,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: hasThumb
-                            ? MediaThumbnailFrame(
-                                file: thumbFile!,
-                                borderRadius: BorderRadius.circular(16),
-                                background: LinearGradient(
-                                  colors: [
-                                    palette.accent.withValues(alpha: 0.18),
-                                    palette.accentSecondary.withValues(
-                                      alpha: 0.16,
-                                    ),
-                                    const Color(0xFF120F18),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                                padding: const EdgeInsets.all(6),
-                              )
-                            : Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      palette.accent.withValues(alpha: 0.2),
-                                      palette.accentSecondary.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  size: 40,
-                                  color: palette.accent,
-                                ),
-                              ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 6,
-                      bottom: 6,
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: palette.accent.withValues(alpha: 0.85),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          size: 14,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+      ),
+    );
+  }
+}
+
+class _SharedVideoTile extends ConsumerWidget {
+  const _SharedVideoTile({required this.item, required this.palette});
+
+  final RemoteShareProjection item;
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final thumbnailFile = item.hasThumbnail ? File(item.localThumbPath!) : null;
+    final hasThumb = thumbnailFile?.existsSync() == true;
+    final selectedProfileId = ref.watch(selectedProfileIdProvider);
+
+    return SizedBox(
+      width: 140,
+      child: GestureDetector(
+        onTap: () {
+          if (item.isDownloaded && selectedProfileId != null) {
+            HapticFeedback.selectionClick();
+            Navigator.of(context).push(
+              AppMotion.modalRoute(
+                context: context,
+                builder: (_) => EditorDetailPage(
+                  source: EditorSource.fromRemoteShare(
+                    item,
+                    profileId: selectedProfileId,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                video.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall,
+            );
+          } else {
+            context.push('/player/remote/${item.remoteShareId}');
+          }
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 128,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: hasThumb
+                    ? MediaThumbnailFrame(
+                        file: thumbnailFile!,
+                        borderRadius: BorderRadius.circular(20),
+                        background: const LinearGradient(
+                          colors: [Color(0xFF16111D), Color(0xFF0C0A11)],
+                        ),
+                        padding: const EdgeInsets.all(6),
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              palette.accentSecondary.withValues(alpha: 0.28),
+                              palette.accent.withValues(alpha: 0.20),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Icon(
+                          item.isDownloaded
+                              ? Icons.play_circle_fill_rounded
+                              : Icons.cloud_download_rounded,
+                          size: 36,
+                          color: palette.accent,
+                        ),
+                      ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                video.tags.join(' \u00b7 '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              item.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ),
       ),
     );

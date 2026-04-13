@@ -14,6 +14,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/theme_descriptor.dart';
+import '../domain/editor_source.dart';
 import '../../../domain/models/content_scan_summary.dart';
 import '../../../domain/models/editor_resources.dart';
 import '../../../domain/models/editor_session.dart';
@@ -31,9 +32,13 @@ import '../domain/editor_trim_utils.dart';
 import 'selfie_sticker_capture_page.dart';
 
 class EditorDetailPage extends ConsumerStatefulWidget {
-  const EditorDetailPage({super.key, required this.video});
+  const EditorDetailPage({super.key, required this.source});
 
-  final LocalVideo video;
+  /// Convenience constructor that wraps a [LocalVideo] in an [EditorSource].
+  EditorDetailPage.fromVideo({super.key, required LocalVideo video})
+    : source = EditorSource.fromLocalVideo(video);
+
+  final EditorSource source;
 
   @override
   ConsumerState<EditorDetailPage> createState() => _EditorDetailPageState();
@@ -105,7 +110,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       ),
     );
     final rawDuration = Duration(
-      milliseconds: (widget.video.durationSeconds * 1000).round(),
+      milliseconds: (widget.source.durationSeconds * 1000).round(),
     );
     final normalizedTrim = normalizeEditorTrim(
       rawVideoDuration: rawDuration,
@@ -117,8 +122,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       ),
     );
     _session = EditorSession(
-      videoId: widget.video.id,
-      sourcePath: widget.video.filePath,
+      videoId: widget.source.id,
+      sourcePath: widget.source.filePath,
       videoDuration: normalizedTrim.videoDuration,
       trimRange: normalizedTrim.trimRange,
     );
@@ -243,7 +248,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                       constraints: BoxConstraints(maxWidth: timelineMaxWidth),
                       child: _TimelineBar(
                         palette: palette,
-                        thumbPath: widget.video.thumbPath,
+                        thumbPath: widget.source.thumbPath,
                         session: _session,
                         isTrimActive: isTrimActive,
                         previewPosition: _previewPosition,
@@ -482,8 +487,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
           .read(editorExportServiceProvider)
           .export(
             session: _session,
-            profileId: widget.video.profileId,
-            title: '${widget.video.title} Remix',
+            profileId: widget.source.profileId,
+            title: '${widget.source.title} Remix',
             preferredDisplaySize: preferredDisplaySize,
             preferredRotationDegrees: preferredRotationDegrees,
           );
@@ -510,7 +515,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       );
     } finally {
       if (mounted) {
-        await _player.open(Media(widget.video.filePath), play: false);
+        await _player.open(Media(widget.source.filePath), play: false);
         await _seekPreviewToTrimStart();
       }
       if (mounted) {
@@ -521,7 +526,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
 
   Future<void> _loadUserStickers() async {
     final stickers = await _stickerLibrary.listUserStickers(
-      profileId: widget.video.profileId,
+      profileId: widget.source.profileId,
     );
     if (!mounted) return;
     setState(() => _userStickers = stickers);
@@ -533,7 +538,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       AppMotion.modalRoute(
         context: context,
         builder: (_) => SelfieStickerCapturePage(
-          profileId: widget.video.profileId,
+          profileId: widget.source.profileId,
           palette: ref.read(activeThemeProvider).palette,
           stickerLibrary: _stickerLibrary,
         ),
@@ -548,7 +553,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   Future<void> _deleteUserSticker(EditorStickerAsset sticker) async {
     if (!sticker.isUserCreated) return;
     await _stickerLibrary.deleteSticker(
-      profileId: widget.video.profileId,
+      profileId: widget.source.profileId,
       stickerPath: sticker.assetPath,
     );
     if (!mounted) return;
@@ -869,12 +874,12 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   Future<void> _probeAndOpen() async {
-    final probe = await probeVideoFile(widget.video.filePath);
+    final probe = await probeVideoFile(widget.source.filePath);
     if (probe != null && mounted) {
       setState(() => _probeDisplayAspectRatio = probe.displayAspectRatio);
     }
     if (!mounted) return;
-    _player.open(Media(widget.video.filePath));
+    _player.open(Media(widget.source.filePath));
   }
 
   double _resolvedVideoAspectRatio() {
@@ -2582,10 +2587,12 @@ class _StickerOverlay extends StatelessWidget {
     final stickerPath = overlay.stickerAssetPath!;
     final isBundledAsset = stickerPath.startsWith('assets/');
     return Positioned(
-      left: (transform.position.dx * previewSize.width) -
+      left:
+          (transform.position.dx * previewSize.width) -
           (stickerSize / 2) -
           _touchPadding,
-      top: (transform.position.dy * previewSize.height) -
+      top:
+          (transform.position.dy * previewSize.height) -
           (stickerSize / 2) -
           _touchPadding,
       child: GestureDetector(
