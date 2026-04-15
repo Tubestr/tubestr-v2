@@ -28,10 +28,33 @@ class AppBootstrapPage extends ConsumerStatefulWidget {
 }
 
 class _AppBootstrapPageState extends ConsumerState<AppBootstrapPage> {
+  bool _currentKeyPackagePublishInFlight = false;
+  String? _currentKeyPackagePublishedForPubkey;
+
   @override
   void initState() {
     super.initState();
     unawaited(ref.read(betaFunnelServiceProvider).trackAppStarted());
+  }
+
+  void _publishCurrentKeyPackageOnce(ParentIdentity identity) {
+    if (_currentKeyPackagePublishInFlight ||
+        _currentKeyPackagePublishedForPubkey == identity.publicKeyHex) {
+      return;
+    }
+    _currentKeyPackagePublishInFlight = true;
+    unawaited(() async {
+      try {
+        await ref
+            .read(familyConnectionServiceProvider)
+            .publishCurrentKeyPackage(identity: identity);
+        _currentKeyPackagePublishedForPubkey = identity.publicKeyHex;
+      } catch (_) {
+        _currentKeyPackagePublishedForPubkey = null;
+      } finally {
+        _currentKeyPackagePublishInFlight = false;
+      }
+    }());
   }
 
   @override
@@ -41,6 +64,9 @@ class _AppBootstrapPageState extends ConsumerState<AppBootstrapPage> {
 
     return identityAsync.when(
       data: (identity) {
+        if (identity != null) {
+          _publishCurrentKeyPackageOnce(identity);
+        }
         return profilesAsync.when(
           data: (profiles) {
             if (identity == null || profiles.isEmpty) {
@@ -289,25 +315,69 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     return 'We could not restore that backup key yet. Please double-check it and try again.';
   }
 
-  Future<void> _addChild() async {
+  Future<bool> _addChild({bool showValidationMessage = false}) async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      return;
+      if (showValidationMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a child name before continuing.'),
+          ),
+        );
+      }
+      return false;
     }
     setState(() => _flow = _flow.copyWith(busy: true));
-    await ref
-        .read(identityServiceProvider)
-        .createChildProfile(name: name, theme: _flow.childTheme);
-    unawaited(
-      ref
-          .read(betaFunnelServiceProvider)
-          .trackChildProfileCreated(surface: 'onboarding'),
-    );
-    _nameController.clear();
-    if (!mounted) {
+    try {
+      await ref
+          .read(identityServiceProvider)
+          .createChildProfile(name: name, theme: _flow.childTheme);
+      if (!mounted) {
+        return true;
+      }
+      ref.invalidate(profilesProvider);
+      unawaited(
+        ref
+            .read(betaFunnelServiceProvider)
+            .trackChildProfileCreated(surface: 'onboarding'),
+      );
+      _nameController.clear();
+      setState(() => _flow = _flow.copyWith(busy: false));
+      return true;
+    } catch (_) {
+      if (mounted) {
+        setState(() => _flow = _flow.copyWith(busy: false));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('We could not add that child profile yet.'),
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _finishChildProfiles(List<Profile> profiles) async {
+    if (_flow.busy) {
       return;
     }
-    setState(() => _flow = _flow.copyWith(busy: false));
+    var hasProfiles = profiles.isNotEmpty;
+    if (_nameController.text.trim().isNotEmpty) {
+      final added = await _addChild(showValidationMessage: true);
+      if (!added || !mounted) {
+        return;
+      }
+      hasProfiles = true;
+    }
+    if (!hasProfiles) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add at least one child profile to finish setup.'),
+        ),
+      );
+      return;
+    }
+    _goToStep(OnboardingStep.permissions);
   }
 
   Future<void> _requestPermissions() async {
@@ -481,10 +551,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         theme: _flow.childTheme,
         busy: _flow.busy,
         onThemeChanged: _setChildTheme,
-        onAdd: _addChild,
-        onFinish: profiles.isNotEmpty
-            ? () => _goToStep(OnboardingStep.permissions)
-            : null,
+        onAdd: () => unawaited(_addChild(showValidationMessage: true)),
+        onFinish: () => unawaited(_finishChildProfiles(profiles)),
       ),
       OnboardingStep.permissions => OnboardingPermissionsStep(
         key: const ValueKey('permissions'),

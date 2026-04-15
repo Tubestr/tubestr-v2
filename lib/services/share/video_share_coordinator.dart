@@ -61,6 +61,10 @@ class VideoShareCoordinator {
   Future<List<MdkGroupSummary>> loadEligibleShareGroups() async {
     await warmUp();
     final groups = await _mdkService.getGroupSummaries();
+    return _eligibleShareGroups(groups);
+  }
+
+  List<MdkGroupSummary> _eligibleShareGroups(List<MdkGroupSummary> groups) {
     final seen = <String>{};
     return groups
         .where((group) {
@@ -72,9 +76,53 @@ class VideoShareCoordinator {
           if (normalizedName == AppConstants.safetyHqGroupName.toLowerCase()) {
             return false;
           }
-          return group.memberCount > 1;
+          return group.memberCount > 1 || _looksLikeConnectedFamilyGroup(group);
         })
         .toList(growable: false);
+  }
+
+  bool _looksLikeConnectedFamilyGroup(MdkGroupSummary group) {
+    final normalizedName = group.name.trim().toLowerCase();
+    final normalizedDescription = group.description.trim().toLowerCase();
+    if (normalizedDescription.startsWith('connected ') ||
+        normalizedDescription == 'created from scanned invite') {
+      return true;
+    }
+    return normalizedName.contains(' & ');
+  }
+
+  Future<MdkGroupSummary?> _loadPrimaryGroupFallback({
+    required String profileId,
+    required List<MdkGroupSummary> groups,
+  }) async {
+    final primaryGroupId =
+        await _database.getPrimaryGroupIdForProfile(profileId) ??
+        await _database.getPrimaryGroupIdForAnyProfile();
+    final normalizedPrimaryGroupId = primaryGroupId?.trim().toLowerCase();
+    if (normalizedPrimaryGroupId == null || normalizedPrimaryGroupId.isEmpty) {
+      return null;
+    }
+
+    for (final group in groups) {
+      if (group.mlsGroupIdHex.trim().toLowerCase() !=
+          normalizedPrimaryGroupId) {
+        continue;
+      }
+      if (group.name.trim().toLowerCase() ==
+          AppConstants.safetyHqGroupName.toLowerCase()) {
+        return null;
+      }
+      return group;
+    }
+
+    return MdkGroupSummary(
+      mlsGroupIdHex: primaryGroupId!.trim(),
+      nostrGroupIdHex: '',
+      name: 'Family connection',
+      description: 'Local primary family connection',
+      memberCount: 2,
+      adminPubkeysHex: const <String>[],
+    );
   }
 
   Future<void> warmUp() async {
@@ -593,7 +641,18 @@ class VideoShareCoordinator {
     required String childDisplayName,
     bool allowQueueOnFailure = true,
   }) async {
-    final groups = await loadEligibleShareGroups();
+    await warmUp();
+    final summaries = await _mdkService.getGroupSummaries();
+    var groups = _eligibleShareGroups(summaries);
+    if (groups.isEmpty) {
+      final fallback = await _loadPrimaryGroupFallback(
+        profileId: profileId,
+        groups: summaries,
+      );
+      if (fallback != null) {
+        groups = [fallback];
+      }
+    }
     if (groups.isEmpty) {
       throw StateError(
         'Join a family connection with at least one other parent before sharing.',

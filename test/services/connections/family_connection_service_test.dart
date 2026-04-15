@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mytube/core/constants.dart';
 import 'package:mytube/domain/marmot/invite_transport_models.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/connections/family_connection_service.dart';
@@ -22,7 +23,9 @@ void main() {
       final mdk = FakeMdkService()
         ..keyPackageEventData = const KeyPackageEventData(
           content: 'key-package-content',
-          tagsJson: '[["relay","wss://relay.example"]]',
+          tagsJson:
+              '[["d","30443-hash"],["encoding","base64"],["mls_proposals","0x000a"]]',
+          tags443Json: '[["encoding","base64"],["mls_proposals","0x000a"]]',
           hashRefHex: 'hash-ref',
         );
       final nostr = FakeNostrService();
@@ -37,15 +40,149 @@ void main() {
 
       expect(result.payload, startsWith('tubestr://family-invite'));
       expect(result.payload, isNot(contains('key_package_event_json')));
-      expect(packet.keyPackageEventId, 'event-id');
+      expect(packet.keyPackageEventId, isNull);
       expect(packet.inviterDisplayName, 'Lee');
       expect(
         result.keyPackageEventJson,
-        '{"kind":443,"content":"key-package-content"}',
+        '{"kind":30443,"content":"key-package-content"}',
       );
-      expect(nostr.lastPublishedEventJson, result.keyPackageEventJson);
+      expect(nostr.publishedEventJsons, [
+        '{"kind":10051,"content":""}',
+        result.keyPackageEventJson,
+        '{"kind":443,"content":"key-package-content"}',
+      ]);
+      expect(nostr.createdSignedEventKinds, [
+        MarmotKinds.keyPackageRelays,
+        MarmotKinds.legacyKeyPackage,
+      ]);
+      expect(nostr.createdSignedEventTags.first, [
+        ['relay', 'wss://relay.example'],
+      ]);
+      expect(
+        nostr.lastCreatedSignedKeyPackageTagsJson,
+        '[["d","30443-hash"],["encoding","base64"],["mls_proposals","0x000a"]]',
+      );
+      expect(nostr.lastCreatedSignedEventKind, MarmotKinds.legacyKeyPackage);
+      expect(nostr.lastCreatedSignedEventTags, [
+        ['encoding', 'base64'],
+        ['mls_proposals', '0x000a'],
+      ]);
     },
   );
+
+  test(
+    'publishCurrentKeyPackage republishes the current key package quietly',
+    () async {
+      final mdk = FakeMdkService()
+        ..keyPackageEventData = const KeyPackageEventData(
+          content: 'fresh-key-package-content',
+          tagsJson:
+              '[["d","30443-hash"],["encoding","base64"],["mls_proposals","0x000a"]]',
+          tags443Json: '[["encoding","base64"],["mls_proposals","0x000a"]]',
+          hashRefHex: 'hash-ref',
+        );
+      final nostr = FakeNostrService();
+      final service = FamilyConnectionService(
+        mdkService: mdk,
+        nostrService: nostr,
+        loadLocalDisplayName: () async => 'Lee',
+      );
+
+      await service.publishCurrentKeyPackage(identity: identity);
+
+      expect(nostr.publishedEventJsons, [
+        '{"kind":10051,"content":""}',
+        '{"kind":30443,"content":"fresh-key-package-content"}',
+        '{"kind":443,"content":"fresh-key-package-content"}',
+      ]);
+      expect(nostr.publishedEventRelays, [
+        ['wss://relay.example', ...AppConstants.defaultRelays],
+        ['wss://relay.example'],
+        ['wss://relay.example'],
+      ]);
+      expect(nostr.lastPublishedDisplayName, 'Lee');
+      expect(nostr.createdSignedEventKinds, [
+        MarmotKinds.keyPackageRelays,
+        MarmotKinds.legacyKeyPackage,
+      ]);
+      expect(nostr.createdSignedEventTags.first, [
+        ['relay', 'wss://relay.example'],
+      ]);
+      expect(
+        nostr.lastCreatedSignedKeyPackageTagsJson,
+        '[["d","30443-hash"],["encoding","base64"],["mls_proposals","0x000a"]]',
+      );
+      expect(nostr.lastCreatedSignedEventKind, MarmotKinds.legacyKeyPackage);
+      expect(nostr.lastCreatedSignedEventTags, [
+        ['encoding', 'base64'],
+        ['mls_proposals', '0x000a'],
+      ]);
+    },
+  );
+
+  test(
+    'createInvite still works if key package relay discovery publish fails',
+    () async {
+      final mdk = FakeMdkService()
+        ..keyPackageEventData = const KeyPackageEventData(
+          content: 'key-package-content',
+          tagsJson:
+              '[["d","30443-hash"],["encoding","base64"],["mls_proposals","0x000a"]]',
+          tags443Json: '[["encoding","base64"],["mls_proposals","0x000a"]]',
+          hashRefHex: 'hash-ref',
+        );
+      final nostr = FakeNostrService()..throwOnPublishSignedEventCall = 1;
+      final service = FamilyConnectionService(
+        mdkService: mdk,
+        nostrService: nostr,
+      );
+
+      final result = await service.createInvite(identity: identity);
+
+      expect(result.payload, startsWith('tubestr://family-invite'));
+      expect(nostr.publishSignedEventCallCount, 3);
+      expect(nostr.createdSignedEventKinds, [
+        MarmotKinds.keyPackageRelays,
+        MarmotKinds.legacyKeyPackage,
+      ]);
+      expect(nostr.publishedEventJsons, [
+        '{"kind":30443,"content":"key-package-content"}',
+        '{"kind":443,"content":"key-package-content"}',
+      ]);
+    },
+  );
+
+  test('createInvite ignores malformed relay entries', () async {
+    final mdk = FakeMdkService()
+      ..keyPackageEventData = const KeyPackageEventData(
+        content: 'key-package-content',
+        tagsJson:
+            '[["d","30443-hash"],["encoding","base64"],["mls_proposals","0x000a"]]',
+        hashRefHex: 'hash-ref',
+      );
+    final nostr = FakeNostrService()
+      ..relayList = const [
+        'not-a-relay',
+        'https://relay.example',
+        'wss://relay.example',
+        'wss://relay.example',
+      ];
+    final service = FamilyConnectionService(
+      mdkService: mdk,
+      nostrService: nostr,
+    );
+
+    await service.createInvite(identity: identity);
+
+    expect(mdk.lastCreateKeyPackageRelays, ['wss://relay.example']);
+    expect(nostr.createdSignedEventTags.first, [
+      ['relay', 'wss://relay.example'],
+    ]);
+    expect(nostr.lastCreatedSignedEventTags, [
+      ['encoding', 'base64'],
+      ['mls_proposals', '0x000a'],
+    ]);
+  });
 
   test(
     'connectFromInvite creates a group from relay-discovered key packages and gift-wraps welcomes back',
@@ -77,7 +214,7 @@ void main() {
             id: 'keypkg-1',
             pubKey: 'remote-parent',
             createdAt: 1710460800,
-            kind: 443,
+            kind: MarmotKinds.legacyKeyPackage,
             tags: const [],
             content: 'key-package-content',
             sig: 'sig-1',
@@ -106,6 +243,76 @@ void main() {
       expect(result.publishedWelcomeCount, 1);
       expect(nostr.lastGiftWrapRecipient, 'remote-parent');
       expect(nostr.lastGiftWrapRumorJson, '{"kind":444,"content":"welcome"}');
+      expect(nostr.subscriptionFilters.values.single.kinds, [
+        MarmotKinds.keyPackage,
+        MarmotKinds.legacyKeyPackage,
+      ]);
+    },
+  );
+
+  test(
+    'author resolution prefers current key packages over legacy events',
+    () async {
+      final mdk = FakeMdkService()
+        ..createGroupResult = const MdkCreateGroupResult(
+          group: MdkGroupSummary(
+            mlsGroupIdHex: 'mls-group',
+            nostrGroupIdHex: 'nostr-group',
+            name: 'Family Space',
+            description: 'Created from scanned invite',
+            memberCount: 2,
+            adminPubkeysHex: ['parent-pubkey'],
+          ),
+          welcomeRumorJsons: [],
+        );
+      final nostr = FakeNostrService()
+        ..queryEventsResult = [
+          Nip01Event(
+            id: 'legacy-kp',
+            pubKey: 'remote-parent',
+            createdAt: 1710460801,
+            kind: MarmotKinds.legacyKeyPackage,
+            tags: const [],
+            content: 'legacy-key-package-content',
+            sig: 'sig-legacy',
+          ),
+          Nip01Event(
+            id: 'current-kp',
+            pubKey: 'remote-parent',
+            createdAt: 1710460800,
+            kind: MarmotKinds.keyPackage,
+            tags: const [
+              ['mls_proposals', '0x000a'],
+            ],
+            content: 'current-key-package-content',
+            sig: 'sig-current',
+          ),
+        ];
+      final service = FamilyConnectionService(
+        mdkService: mdk,
+        nostrService: nostr,
+      );
+
+      await service.connectFromInvite(
+        identity: identity,
+        invitePayload: const GroupInvitePacket(
+          publicKeyHex: 'remote-parent',
+          createdAt: 1710460800,
+        ).encode(),
+      );
+
+      expect(
+        mdk.lastCreateGroupWithWelcomesMemberKeyPackageEventJsons.single,
+        contains('"kind":30443'),
+      );
+      expect(
+        mdk.lastCreateGroupWithWelcomesMemberKeyPackageEventJsons.single,
+        contains('current-key-package-content'),
+      );
+      expect(nostr.lastQueryFilter!.kinds, [
+        MarmotKinds.keyPackage,
+        MarmotKinds.legacyKeyPackage,
+      ]);
     },
   );
 }

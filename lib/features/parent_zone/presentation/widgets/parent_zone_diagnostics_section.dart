@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../models/launch_diagnostics.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
+
+final _appPackageInfoProvider = FutureProvider<PackageInfo>((ref) {
+  return PackageInfo.fromPlatform();
+});
 
 class ParentZoneDiagnosticsSection extends ConsumerWidget {
   const ParentZoneDiagnosticsSection({
@@ -30,6 +35,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
     final reports = ref.watch(reportsProvider).valueOrNull ?? const [];
     final remoteShares =
         ref.watch(remoteSharesProvider).valueOrNull ?? const [];
+    final packageInfoAsync = ref.watch(_appPackageInfoProvider);
     final launchSnapshot = buildLaunchDiagnosticsSnapshot(
       queuedActions: queuedActions,
       shareHistory: shareHistory,
@@ -134,6 +140,39 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     child: const Text('Refresh page'),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FrostCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('App Build', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              packageInfoAsync.when(
+                data: (packageInfo) => _InlineStatus(
+                  icon: Icons.info_outline_rounded,
+                  color: palette.accent,
+                  title: _formatAppVersion(packageInfo),
+                  detail: packageInfo.packageName.isEmpty
+                      ? 'Package identifier unavailable on this platform.'
+                      : packageInfo.packageName,
+                ),
+                loading: () => _InlineStatus(
+                  icon: Icons.hourglass_empty_rounded,
+                  color: palette.accent,
+                  title: 'Reading app build',
+                  detail: 'Version and build number are loading.',
+                ),
+                error: (_, _) => _InlineStatus(
+                  icon: Icons.warning_amber_rounded,
+                  color: palette.warning,
+                  title: 'App build unavailable',
+                  detail:
+                      'This platform did not return version and build metadata.',
+                ),
               ),
             ],
           ),
@@ -313,6 +352,16 @@ String _formatTimestamp(DateTime? value) {
     return 'has not completed yet';
   }
   return 'completed ${value.toLocal()}';
+}
+
+String _formatAppVersion(PackageInfo packageInfo) {
+  final version = packageInfo.version.trim().isEmpty
+      ? 'unknown version'
+      : packageInfo.version.trim();
+  final buildNumber = packageInfo.buildNumber.trim().isEmpty
+      ? 'unknown build'
+      : packageInfo.buildNumber.trim();
+  return 'Version $version · Build $buildNumber';
 }
 
 class _InlineStatus extends StatelessWidget {

@@ -948,7 +948,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
             height: 52,
             child: FilledButton(
               onPressed: onFinish,
-              child: const Text('Finish Setup'),
+              child: const Text('Complete Onboarding'),
             ),
           ),
           const SizedBox(height: 40),

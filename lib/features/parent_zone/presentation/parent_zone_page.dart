@@ -61,6 +61,8 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   late Future<ParentZoneMdkDebugState> _mdkDebugFuture;
 
   bool _isGeneratingInvitePacket = false;
+  bool _currentInviteKeyPublishInFlight = false;
+  bool _publishedCurrentInviteKeyThisSession = false;
   bool _isCreatingWelcome = false;
   bool _isAcceptingWelcome = false;
   bool _isResettingApp = false;
@@ -154,6 +156,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         _pinError = null;
       });
       _consumePendingSectionIfPossible();
+      _maybePublishCurrentInviteKey(_section);
       unawaited(_consumeQueuedDeepLinkIfPossible());
     } else {
       await HapticFeedback.heavyImpact();
@@ -180,6 +183,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       _pinError = null;
     });
     _consumePendingSectionIfPossible();
+    _maybePublishCurrentInviteKey(_section);
     unawaited(_consumeQueuedDeepLinkIfPossible());
   }
 
@@ -215,6 +219,46 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     setState(() {
       _mdkDebugFuture = _loadMdkDebugState();
     });
+    _maybePublishCurrentInviteKey(_section);
+  }
+
+  void _selectSection(ParentZoneSection section, {bool closeSidebar = false}) {
+    setState(() {
+      _section = section;
+      if (closeSidebar) {
+        _sidebarOpen = false;
+      }
+    });
+    _maybePublishCurrentInviteKey(section);
+  }
+
+  void _maybePublishCurrentInviteKey(ParentZoneSection section) {
+    if (!_isUnlocked || section != ParentZoneSection.familySpaces) {
+      return;
+    }
+    unawaited(_ensureCurrentInviteKeyPublished());
+  }
+
+  Future<void> _ensureCurrentInviteKeyPublished() async {
+    if (_currentInviteKeyPublishInFlight ||
+        _publishedCurrentInviteKeyThisSession) {
+      return;
+    }
+    _currentInviteKeyPublishInFlight = true;
+    try {
+      final identity = await ref.read(parentIdentityProvider.future);
+      if (!mounted || identity == null) {
+        return;
+      }
+      await ref
+          .read(familyConnectionServiceProvider)
+          .publishCurrentKeyPackage(identity: identity);
+      _publishedCurrentInviteKeyThisSession = true;
+    } catch (_) {
+      _publishedCurrentInviteKeyThisSession = false;
+    } finally {
+      _currentInviteKeyPublishInFlight = false;
+    }
   }
 
   void _startPendingWelcomePolling({int attempts = 45}) {
@@ -277,6 +321,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       if (!mounted) {
         return;
       }
+      ref.invalidate(mdkGroupSummariesProvider);
       await HapticFeedback.mediumImpact();
       messenger.showSnackBar(SnackBar(content: Text('Joined ${group.name}')));
     } catch (error) {
@@ -401,12 +446,17 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     }
     setState(() => _isGeneratingInvitePacket = true);
     try {
-      await ref
-          .read(syncCoordinatorProvider)
-          .refreshSubscriptions(trigger: SyncRefreshTrigger.manual);
+      try {
+        await ref
+            .read(syncCoordinatorProvider)
+            .refreshSubscriptions(trigger: SyncRefreshTrigger.manual);
+      } catch (error) {
+        debugPrint('Family invite sync refresh failed: $error');
+      }
       final result = await ref
           .read(familyConnectionServiceProvider)
           .createInvite(identity: identity);
+      _publishedCurrentInviteKeyThisSession = true;
       unawaited(ref.read(betaFunnelServiceProvider).trackFamilyInviteCreated());
       if (!mounted) {
         return;
@@ -424,7 +474,9 @@ Open this link on the other parent's device:
 ${result.payload}
 ''',
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('Family invite creation failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       if (!mounted) {
         return;
       }
@@ -497,12 +549,13 @@ ${result.payload}
       await ref
           .read(syncCoordinatorProvider)
           .refreshSubscriptions(trigger: SyncRefreshTrigger.groupChange);
+      if (!mounted) {
+        return;
+      }
+      ref.invalidate(mdkGroupSummariesProvider);
       _inviteImportController.clear();
       if (clearPendingDeepLink) {
         ref.read(pendingDeepLinkProvider.notifier).state = null;
-      }
-      if (!mounted) {
-        return;
       }
       messenger.showSnackBar(
         SnackBar(
@@ -536,6 +589,7 @@ ${result.payload}
       _queuedDeepLinkUri = uri;
       _section = ParentZoneSection.familySpaces;
     });
+    _maybePublishCurrentInviteKey(ParentZoneSection.familySpaces);
     unawaited(_consumeQueuedDeepLinkIfPossible());
   }
 
@@ -574,7 +628,7 @@ ${result.payload}
         .firstOrNull;
     ref.read(pendingParentZoneSectionProvider.notifier).state = null;
     if (section != null) {
-      setState(() => _section = section);
+      _selectSection(section);
     }
   }
 
@@ -927,32 +981,19 @@ ${result.payload}
   }
 
   Future<void> _performLocalReset() async {
+    final container = ProviderScope.containerOf(context, listen: false);
     setState(() => _isResettingApp = true);
     try {
-      await ref.read(syncCoordinatorProvider).stop();
-      await ref.read(appResetServiceProvider).resetApp();
-      ref.invalidate(parentIdentityProvider);
-      ref.invalidate(parentDisplayNameProvider);
-      ref.invalidate(profilesProvider);
-      await ref.read(parentIdentityProvider.future);
-      await ref.read(parentDisplayNameProvider.future);
-      await ref.read(profilesProvider.future);
-
-      ref.read(selectedProfileIdProvider.notifier).state = null;
-      ref.read(appShellTabIndexProvider.notifier).state = 0;
-      ref.read(pendingDeepLinkProvider.notifier).state = null;
-      ref.read(pendingParentZoneSectionProvider.notifier).state = null;
-
-      ref.invalidate(syncCoordinatorProvider);
-      ref.invalidate(syncRevisionProvider);
-      ref.invalidate(videosForSelectedProfileProvider);
-      ref.invalidate(pendingApprovalVideosProvider);
-      ref.invalidate(remoteSharesProvider);
-      ref.invalidate(reportsProvider);
-      ref.invalidate(offlineActionsProvider);
-      ref.invalidate(shareHistoryProvider);
-      ref.invalidate(safetyHqStatusProvider);
-      ref.invalidate(mdkGroupSummariesProvider);
+      await container.read(syncCoordinatorProvider).stop();
+      await container
+          .read(appResetServiceProvider)
+          .resetApp(
+            afterCredentialsCleared: () async {
+              container.invalidate(parentIdentityProvider);
+              await container.read(parentIdentityProvider.future);
+            },
+          );
+      _refreshProvidersAfterLocalReset(container);
 
       if (!mounted) {
         return;
@@ -968,10 +1009,12 @@ ${result.payload}
         _newPin = '';
         _confirmPin = '';
         _sidebarOpen = false;
+        _currentInviteKeyPublishInFlight = false;
+        _publishedCurrentInviteKeyThisSession = false;
       });
       await HapticFeedback.heavyImpact();
     } catch (error) {
-      ref.invalidate(syncCoordinatorProvider);
+      container.invalidate(syncCoordinatorProvider);
       if (!mounted) {
         return;
       }
@@ -987,6 +1030,28 @@ ${result.payload}
         ),
       );
     }
+  }
+
+  void _refreshProvidersAfterLocalReset(ProviderContainer container) {
+    container.invalidate(parentIdentityProvider);
+    container.invalidate(parentDisplayNameProvider);
+    container.invalidate(profilesProvider);
+
+    container.read(selectedProfileIdProvider.notifier).state = null;
+    container.read(appShellTabIndexProvider.notifier).state = 0;
+    container.read(pendingDeepLinkProvider.notifier).state = null;
+    container.read(pendingParentZoneSectionProvider.notifier).state = null;
+
+    container.invalidate(syncCoordinatorProvider);
+    container.invalidate(syncRevisionProvider);
+    container.invalidate(videosForSelectedProfileProvider);
+    container.invalidate(pendingApprovalVideosProvider);
+    container.invalidate(remoteSharesProvider);
+    container.invalidate(reportsProvider);
+    container.invalidate(offlineActionsProvider);
+    container.invalidate(shareHistoryProvider);
+    container.invalidate(safetyHqStatusProvider);
+    container.invalidate(mdkGroupSummariesProvider);
   }
 
   Future<void> _deleteParentAccount() async {
@@ -1105,7 +1170,7 @@ ${result.payload}
   Widget _buildSectionContent() {
     return switch (_section) {
       ParentZoneSection.dashboard => ParentZoneDashboardSection(
-        onSelectSection: (section) => setState(() => _section = section),
+        onSelectSection: _selectSection,
       ),
       ParentZoneSection.children => ParentZoneChildrenSection(
         nameController: _nameController,
@@ -1511,10 +1576,7 @@ ${result.payload}
                   selected: _section,
                   onSelect: (section) async {
                     await HapticFeedback.selectionClick();
-                    setState(() {
-                      _section = section;
-                      _sidebarOpen = false;
-                    });
+                    _selectSection(section, closeSidebar: true);
                   },
                 ),
               );

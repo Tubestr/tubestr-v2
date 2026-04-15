@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mytube/core/constants.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/blossom/blossom_client.dart';
 import 'package:mytube/services/identity/identity_service.dart';
@@ -126,6 +127,7 @@ class FakeMdkService extends MdkService {
   String? lastProcessedWelcomeRumor;
   String? lastDecryptUrl;
   String? lastAcceptedWelcomeEventId;
+  List<String>? lastCreateKeyPackageRelays;
   int? lastCreatedMessageKind;
   String? lastCreatedMessageGroupId;
   final List<String> createdMessageGroupIds = [];
@@ -148,6 +150,7 @@ class FakeMdkService extends MdkService {
     required String publicKeyHex,
     required List<String> relays,
   }) async {
+    lastCreateKeyPackageRelays = List<String>.from(relays, growable: false);
     return keyPackageEventData!;
   }
 
@@ -359,6 +362,10 @@ class FakeNostrService implements NostrService {
   int? lastCreatedSignedEventKind;
   String? lastCreatedSignedEventContent;
   List<List<String>>? lastCreatedSignedEventTags;
+  String? lastCreatedSignedKeyPackageTagsJson;
+  final List<int> createdSignedEventKinds = [];
+  final List<String> createdSignedEventContents = [];
+  final List<List<List<String>>> createdSignedEventTags = [];
   List<Nip01Event> queryEventsResult = const [];
   NdkResponse? subscribeResult;
   List<String> relayList = const ['wss://relay.example'];
@@ -435,7 +442,8 @@ class FakeNostrService implements NostrService {
     required String content,
     required String tagsJson,
   }) async {
-    return '{"kind":443,"content":"$content"}';
+    lastCreatedSignedKeyPackageTagsJson = tagsJson;
+    return '{"kind":${MarmotKinds.keyPackage},"content":"$content"}';
   }
 
   @override
@@ -451,6 +459,11 @@ class FakeNostrService implements NostrService {
     lastCreatedSignedEventTags = tags
         .map((tag) => List<String>.from(tag))
         .toList(growable: false);
+    createdSignedEventKinds.add(kind);
+    createdSignedEventContents.add(content);
+    createdSignedEventTags.add(
+      tags.map((tag) => List<String>.from(tag)).toList(growable: false),
+    );
     return '{"kind":$kind,"content":"$content"}';
   }
 

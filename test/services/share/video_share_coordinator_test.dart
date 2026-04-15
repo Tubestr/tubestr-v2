@@ -390,48 +390,130 @@ void main() {
     },
   );
 
-  test('loadEligibleShareGroups excludes safety and solo groups', () async {
-    final database = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(database.close);
+  test(
+    'loadEligibleShareGroups excludes safety and solo groups while allowing just-connected groups',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
 
-    final coordinator = VideoShareCoordinator(
-      database: database,
-      videoApprovalService: buildApprovalService(database),
-      blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
-      mdkService: FakeMdkService()
-        ..groupSummariesResult = [
-          fakeGroupSummary(
-            mlsGroupIdHex: 'solo-group',
-            nostrGroupIdHex: 'nostr-solo',
-            name: 'Family Space',
-            description: 'Only me',
-            memberCount: 1,
-          ),
-          fakeGroupSummary(
-            mlsGroupIdHex: 'family-group',
-            nostrGroupIdHex: 'nostr-family',
-            name: 'Lee & Sam',
-            description: 'Shared family group',
-            memberCount: 2,
-          ),
-          fakeGroupSummary(
-            mlsGroupIdHex: 'safety-group',
-            nostrGroupIdHex: 'nostr-safety',
-            name: AppConstants.safetyHqGroupName,
-            description: 'Moderator group',
-            memberCount: 2,
-          ),
-        ],
-      nostrService: FakeNostrService(),
-      offlineActionStore: OfflineActionStore(database: database),
-      shareHistoryService: ShareHistoryService(database: database),
-      managedVideoUploadService: ManagedVideoUploadService(database: database),
-    );
+      final coordinator = VideoShareCoordinator(
+        database: database,
+        videoApprovalService: buildApprovalService(database),
+        blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
+        mdkService: FakeMdkService()
+          ..groupSummariesResult = [
+            fakeGroupSummary(
+              mlsGroupIdHex: 'solo-group',
+              nostrGroupIdHex: 'nostr-solo',
+              name: 'Family Space',
+              description: 'Only me',
+              memberCount: 1,
+            ),
+            fakeGroupSummary(
+              mlsGroupIdHex: 'family-group',
+              nostrGroupIdHex: 'nostr-family',
+              name: 'Lee & Sam',
+              description: 'Shared family group',
+              memberCount: 2,
+            ),
+            fakeGroupSummary(
+              mlsGroupIdHex: 'just-connected-group',
+              nostrGroupIdHex: 'nostr-just-connected',
+              name: 'Lee & Robin',
+              description: 'Connected Lee with Robin',
+              memberCount: 1,
+            ),
+            fakeGroupSummary(
+              mlsGroupIdHex: 'safety-group',
+              nostrGroupIdHex: 'nostr-safety',
+              name: AppConstants.safetyHqGroupName,
+              description: 'Moderator group',
+              memberCount: 2,
+            ),
+          ],
+        nostrService: FakeNostrService(),
+        offlineActionStore: OfflineActionStore(database: database),
+        shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
+      );
 
-    final groups = await coordinator.loadEligibleShareGroups();
+      final groups = await coordinator.loadEligibleShareGroups();
 
-    expect(groups.map((group) => group.mlsGroupIdHex), ['family-group']);
-  });
+      expect(groups.map((group) => group.mlsGroupIdHex), [
+        'family-group',
+        'just-connected-group',
+      ]);
+    },
+  );
+
+  test(
+    'shareLocalVideoToEligibleGroups uses the primary group while summaries lag after first join',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'video-share-coordinator-primary-fallback-test',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final videoFile = File('${tempDir.path}/clip.mp4')
+        ..writeAsBytesSync(List<int>.from('video-bytes'.codeUnits));
+      final thumbFile = File('${tempDir.path}/thumb.jpg')
+        ..writeAsBytesSync(List<int>.from('thumb-bytes'.codeUnits));
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'child-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'avatar.png',
+      );
+      await database.saveLocalVideo(
+        videoId: 'video-1',
+        profileId: 'child-1',
+        filePath: videoFile.path,
+        thumbPath: thumbFile.path,
+        title: 'Backyard song',
+        approvalStatus: 'approved',
+      );
+      await database.setPrimaryGroupForProfile(
+        profileId: 'child-1',
+        mlsGroupId: 'first-family-group',
+      );
+
+      final mdkService = FakeMdkService();
+      final coordinator = VideoShareCoordinator(
+        database: database,
+        videoApprovalService: buildApprovalService(database),
+        blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
+        mdkService: mdkService,
+        nostrService: FakeNostrService()
+          ..blossomServers = const ['https://blossom.example'],
+        offlineActionStore: OfflineActionStore(database: database),
+        shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
+      );
+
+      final result = await coordinator.shareLocalVideoToEligibleGroups(
+        identity: identity,
+        videoId: 'video-1',
+        profileId: 'child-1',
+        childDisplayName: 'Emma',
+      );
+
+      expect(result.sharedGroupIds, ['first-family-group']);
+      expect(mdkService.createdMessageGroupIds, [
+        'first-family-group',
+        'first-family-group',
+      ]);
+    },
+  );
 
   test(
     'shareLocalVideoToEligibleGroups publishes to all family groups',

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -32,9 +33,12 @@ class AppResetService {
   final Future<Directory> Function() _documentsDirectoryProvider;
   final Future<Directory> Function() _supportDirectoryProvider;
 
-  Future<void> resetApp() async {
+  Future<void> resetApp({
+    FutureOr<void> Function()? afterCredentialsCleared,
+  }) async {
     await _identityService.clearIdentity();
     await _parentAuthService.clearPin();
+    await afterCredentialsCleared?.call();
     await _database.clearAllData();
     await _deleteAppOwnedFiles();
     await _mdkService.resetLocalState();

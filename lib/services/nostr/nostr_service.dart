@@ -132,13 +132,48 @@ class NdkNostrService implements NostrService {
   @override
   Future<void> connect() async {
     final relays = await loadRelayList();
+    await _connectRelays(relays);
+  }
+
+  Future<void> _connectRelays(List<String> relays) async {
+    final failures = <String>[];
     await Future.wait(
-      relays.map(
-        (relay) => _ndk.relays.connectRelay(
-          dirtyUrl: relay,
-          connectionSource: ConnectionSource.explicit,
-        ),
-      ),
+      relays.map((relay) async {
+        try {
+          await _ndk.relays.connectRelay(
+            dirtyUrl: relay,
+            connectionSource: ConnectionSource.explicit,
+          );
+        } catch (_) {
+          failures.add(relay);
+        }
+      }),
+    );
+    if (failures.length == relays.length && relays.isNotEmpty) {
+      throw StateError(
+        'Failed to connect to any relay: ${failures.join(', ')}',
+      );
+    }
+  }
+
+  void _throwIfNoRelayAccepted(
+    String eventName,
+    List<RelayBroadcastResponse> results,
+  ) {
+    if (results.any((result) => result.broadcastSuccessful)) {
+      return;
+    }
+    final failedRelays = results
+        .map((result) {
+          final message = result.msg.trim();
+          if (message.isEmpty) {
+            return result.relayUrl;
+          }
+          return '${result.relayUrl} ($message)';
+        })
+        .toList(growable: false);
+    throw StateError(
+      'Failed to publish $eventName to any relay: ${failedRelays.join(', ')}',
     );
   }
 
@@ -187,7 +222,7 @@ class NdkNostrService implements NostrService {
   }) async {
     _ensureLoggedIn(identity);
     final publishRelays = relays ?? await loadRelayList();
-    await connect();
+    await _connectRelays(publishRelays);
 
     final tags = _decodeTags(tagsJson);
     final event = Nip01Event(
@@ -201,7 +236,8 @@ class NdkNostrService implements NostrService {
       nostrEvent: event,
       specificRelays: publishRelays,
     );
-    await response.broadcastDoneFuture;
+    final results = await response.broadcastDoneFuture;
+    _throwIfNoRelayAccepted('key package', results);
     return response.publishEvent.id;
   }
 
@@ -250,7 +286,7 @@ class NdkNostrService implements NostrService {
   }) async {
     _ensureLoggedIn(identity);
     final publishRelays = relays ?? await loadRelayList();
-    await connect();
+    await _connectRelays(publishRelays);
 
     final event = Nip01EventModel.fromJson(
       jsonDecode(eventJson) as Map<String, dynamic>,
@@ -259,7 +295,8 @@ class NdkNostrService implements NostrService {
       nostrEvent: event,
       specificRelays: publishRelays,
     );
-    await response.broadcastDoneFuture;
+    final results = await response.broadcastDoneFuture;
+    _throwIfNoRelayAccepted('signed event', results);
     return response.publishEvent.id;
   }
 

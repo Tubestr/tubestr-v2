@@ -2,15 +2,16 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use mdk_core::MDK;
 use mdk_core::encrypted_media::types::MediaReference;
 use mdk_core::groups::NostrGroupConfigData;
+use mdk_core::key_packages::KeyPackageEventData as MdkKeyPackageEventData;
 use mdk_core::messages::MessageProcessingResult;
+use mdk_core::MDK;
 use mdk_sqlite_storage::MdkSqliteStorage;
-use mdk_storage_traits::GroupId;
 use mdk_storage_traits::groups::types::GroupState;
-use nostr::{Event, EventId, PublicKey, RelayUrl, Tag, UnsignedEvent};
+use mdk_storage_traits::GroupId;
 use nostr::JsonUtil;
+use nostr::{Event, EventId, PublicKey, RelayUrl, Tag, UnsignedEvent};
 use once_cell::sync::Lazy;
 
 type MdkInstance = MDK<MdkSqliteStorage>;
@@ -97,7 +98,7 @@ pub fn bridge_version() -> String {
     format!(
         "mdk_bridge={} mdk-core={} mode=smoke-test",
         env!("CARGO_PKG_VERSION"),
-        "0.7.1"
+        "0.7.1+8a8d06c"
     )
 }
 
@@ -144,7 +145,13 @@ pub fn group_summaries() -> Result<Vec<String>, String> {
 
     Ok(groups
         .into_iter()
-        .map(|group| format!("{}|{}", hex::encode(group.mls_group_id.as_slice()), group.name))
+        .map(|group| {
+            format!(
+                "{}|{}",
+                hex::encode(group.mls_group_id.as_slice()),
+                group.name
+            )
+        })
         .collect())
 }
 
@@ -175,18 +182,25 @@ pub fn create_key_package_event(
         PublicKey::parse(&public_key_hex).map_err(|err| format!("Invalid pubkey: {err}"))?;
     let relay_urls = relays
         .into_iter()
-        .map(|relay| RelayUrl::parse(&relay).map_err(|err| format!("Invalid relay '{relay}': {err}")))
+        .map(|relay| {
+            RelayUrl::parse(&relay).map_err(|err| format!("Invalid relay '{relay}': {err}"))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let (content, tags, hash_ref_bytes) = runtime
+    let MdkKeyPackageEventData {
+        content,
+        tags_30443,
+        hash_ref,
+        ..
+    } = runtime
         .mdk
         .create_key_package_for_event(&public_key, relay_urls)
         .map_err(|err| err.to_string())?;
 
     Ok(KeyPackageEventData {
         content,
-        tags_json: serialize_tags(&tags)?,
-        hash_ref_hex: hex::encode(hash_ref_bytes),
+        tags_json: serialize_tags(&tags_30443)?,
+        hash_ref_hex: hex::encode(hash_ref),
     })
 }
 
@@ -223,11 +237,15 @@ pub fn create_local_group_with_welcomes(
         .map_err(|err| format!("Invalid creator pubkey: {err}"))?;
     let relay_urls = relays
         .into_iter()
-        .map(|relay| RelayUrl::parse(&relay).map_err(|err| format!("Invalid relay '{relay}': {err}")))
+        .map(|relay| {
+            RelayUrl::parse(&relay).map_err(|err| format!("Invalid relay '{relay}': {err}"))
+        })
         .collect::<Result<Vec<_>, _>>()?;
     let member_key_package_events = member_key_package_event_jsons
         .into_iter()
-        .map(|json| Event::from_json(json).map_err(|err| format!("Invalid member event json: {err}")))
+        .map(|json| {
+            Event::from_json(json).map_err(|err| format!("Invalid member event json: {err}"))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     let config = NostrGroupConfigData {
@@ -255,9 +273,7 @@ pub fn create_local_group_with_welcomes(
     })
 }
 
-pub fn process_welcome_rumor(
-    welcome_rumor_json: String,
-) -> Result<PendingWelcomeData, String> {
+pub fn process_welcome_rumor(welcome_rumor_json: String) -> Result<PendingWelcomeData, String> {
     let guard = MDK_INSTANCE.lock().map_err(|err| err.to_string())?;
     let runtime = guard
         .as_ref()
@@ -291,7 +307,10 @@ pub fn get_pending_welcome_summaries() -> Result<Vec<PendingWelcomeData>, String
         .get_pending_welcomes(None)
         .map_err(|err| err.to_string())?;
 
-    welcomes.into_iter().map(summarize_pending_welcome).collect()
+    welcomes
+        .into_iter()
+        .map(summarize_pending_welcome)
+        .collect()
 }
 
 pub fn accept_pending_welcome(welcome_event_id_hex: String) -> Result<GroupSummaryData, String> {
@@ -327,11 +346,13 @@ pub fn accept_pending_welcome(welcome_event_id_hex: String) -> Result<GroupSumma
             .into_iter()
             .find(|group| group.nostr_group_id == welcome.nostr_group_id)
             .or_else(|| {
-                runtime
-                    .mdk
-                    .get_groups()
-                    .ok()
-                    .and_then(|groups| if groups.len() == 1 { groups.into_iter().next() } else { None })
+                runtime.mdk.get_groups().ok().and_then(|groups| {
+                    if groups.len() == 1 {
+                        groups.into_iter().next()
+                    } else {
+                        None
+                    }
+                })
             })
     };
 
@@ -382,7 +403,9 @@ pub fn remove_group_members(
     let mls_group_id = group_id_from_hex(&mls_group_id_hex)?;
     let member_pubkeys = member_pubkeys_hex
         .into_iter()
-        .map(|pubkey| PublicKey::parse(&pubkey).map_err(|err| format!("Invalid member pubkey: {err}")))
+        .map(|pubkey| {
+            PublicKey::parse(&pubkey).map_err(|err| format!("Invalid member pubkey: {err}"))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     let result = runtime
@@ -422,7 +445,9 @@ pub fn create_application_message(
 
     let rumor = UnsignedEvent::new(
         sender_public_key,
-        created_at.map(nostr::Timestamp::from).unwrap_or_else(nostr::Timestamp::now),
+        created_at
+            .map(nostr::Timestamp::from)
+            .unwrap_or_else(nostr::Timestamp::now),
         kind_u16.into(),
         tags,
         content,
@@ -430,7 +455,7 @@ pub fn create_application_message(
 
     let event = runtime
         .mdk
-        .create_message(&mls_group_id, rumor)
+        .create_message(&mls_group_id, rumor, None)
         .map_err(|err| err.to_string())?;
 
     let rumor_event_id_hex = runtime
@@ -564,7 +589,10 @@ pub fn process_message_event(event_json: String) -> Result<ProcessedMessageData,
             created_at: 0,
             state: "pending".to_string(),
         },
-        MessageProcessingResult::IgnoredProposal { mls_group_id, reason } => ProcessedMessageData {
+        MessageProcessingResult::IgnoredProposal {
+            mls_group_id,
+            reason,
+        } => ProcessedMessageData {
             outcome: "ignored_proposal".to_string(),
             mls_group_id_hex: hex::encode(mls_group_id.as_slice()),
             message_event_id_hex: String::new(),
@@ -693,4 +721,240 @@ fn decode_fixed_hex<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], S
     bytes
         .try_into()
         .map_err(|_| format!("Invalid {label} length: expected {N} bytes"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mdk_core_legacy::prelude::NostrGroupConfigData as LegacyNostrGroupConfigData;
+    use mdk_core_legacy::MDK as LegacyMDK;
+    use mdk_memory_storage_legacy::MdkMemoryStorage as LegacyMemoryStorage;
+    use nostr::{EventBuilder, Keys, Kind};
+    use openmls::prelude::ProposalType;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use tempfile::TempDir;
+    use tokio::sync::Mutex as AsyncMutex;
+
+    static NEXT_TEST_DB: AtomicU64 = AtomicU64::new(1);
+    static TEST_RUNTIME_LOCK: AsyncMutex<()> = AsyncMutex::const_new(());
+
+    fn init_test_runtime() -> TempDir {
+        let dir = tempfile::Builder::new()
+            .prefix(&format!(
+                "tubestr-mdk-{}-",
+                NEXT_TEST_DB.fetch_add(1, Ordering::Relaxed)
+            ))
+            .tempdir()
+            .expect("create tempdir");
+        init_mdk_unencrypted(dir.path().to_string_lossy().to_string())
+            .expect("initialize mdk runtime");
+        dir
+    }
+
+    fn tag_rows(tags_json: &str) -> Vec<Vec<String>> {
+        serde_json::from_str(tags_json).expect("tags json")
+    }
+
+    fn has_tag(tags: &[Vec<String>], name: &str, value: &str) -> bool {
+        tags.iter()
+            .any(|tag| tag.len() == 2 && tag[0] == name && tag[1].eq_ignore_ascii_case(value))
+    }
+
+    fn legacy_443_tags(tags_30443: &[Vec<String>]) -> Vec<Vec<String>> {
+        tags_30443
+            .iter()
+            .filter(|tag| tag.first().map(String::as_str) != Some("d"))
+            .cloned()
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn generated_key_package_tags_advertise_self_remove_for_current_kinds() {
+        let _lock = TEST_RUNTIME_LOCK.lock().await;
+        let _dir = init_test_runtime();
+        let keys = Keys::generate();
+
+        let key_package = create_key_package_event(
+            keys.public_key().to_hex(),
+            vec!["wss://relay.example".to_string()],
+        )
+        .expect("create key package");
+        let tags_30443 = tag_rows(&key_package.tags_json);
+        let tags_443 = legacy_443_tags(&tags_30443);
+        let event = EventBuilder::new(Kind::Custom(30443), key_package.content.clone())
+            .tags(parse_tags_json(&key_package.tags_json).expect("parse tags"))
+            .build(keys.public_key())
+            .sign(&keys)
+            .await
+            .expect("sign key package");
+        let parsed = {
+            let guard = MDK_INSTANCE.lock().expect("runtime lock");
+            let runtime = guard.as_ref().expect("runtime");
+            runtime
+                .mdk
+                .parse_key_package(&event)
+                .expect("parse generated key package")
+        };
+
+        assert!(
+            tags_30443.iter().any(|tag| {
+                tag.len() == 2
+                    && tag[0] == "d"
+                    && tag[1].len() == 64
+                    && hex::decode(&tag[1]).is_ok()
+            }),
+            "kind 30443 key packages must include a 32-byte hex d tag: {tags_30443:?}"
+        );
+        assert!(
+            !tags_443
+                .iter()
+                .any(|tag| tag.first().map(String::as_str) == Some("d")),
+            "kind 443 key packages must use legacy tags without a d tag: {tags_443:?}"
+        );
+        assert!(
+            has_tag(&tags_30443, "mls_proposals", "0x000a"),
+            "SelfRemove proposal support must be advertised in 30443 mls_proposals: {tags_30443:?}"
+        );
+        assert!(
+            has_tag(&tags_443, "mls_proposals", "0x000a"),
+            "SelfRemove proposal support must be advertised in 443 mls_proposals: {tags_443:?}"
+        );
+        assert!(
+            parsed
+                .leaf_node()
+                .capabilities()
+                .proposals()
+                .contains(&ProposalType::SelfRemove),
+            "SelfRemove must be present in the MLS leaf capabilities"
+        );
+        assert!(
+            has_tag(&tags_30443, "encoding", "base64"),
+            "30443 key packages should explicitly advertise base64 content encoding: {tags_30443:?}"
+        );
+        assert!(
+            has_tag(&tags_443, "encoding", "base64"),
+            "443 key packages should explicitly advertise base64 content encoding: {tags_443:?}"
+        );
+        assert!(
+            !key_package.hash_ref_hex.is_empty(),
+            "hash_ref should be available for local key package cleanup"
+        );
+    }
+
+    #[tokio::test]
+    async fn current_tubestr_key_package_is_accepted_by_group_creation() {
+        let _lock = TEST_RUNTIME_LOCK.lock().await;
+        let _dir = init_test_runtime();
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+
+        let key_package = create_key_package_event(
+            bob.public_key().to_hex(),
+            vec!["wss://relay.example".to_string()],
+        )
+        .expect("create bob key package");
+        let event = EventBuilder::new(Kind::Custom(30443), key_package.content)
+            .tags(parse_tags_json(&key_package.tags_json).expect("parse tags"))
+            .build(bob.public_key())
+            .sign(&bob)
+            .await
+            .expect("sign bob key package");
+
+        let result = create_local_group_with_welcomes(
+            alice.public_key().to_hex(),
+            "Alice & Bob".to_string(),
+            "Current MDK interop".to_string(),
+            vec!["wss://relay.example".to_string()],
+            vec![event.as_json()],
+        )
+        .expect("current key package should create group");
+
+        assert_eq!(result.group.member_count, 2);
+        assert_eq!(result.welcome_rumor_jsons.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn legacy_mdk_accepts_current_key_package_when_published_as_kind_443() {
+        let _lock = TEST_RUNTIME_LOCK.lock().await;
+        let _dir = init_test_runtime();
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+        let relay = RelayUrl::parse("wss://relay.example").expect("relay");
+
+        let key_package =
+            create_key_package_event(bob.public_key().to_hex(), vec![relay.to_string()])
+                .expect("create bob key package");
+        let tags = legacy_443_tags(&tag_rows(&key_package.tags_json));
+        let event = EventBuilder::new(Kind::Custom(443), key_package.content)
+            .tags(
+                tags.into_iter()
+                    .map(Tag::parse)
+                    .collect::<Result<Vec<_>, _>>()
+                    .expect("parse tags"),
+            )
+            .build(bob.public_key())
+            .sign(&bob)
+            .await
+            .expect("sign bob compatibility key package");
+
+        let legacy_mdk = LegacyMDK::new(LegacyMemoryStorage::default());
+        let config = LegacyNostrGroupConfigData::new(
+            "Alice & Bob".to_string(),
+            "Legacy Tubestr compatibility".to_string(),
+            None,
+            None,
+            None,
+            vec![relay],
+            vec![alice.public_key(), bob.public_key()],
+        );
+
+        let result = legacy_mdk
+            .create_group(&alice.public_key(), vec![event], config)
+            .expect("legacy MDK should accept current key package as kind 443");
+
+        assert_eq!(result.welcome_rumors.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn legacy_key_package_without_self_remove_is_incompatible() {
+        let _lock = TEST_RUNTIME_LOCK.lock().await;
+        let _dir = init_test_runtime();
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+        let relay = RelayUrl::parse("wss://relay.example").expect("relay");
+        let legacy_mdk = LegacyMDK::new(LegacyMemoryStorage::default());
+        let (content, tags, _hash_ref) = legacy_mdk
+            .create_key_package_for_event(&bob.public_key(), [relay])
+            .expect("create legacy key package");
+        assert!(
+            !tags
+                .iter()
+                .any(|tag| tag.as_slice().first().map(String::as_str) == Some("mls_proposals")),
+            "legacy key package fixture should not advertise mls_proposals"
+        );
+
+        let event = EventBuilder::new(Kind::Custom(443), content)
+            .tags(tags)
+            .build(bob.public_key())
+            .sign(&bob)
+            .await
+            .expect("sign legacy key package");
+
+        let result = create_local_group_with_welcomes(
+            alice.public_key().to_hex(),
+            "Alice & Bob".to_string(),
+            "Legacy interop regression".to_string(),
+            vec!["wss://relay.example".to_string()],
+            vec![event.as_json()],
+        );
+        let err = match result {
+            Ok(_) => panic!("legacy key package should be rejected by current group creation"),
+            Err(err) => err,
+        };
+
+        assert!(
+            err.contains("Proposals are not acceptable") || err.contains("KeyPackage"),
+            "unexpected incompatibility error: {err}"
+        );
+    }
 }

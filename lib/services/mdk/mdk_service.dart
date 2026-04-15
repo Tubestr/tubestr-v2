@@ -19,11 +19,18 @@ class KeyPackageEventData {
   const KeyPackageEventData({
     required this.content,
     required this.tagsJson,
+    String? tags30443Json,
+    String? tags443Json,
     required this.hashRefHex,
-  });
+  }) : tags30443Json = tags30443Json ?? tagsJson,
+       tags443Json = tags443Json ?? tagsJson;
 
   final String content;
+
+  /// Backward-compatible alias for the current addressable key package tags.
   final String tagsJson;
+  final String tags30443Json;
+  final String tags443Json;
   final String hashRefHex;
 }
 
@@ -180,13 +187,32 @@ class MdkProcessedMessage {
 }
 
 class MdkService {
-  Completer<void>? _initCompleter;
+  static Completer<void>? _bridgeInitCompleter;
+  static Completer<void>? _runtimeInitCompleter;
 
   Future<void> ensureInitialized() async {
-    if (_initCompleter != null) {
-      return _initCompleter!.future;
+    if (_runtimeInitCompleter != null) {
+      return _runtimeInitCompleter!.future;
     }
-    _initCompleter = Completer<void>();
+    _runtimeInitCompleter = Completer<void>();
+    try {
+      await _ensureBridgeInitialized();
+      final root = await getApplicationSupportDirectory();
+      final dataDir = p.join(root.path, 'mdk');
+      await bridge_api.initMdkUnencrypted(dataDir: dataDir);
+      _runtimeInitCompleter!.complete();
+    } catch (e) {
+      _runtimeInitCompleter!.completeError(e);
+      _runtimeInitCompleter = null;
+      rethrow;
+    }
+  }
+
+  static Future<void> _ensureBridgeInitialized() async {
+    if (_bridgeInitCompleter != null) {
+      return _bridgeInitCompleter!.future;
+    }
+    _bridgeInitCompleter = Completer<void>();
     try {
       if (Platform.isIOS || Platform.isMacOS) {
         await MdkBridgeApi.init(
@@ -195,13 +221,10 @@ class MdkService {
       } else {
         await MdkBridgeApi.init();
       }
-      final root = await getApplicationSupportDirectory();
-      final dataDir = p.join(root.path, 'mdk');
-      await bridge_api.initMdkUnencrypted(dataDir: dataDir);
-      _initCompleter!.complete();
+      _bridgeInitCompleter!.complete();
     } catch (e) {
-      _initCompleter!.completeError(e);
-      _initCompleter = null;
+      _bridgeInitCompleter!.completeError(e);
+      _bridgeInitCompleter = null;
       rethrow;
     }
   }
@@ -219,14 +242,15 @@ class MdkService {
   Future<void> resetLocalState() async {
     final root = await getApplicationSupportDirectory();
     final primaryDir = Directory(p.join(root.path, 'mdk'));
-    if (_initCompleter?.isCompleted ?? false) {
+    if (_runtimeInitCompleter?.isCompleted ?? false) {
       final scratchDir = p.join(
         root.path,
         'mdk_reset_runtime_${DateTime.now().millisecondsSinceEpoch}',
       );
+      await _ensureBridgeInitialized();
       await bridge_api.initMdkUnencrypted(dataDir: scratchDir);
     }
-    _initCompleter = null;
+    _runtimeInitCompleter = null;
     if (await primaryDir.exists()) {
       await primaryDir.delete(recursive: true);
     }

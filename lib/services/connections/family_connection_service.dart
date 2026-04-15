@@ -47,46 +47,35 @@ class FamilyConnectionService {
   Future<FamilyInviteResult> createInvite({
     required ParentIdentity identity,
   }) async {
-    final relays = await _nostrService.loadRelayList();
-    final inviterDisplayName = (await _loadLocalDisplayName?.call())?.trim();
-    if (inviterDisplayName != null && inviterDisplayName.isNotEmpty) {
-      try {
-        await _nostrService.publishParentProfile(
-          identity: identity,
-          displayName: inviterDisplayName,
-        );
-      } catch (_) {
-        // Best effort only. The invite packet also carries the local name.
-      }
-    }
-    final preview = await _mdkService.createKeyPackageEvent(
-      publicKeyHex: identity.publicKeyHex,
-      relays: relays,
-    );
-    final signedEventJson = await _nostrService.createSignedKeyPackageEventJson(
+    final relays = _usableRelays(await _nostrService.loadRelayList());
+    final inviterDisplayName = await _publishLocalProfileBestEffort(identity);
+    final publishedKeyPackage = await _publishKeyPackageEvents(
       identity: identity,
-      content: preview.content,
-      tagsJson: preview.tagsJson,
-    );
-
-    // Publish before showing the invite so scanners can discover the package
-    // even if the invite is tiny and the scan happens a moment later.
-    final keyPackageEventId = await _nostrService.publishSignedEventJson(
-      identity: identity,
-      eventJson: signedEventJson,
       relays: relays,
+      includeLegacyCompatibilityEvent: true,
     );
 
     final packet = GroupInvitePacket(
       publicKeyHex: identity.publicKeyHex,
       createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      keyPackageEventId: keyPackageEventId,
       inviterDisplayName: inviterDisplayName,
     );
 
     return FamilyInviteResult(
       payload: packet.encode(),
-      keyPackageEventJson: signedEventJson,
+      keyPackageEventJson: publishedKeyPackage.eventJson,
+    );
+  }
+
+  Future<void> publishCurrentKeyPackage({
+    required ParentIdentity identity,
+  }) async {
+    final relays = _usableRelays(await _nostrService.loadRelayList());
+    await _publishLocalProfileBestEffort(identity);
+    await _publishKeyPackageEvents(
+      identity: identity,
+      relays: relays,
+      includeLegacyCompatibilityEvent: true,
     );
   }
 
@@ -95,7 +84,7 @@ class FamilyConnectionService {
     required String invitePayload,
   }) async {
     final packet = GroupInvitePacket.decode(invitePayload);
-    final relays = await _nostrService.loadRelayList();
+    final relays = _usableRelays(await _nostrService.loadRelayList());
     final inviterName = packet.inviterDisplayName?.trim().isNotEmpty == true
         ? packet.inviterDisplayName!.trim()
         : await _resolveInviterDisplayName(
@@ -174,6 +163,148 @@ class FamilyConnectionService {
       return null;
     }
     return displayName;
+  }
+
+  Future<String?> _publishLocalProfileBestEffort(
+    ParentIdentity identity,
+  ) async {
+    final displayName = (await _loadLocalDisplayName?.call())?.trim();
+    if (displayName == null || displayName.isEmpty) {
+      return displayName;
+    }
+    try {
+      await _nostrService.publishParentProfile(
+        identity: identity,
+        displayName: displayName,
+      );
+    } catch (_) {
+      // Best effort only. Invites and groups still carry the local name.
+    }
+    return displayName;
+  }
+
+  Future<_PublishedKeyPackage> _publishKeyPackageEvents({
+    required ParentIdentity identity,
+    required List<String> relays,
+    required bool includeLegacyCompatibilityEvent,
+  }) async {
+    await _publishKeyPackageRelayList(identity: identity, relays: relays);
+
+    final preview = await _mdkService.createKeyPackageEvent(
+      publicKeyHex: identity.publicKeyHex,
+      relays: relays,
+    );
+    final currentTagsJson = preview.tags30443Json;
+    final legacyTags = _legacyKeyPackageTags(_decodeTagsJson(currentTagsJson));
+    final signedEventJson = await _nostrService.createSignedKeyPackageEventJson(
+      identity: identity,
+      content: preview.content,
+      tagsJson: currentTagsJson,
+    );
+
+    // Publish as an addressable key package so current clients can discover
+    // this parent even after older legacy packages are still on relays.
+    await _nostrService.publishSignedEventJson(
+      identity: identity,
+      eventJson: signedEventJson,
+      relays: relays,
+    );
+
+    if (includeLegacyCompatibilityEvent) {
+      final legacyEventJson = await _nostrService.createSignedEventJson(
+        identity: identity,
+        kind: MarmotKinds.legacyKeyPackage,
+        tags: legacyTags,
+        content: preview.content,
+      );
+      await _nostrService.publishSignedEventJson(
+        identity: identity,
+        eventJson: legacyEventJson,
+        relays: relays,
+      );
+    }
+
+    return _PublishedKeyPackage(eventJson: signedEventJson);
+  }
+
+  Future<void> _publishKeyPackageRelayList({
+    required ParentIdentity identity,
+    required List<String> relays,
+  }) async {
+    try {
+      final discoveryRelays = _mergeRelayLists(
+        relays,
+        AppConstants.defaultRelays,
+      );
+      final relayListEventJson = await _nostrService.createSignedEventJson(
+        identity: identity,
+        kind: MarmotKinds.keyPackageRelays,
+        tags: relays
+            .map((relay) => <String>['relay', relay])
+            .toList(growable: false),
+        content: '',
+      );
+      await _nostrService.publishSignedEventJson(
+        identity: identity,
+        eventJson: relayListEventJson,
+        relays: discoveryRelays,
+      );
+    } catch (_) {
+      // Discovery helps other clients find the KeyPackage relays, but invite
+      // creation should still proceed if this announcement has a transient
+      // relay failure.
+    }
+  }
+
+  List<String> _mergeRelayLists(List<String> primary, List<String> secondary) {
+    final seen = <String>{};
+    final merged = <String>[];
+    for (final relay in [...primary, ...secondary]) {
+      if (seen.add(relay)) {
+        merged.add(relay);
+      }
+    }
+    return merged;
+  }
+
+  List<String> _usableRelays(List<String> relays) {
+    final usable = <String>[];
+    final seen = <String>{};
+    for (final relay in relays) {
+      final trimmed = relay.trim();
+      final uri = Uri.tryParse(trimmed);
+      if (uri == null ||
+          uri.host.isEmpty ||
+          (uri.scheme != 'ws' && uri.scheme != 'wss')) {
+        continue;
+      }
+      if (seen.add(trimmed)) {
+        usable.add(trimmed);
+      }
+    }
+    return usable.isEmpty ? AppConstants.defaultRelays : usable;
+  }
+
+  List<List<String>> _legacyKeyPackageTags(List<List<String>> tags) {
+    return tags
+        .where((tag) => tag.isEmpty || tag.first != 'd')
+        .map((tag) => List<String>.from(tag, growable: false))
+        .toList(growable: false);
+  }
+
+  List<List<String>> _decodeTagsJson(String tagsJson) {
+    final decoded = jsonDecode(tagsJson);
+    if (decoded is! List) {
+      throw const FormatException('Key package tags must be a JSON list');
+    }
+    return decoded
+        .map((row) {
+          if (row is! List) {
+            throw const FormatException('Key package tag must be a JSON list');
+          }
+          return row.map((value) => value.toString()).toList(growable: false);
+        })
+        .toList(growable: false);
   }
 
   String _buildGroupName({String? inviterName, String? inviteeName}) {
@@ -260,7 +391,7 @@ class FamilyConnectionService {
       filter: Filter(
         ids: [eventId],
         authors: [publicKeyHex],
-        kinds: [MarmotKinds.keyPackage],
+        kinds: MarmotKinds.keyPackageKinds,
         limit: 1,
       ),
     );
@@ -270,7 +401,7 @@ class FamilyConnectionService {
     subscription = response.stream.listen(
       (event) {
         if (event.pubKey != publicKeyHex ||
-            event.kind != MarmotKinds.keyPackage ||
+            !MarmotKinds.keyPackageKinds.contains(event.kind) ||
             event.id != eventId) {
           return;
         }
@@ -293,7 +424,7 @@ class FamilyConnectionService {
     } on TimeoutException {
       throw StateError(
         'No key packages found for this invite yet. '
-        'Ask the other parent to refresh the invite and try again.',
+        'Ask the other parent to open Family Spaces or create a new invite.',
       );
     } finally {
       await subscription.cancel();
@@ -311,18 +442,32 @@ class FamilyConnectionService {
       timeout: _keyPackageResolveTimeout,
       filter: Filter(
         authors: [publicKeyHex],
-        kinds: [MarmotKinds.keyPackage],
+        kinds: MarmotKinds.keyPackageKinds,
         limit: 20,
       ),
     );
     if (events.isEmpty) {
       throw StateError(
         'No key packages found for this invite yet. '
-        'Ask the other parent to refresh the invite and try again.',
+        'Ask the other parent to open Family Spaces or create a new invite.',
       );
     }
     final sorted = events.toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      ..sort((a, b) {
+        final kindPriority =
+            (b.kind == MarmotKinds.keyPackage ? 1 : 0) -
+            (a.kind == MarmotKinds.keyPackage ? 1 : 0);
+        if (kindPriority != 0) {
+          return kindPriority;
+        }
+        return b.createdAt.compareTo(a.createdAt);
+      });
     return [Nip01EventModel.fromEntity(sorted.first).toJsonString()];
   }
+}
+
+class _PublishedKeyPackage {
+  const _PublishedKeyPackage({required this.eventJson});
+
+  final String eventJson;
 }
