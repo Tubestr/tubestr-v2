@@ -29,6 +29,7 @@ class AppConstants {
 }
 
 class MarmotKinds {
+  static const chatMessage = 9;
   static const keyPackage = 443;
   static const welcome = 444;
   static const groupCommit = 445;

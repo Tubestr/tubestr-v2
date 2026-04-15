@@ -129,6 +129,10 @@ class FakeMdkService extends MdkService {
   int? lastCreatedMessageKind;
   String? lastCreatedMessageGroupId;
   final List<String> createdMessageGroupIds = [];
+  final List<int> createdMessageKinds = [];
+  final List<String> createdMessageContents = [];
+  final List<String?> createdMessageTagsJsons = [];
+  final List<int?> createdMessageCreatedAts = [];
   String? lastCreatedMessageContent;
   int? lastCreatedMessageCreatedAt;
   List<String>? lastRemovedMemberPubkeys;
@@ -263,6 +267,10 @@ class FakeMdkService extends MdkService {
     lastCreatedMessageKind = kind;
     lastCreatedMessageGroupId = mlsGroupIdHex;
     createdMessageGroupIds.add(mlsGroupIdHex);
+    createdMessageKinds.add(kind);
+    createdMessageContents.add(content);
+    createdMessageTagsJsons.add(tagsJson);
+    createdMessageCreatedAts.add(createdAt);
     lastCreatedMessageContent = content;
     lastCreatedMessageCreatedAt = createdAt;
     return createdMessageResult ??
@@ -358,6 +366,8 @@ class FakeNostrService implements NostrService {
   List<String> fetchedBlossomServers = const ['https://blossom.example'];
   String? unwrapGiftWrapRumorJsonResult;
   bool throwOnPublishSignedEvent = false;
+  int? throwOnPublishSignedEventCall;
+  int publishSignedEventCallCount = 0;
   bool throwOnPublishParentProfile = false;
   final Set<String> unsubscribeFailures = <String>{};
   final Map<String, Filter> subscriptionFilters = {};
@@ -495,7 +505,9 @@ class FakeNostrService implements NostrService {
     required String eventJson,
     List<String>? relays,
   }) async {
-    if (throwOnPublishSignedEvent) {
+    publishSignedEventCallCount += 1;
+    if (throwOnPublishSignedEvent ||
+        throwOnPublishSignedEventCall == publishSignedEventCallCount) {
       throw StateError('relay unavailable');
     }
     lastPublishedEventJson = eventJson;

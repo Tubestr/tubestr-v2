@@ -217,6 +217,72 @@ class VideoShareCoordinator {
     required String mlsGroupIdHex,
     List<String>? blossomServers,
   }) async {
+    final prepared = await _prepareUploadedShare(
+      identity: identity,
+      localVideo: localVideo,
+      childDisplayName: childDisplayName,
+      mlsGroupIdHex: mlsGroupIdHex,
+      blossomServers: blossomServers,
+    );
+
+    return createDraftShareMessageEvent(
+      mlsGroupIdHex: mlsGroupIdHex,
+      senderPublicKeyHex: identity.publicKeyHex,
+      payloadJson: prepared.nativeContentJson,
+      tagsJson: prepared.nativeTagsJson,
+      createdAt: prepared.sharedAt,
+    );
+  }
+
+  Future<CreatedVideoShareMessages> createUploadedShareMessages({
+    required ParentIdentity identity,
+    required LocalVideo localVideo,
+    required String childDisplayName,
+    required String mlsGroupIdHex,
+    List<String>? blossomServers,
+  }) async {
+    final prepared = await _prepareUploadedShare(
+      identity: identity,
+      localVideo: localVideo,
+      childDisplayName: childDisplayName,
+      mlsGroupIdHex: mlsGroupIdHex,
+      blossomServers: blossomServers,
+    );
+
+    final nativeShare = await createDraftShareMessageEvent(
+      mlsGroupIdHex: mlsGroupIdHex,
+      senderPublicKeyHex: identity.publicKeyHex,
+      payloadJson: prepared.nativeContentJson,
+      tagsJson: prepared.nativeTagsJson,
+      createdAt: prepared.sharedAt,
+    );
+    final whiteNoiseCompanion = await createDraftShareMessageEvent(
+      mlsGroupIdHex: mlsGroupIdHex,
+      senderPublicKeyHex: identity.publicKeyHex,
+      payloadJson: prepared.whiteNoiseContent,
+      tagsJson: _buildWhiteNoiseCompanionTagsJson(
+        videoImetaTag: prepared.videoImetaTag,
+        videoId: localVideo.id,
+        senderPublicKeyHex: identity.publicKeyHex,
+        nativeRumorEventIdHex: nativeShare.rumorEventIdHex,
+      ),
+      kind: MarmotKinds.chatMessage,
+      createdAt: prepared.sharedAt,
+    );
+
+    return CreatedVideoShareMessages(
+      nativeShare: nativeShare,
+      whiteNoiseCompanion: whiteNoiseCompanion,
+    );
+  }
+
+  Future<_PreparedUploadedShare> _prepareUploadedShare({
+    required ParentIdentity identity,
+    required LocalVideo localVideo,
+    required String childDisplayName,
+    required String mlsGroupIdHex,
+    List<String>? blossomServers,
+  }) async {
     await warmUp();
 
     if (localVideo.approvalStatus != 'approved') {
@@ -330,15 +396,17 @@ class VideoShareCoordinator {
       ts: payload.ts,
     );
 
+    final videoImetaTag = _buildImetaTag(
+      uploadedUrl: '${videoUpload.primaryServer}/${videoUpload.hash}',
+      mimeType: videoEncrypted.mimeType,
+      filename: videoEncrypted.filename,
+      originalHashHex: videoEncrypted.originalHashHex,
+      nonceHex: videoEncrypted.nonceHex,
+      schemeVersion: videoEncrypted.schemeVersion,
+    );
+
     final tagsJson = jsonEncode([
-      _buildImetaTag(
-        uploadedUrl: '${videoUpload.primaryServer}/${videoUpload.hash}',
-        mimeType: videoEncrypted.mimeType,
-        filename: videoEncrypted.filename,
-        originalHashHex: videoEncrypted.originalHashHex,
-        nonceHex: videoEncrypted.nonceHex,
-        schemeVersion: videoEncrypted.schemeVersion,
-      ),
+      videoImetaTag,
       _buildImetaTag(
         uploadedUrl: '${thumbUpload.primaryServer}/${thumbUpload.hash}',
         mimeType: thumbEncrypted.mimeType,
@@ -362,12 +430,15 @@ class VideoShareCoordinator {
       ),
     );
 
-    return createDraftShareMessageEvent(
-      mlsGroupIdHex: mlsGroupIdHex,
-      senderPublicKeyHex: identity.publicKeyHex,
-      payloadJson: augmentedPayload.encode(),
-      tagsJson: tagsJson,
-      createdAt: sharedAt,
+    return _PreparedUploadedShare(
+      nativeContentJson: augmentedPayload.encode(),
+      nativeTagsJson: tagsJson,
+      videoImetaTag: videoImetaTag,
+      whiteNoiseContent: _buildWhiteNoiseVideoShareContent(
+        localVideo: localVideo,
+        childDisplayName: childDisplayName,
+      ),
+      sharedAt: sharedAt,
     );
   }
 
@@ -388,6 +459,42 @@ class VideoShareCoordinator {
       'n $nonceHex',
       'v $schemeVersion',
     ];
+  }
+
+  String _buildWhiteNoiseCompanionTagsJson({
+    required List<String> videoImetaTag,
+    required String videoId,
+    required String senderPublicKeyHex,
+    required String nativeRumorEventIdHex,
+  }) {
+    final tags = <List<String>>[
+      List<String>.from(videoImetaTag),
+      ['client', AppConstants.appName],
+      ['tubestr', 'video_share', videoId],
+    ];
+    final normalizedNativeId = nativeRumorEventIdHex.trim();
+    if (normalizedNativeId.isNotEmpty) {
+      tags.add(['q', normalizedNativeId, '', senderPublicKeyHex]);
+    }
+    return jsonEncode(tags);
+  }
+
+  String _buildWhiteNoiseVideoShareContent({
+    required LocalVideo localVideo,
+    required String childDisplayName,
+  }) {
+    final childName = childDisplayName.trim();
+    final title = localVideo.title.trim();
+    if (childName.isEmpty && title.isEmpty) {
+      return 'Shared a Tubestr video';
+    }
+    if (childName.isEmpty) {
+      return 'Shared a Tubestr video: $title';
+    }
+    if (title.isEmpty) {
+      return '$childName shared a Tubestr video';
+    }
+    return '$childName shared a Tubestr video: $title';
   }
 
   Future<String> shareLocalVideo({
@@ -412,7 +519,7 @@ class VideoShareCoordinator {
       }
     }
     try {
-      final event = await createUploadedShareMessage(
+      final messages = await createUploadedShareMessages(
         identity: identity,
         localVideo: localVideo,
         childDisplayName: childDisplayName,
@@ -421,7 +528,12 @@ class VideoShareCoordinator {
       final relays = await _nostrService.loadRelayList();
       final eventId = await publishSignedGroupMessage(
         identity: identity,
-        signedEventJson: event.wrapperEventJson,
+        signedEventJson: messages.nativeShare.wrapperEventJson,
+        relays: relays,
+      );
+      await _publishWhiteNoiseCompanionBestEffort(
+        identity: identity,
+        signedEventJson: messages.whiteNoiseCompanion.wrapperEventJson,
         relays: relays,
       );
       await _shareHistoryService.recordSent(
@@ -455,6 +567,22 @@ class VideoShareCoordinator {
         throw StateError('Share queued for retry: $error');
       }
       rethrow;
+    }
+  }
+
+  Future<void> _publishWhiteNoiseCompanionBestEffort({
+    required ParentIdentity identity,
+    required String signedEventJson,
+    List<String>? relays,
+  }) async {
+    try {
+      await publishSignedGroupMessage(
+        identity: identity,
+        signedEventJson: signedEventJson,
+        relays: relays,
+      );
+    } catch (_) {
+      // The native share is already delivered; WhiteNoise interop is best-effort.
     }
   }
 
@@ -553,6 +681,32 @@ class VideoShareCoordinator {
         .replaceAll('=', '');
     return BlossomUploadAuth(authorizationHeaderValue: 'Nostr $encoded');
   }
+}
+
+class CreatedVideoShareMessages {
+  const CreatedVideoShareMessages({
+    required this.nativeShare,
+    required this.whiteNoiseCompanion,
+  });
+
+  final MdkCreatedMessage nativeShare;
+  final MdkCreatedMessage whiteNoiseCompanion;
+}
+
+class _PreparedUploadedShare {
+  const _PreparedUploadedShare({
+    required this.nativeContentJson,
+    required this.nativeTagsJson,
+    required this.videoImetaTag,
+    required this.whiteNoiseContent,
+    required this.sharedAt,
+  });
+
+  final String nativeContentJson;
+  final String nativeTagsJson;
+  final List<String> videoImetaTag;
+  final String whiteNoiseContent;
+  final int sharedAt;
 }
 
 class ShareDispatchResult {

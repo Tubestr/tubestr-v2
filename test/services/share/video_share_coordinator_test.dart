@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mytube/core/constants.dart';
@@ -37,6 +38,16 @@ void main() {
         ),
       ),
     );
+  }
+
+  List<List<String>> decodeTags(String tagsJson) {
+    return (jsonDecode(tagsJson) as List<dynamic>)
+        .map(
+          (tag) => (tag as List<dynamic>)
+              .map((value) => value as String)
+              .toList(growable: false),
+        )
+        .toList(growable: false);
   }
 
   test(
@@ -200,6 +211,185 @@ void main() {
     expect(history.first.status, 'queued');
   });
 
+  test(
+    'shareLocalVideo publishes a WhiteNoise kind 9 companion with one video imeta tag',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'video-share-coordinator-kind9-test',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final videoFile = File('${tempDir.path}/clip.mp4')
+        ..writeAsBytesSync(List<int>.from('video-bytes'.codeUnits));
+      final thumbFile = File('${tempDir.path}/thumb.jpg')
+        ..writeAsBytesSync(List<int>.from('thumb-bytes'.codeUnits));
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'child-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'avatar.png',
+      );
+      await database.saveLocalVideo(
+        videoId: 'video-interop',
+        profileId: 'child-1',
+        filePath: videoFile.path,
+        thumbPath: thumbFile.path,
+        title: 'Backyard song',
+        approvalStatus: 'approved',
+        scanResults: 'safe',
+        scanCompletedAt: DateTime.now(),
+      );
+
+      final mdkService = FakeMdkService();
+      final nostrService = FakeNostrService()
+        ..blossomServers = const ['https://blossom.example'];
+      final coordinator = VideoShareCoordinator(
+        database: database,
+        videoApprovalService: buildApprovalService(database),
+        blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
+        mdkService: mdkService,
+        nostrService: nostrService,
+        offlineActionStore: OfflineActionStore(database: database),
+        shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
+      );
+
+      await coordinator.shareLocalVideo(
+        identity: identity,
+        videoId: 'video-interop',
+        profileId: 'child-1',
+        childDisplayName: 'Emma',
+        mlsGroupIdHex: 'group-1',
+      );
+
+      expect(mdkService.createdMessageKinds, [
+        MarmotKinds.videoShare,
+        MarmotKinds.chatMessage,
+      ]);
+      expect(mdkService.createdMessageContents[1], contains('Backyard song'));
+      expect(nostrService.publishedEventJsons, hasLength(2));
+
+      final companionTags = decodeTags(mdkService.createdMessageTagsJsons[1]!);
+      final imetaTags = companionTags
+          .where((tag) => tag.isNotEmpty && tag.first == 'imeta')
+          .toList(growable: false);
+
+      expect(imetaTags, hasLength(1));
+      expect(imetaTags.single, contains('m video/mp4'));
+      expect(imetaTags.single, contains('filename clip.mp4'));
+      expect(imetaTags.single, isNot(contains('m image/jpeg')));
+      expect(
+        imetaTags.single.any(
+          (tag) => tag.startsWith('url https://blossom.example/'),
+        ),
+        isTrue,
+      );
+      expect(
+        companionTags.any(
+          (tag) =>
+              tag.length == 2 &&
+              tag[0] == 'client' &&
+              tag[1] == AppConstants.appName,
+        ),
+        isTrue,
+      );
+      expect(
+        companionTags.any(
+          (tag) =>
+              tag.length == 3 &&
+              tag[0] == 'tubestr' &&
+              tag[1] == 'video_share' &&
+              tag[2] == 'video-interop',
+        ),
+        isTrue,
+      );
+      expect(
+        companionTags.any(
+          (tag) =>
+              tag.length == 4 &&
+              tag[0] == 'q' &&
+              tag[1] == 'rumor' &&
+              tag[3] == identity.publicKeyHex,
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'shareLocalVideo still records the native share when WhiteNoise companion publish fails',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'video-share-coordinator-kind9-failure-test',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final videoFile = File('${tempDir.path}/clip.mp4')
+        ..writeAsBytesSync(List<int>.from('video-bytes'.codeUnits));
+      final thumbFile = File('${tempDir.path}/thumb.jpg')
+        ..writeAsBytesSync(List<int>.from('thumb-bytes'.codeUnits));
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'child-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'avatar.png',
+      );
+      await database.saveLocalVideo(
+        videoId: 'video-interop-failure',
+        profileId: 'child-1',
+        filePath: videoFile.path,
+        thumbPath: thumbFile.path,
+        title: 'Backyard song',
+        approvalStatus: 'approved',
+        scanResults: 'safe',
+        scanCompletedAt: DateTime.now(),
+      );
+
+      final nostrService = FakeNostrService()
+        ..blossomServers = const ['https://blossom.example']
+        ..throwOnPublishSignedEventCall = 2;
+      final coordinator = VideoShareCoordinator(
+        database: database,
+        videoApprovalService: buildApprovalService(database),
+        blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
+        mdkService: FakeMdkService(),
+        nostrService: nostrService,
+        offlineActionStore: OfflineActionStore(database: database),
+        shareHistoryService: ShareHistoryService(database: database),
+        managedVideoUploadService: ManagedVideoUploadService(
+          database: database,
+        ),
+      );
+
+      final eventId = await coordinator.shareLocalVideo(
+        identity: identity,
+        videoId: 'video-interop-failure',
+        profileId: 'child-1',
+        childDisplayName: 'Emma',
+        mlsGroupIdHex: 'group-1',
+      );
+
+      final history = await ShareHistoryService(database: database).load();
+      expect(eventId, 'event-id');
+      expect(nostrService.publishedEventJsons, hasLength(1));
+      expect(history.single.status, 'sent');
+    },
+  );
+
   test('loadEligibleShareGroups excludes safety and solo groups', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
@@ -324,8 +514,19 @@ void main() {
 
       expect(result.sharedGroupIds, ['family-a', 'family-b']);
       expect(result.queuedGroupIds, isEmpty);
-      expect(mdkService.createdMessageGroupIds, ['family-a', 'family-b']);
-      expect(nostrService.publishedEventJsons, hasLength(2));
+      expect(mdkService.createdMessageGroupIds, [
+        'family-a',
+        'family-a',
+        'family-b',
+        'family-b',
+      ]);
+      expect(mdkService.createdMessageKinds, [
+        MarmotKinds.videoShare,
+        MarmotKinds.chatMessage,
+        MarmotKinds.videoShare,
+        MarmotKinds.chatMessage,
+      ]);
+      expect(nostrService.publishedEventJsons, hasLength(4));
     },
   );
 

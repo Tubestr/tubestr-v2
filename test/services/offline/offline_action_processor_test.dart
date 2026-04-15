@@ -187,7 +187,7 @@ void main() {
       expect(flushed, 5);
       expect(remaining, isEmpty);
       expect(nostr.lastPublishedDisplayName, 'Lee & Emma');
-      expect(nostr.publishedEventJsons, hasLength(3));
+      expect(nostr.publishedEventJsons, hasLength(4));
       expect(report.status, 'delivered');
       expect(report.level, 1);
       expect(report.recipientType, 'group');
