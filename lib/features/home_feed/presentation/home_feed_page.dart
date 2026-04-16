@@ -29,7 +29,7 @@ class HomeFeedContent extends ConsumerWidget {
     final selectedProfile = profiles.firstWhereOrNull(
       (p) => p.id == selectedProfileId,
     );
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final videoItems = videos.valueOrNull;
     final isFreshState =
         videoItems != null && videoItems.isEmpty && remoteShares.isEmpty;
@@ -455,8 +455,8 @@ class _HomeSceneHero extends StatelessWidget {
         border: Border.all(color: palette.panelBorder, width: 1.2),
         gradient: LinearGradient(
           colors: [
-            Colors.white.withValues(alpha: 0.52),
-            Colors.white.withValues(alpha: 0.18),
+            palette.panel.withValues(alpha: 0.76),
+            palette.panel.withValues(alpha: 0.28),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -477,7 +477,7 @@ class _HomeSceneHero extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.white.withValues(alpha: 0.12),
+                      palette.panel.withValues(alpha: 0.12),
                       palette.backgroundTop.withValues(alpha: 0.34),
                       palette.backgroundBottom.withValues(alpha: 0.62),
                     ],
@@ -548,7 +548,7 @@ class _FirstVideoPanel extends StatelessWidget {
           colors: [
             palette.accent.withValues(alpha: 0.12),
             palette.accentSecondary.withValues(alpha: 0.10),
-            Colors.white.withValues(alpha: 0.88),
+            palette.panel.withValues(alpha: 0.88),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -623,10 +623,10 @@ class _FirstVideoPanel extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: const [
-              _FirstStepPill(label: 'Capture'),
-              _FirstStepPill(label: 'Edit'),
-              _FirstStepPill(label: 'Share later'),
+            children: [
+              _FirstStepPill(label: 'Capture', palette: palette),
+              _FirstStepPill(label: 'Edit', palette: palette),
+              _FirstStepPill(label: 'Share later', palette: palette),
             ],
           ),
         ],
@@ -636,17 +636,19 @@ class _FirstVideoPanel extends StatelessWidget {
 }
 
 class _FirstStepPill extends StatelessWidget {
-  const _FirstStepPill({required this.label});
+  const _FirstStepPill({required this.label, required this.palette});
 
   final String label;
+  final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: palette.panel.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: palette.panelBorder),
       ),
       child: Text(
         label,
@@ -1033,7 +1035,7 @@ class _FeedMetricPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: palette.panel.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: palette.panelBorder),
       ),

@@ -23,7 +23,7 @@ class EditorHubContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final videos = ref.watch(videosForSelectedProfileProvider);
     final remoteShares =
         ref.watch(remoteSharesProvider).valueOrNull ?? const [];
@@ -306,8 +306,9 @@ class _StudioPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.75),
+        color: palette.panel.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.panelBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -18,7 +18,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
         ref.watch(moderationAuditLogsProvider).valueOrNull ?? const [];
     final shareHistory =
         ref.watch(shareHistoryProvider).valueOrNull ?? const [];
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final inboundReports = reports
         .where((report) => !report.isOutbound)
         .toList(growable: false);
@@ -76,7 +76,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
                       )
                     else
                       for (final report in inboundReports.take(4))
-                        _InboundReportRow(report: report),
+                        _InboundReportRow(report: report, palette: palette),
                   ],
                 ),
               ),
@@ -120,7 +120,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
                       )
                     else
                       for (final log in moderationLogs.take(4))
-                        _ModerationLogRow(log: log),
+                        _ModerationLogRow(log: log, palette: palette),
                   ],
                 ),
               ),
@@ -218,9 +218,10 @@ class _ShareHistoryRow extends ConsumerWidget {
 }
 
 class _InboundReportRow extends StatelessWidget {
-  const _InboundReportRow({required this.report});
+  const _InboundReportRow({required this.report, required this.palette});
 
   final Report report;
+  final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
@@ -243,8 +244,9 @@ class _InboundReportRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.7),
+          color: palette.panel.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: palette.panelBorder),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,7 +273,7 @@ class _InboundReportRow extends StatelessWidget {
                     '$destinationLabel · ${_formatTimestamp(report.createdAt)}',
                     style: Theme.of(
                       context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
                 ],
               ),
@@ -356,9 +358,10 @@ String _reportDestinationLabel(String recipientType) {
 String _formatTimestamp(DateTime value) => value.toLocal().toString();
 
 class _ModerationLogRow extends StatelessWidget {
-  const _ModerationLogRow({required this.log});
+  const _ModerationLogRow({required this.log, required this.palette});
 
   final ModerationAuditLog log;
+  final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
@@ -389,7 +392,7 @@ class _ModerationLogRow extends StatelessWidget {
                   log.createdAt.toLocal().toString(),
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                  ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                 ),
               ],
             ),

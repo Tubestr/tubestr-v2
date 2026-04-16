@@ -13,7 +13,7 @@ class OnboardingLoadingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ref.watch(activeThemeProvider);
-    final palette = theme.palette;
+    final palette = ref.watch(activePaletteProvider);
     return Scaffold(
       body: Stack(
         children: [
@@ -43,7 +43,7 @@ class OnboardingErrorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ref.watch(activeThemeProvider);
-    final palette = theme.palette;
+    final palette = ref.watch(activePaletteProvider);
     return Scaffold(
       body: Stack(
         children: [

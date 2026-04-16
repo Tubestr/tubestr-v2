@@ -774,6 +774,7 @@ void main() {
         ),
       );
 
+      final beforeAuth = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       await coordinator.createUploadedShareMessage(
         identity: identity,
         localVideo: localVideo,
@@ -793,6 +794,14 @@ void main() {
       expect(
         nostrService.lastCreatedSignedEventContent,
         'Authorize Blossom upload',
+      );
+      expect(
+        nostrService.lastCreatedSignedEventCreatedAt,
+        lessThanOrEqualTo(beforeAuth),
+      );
+      expect(
+        nostrService.lastCreatedSignedEventCreatedAt,
+        greaterThan(beforeAuth - 360),
       );
       expect(
         nostrService.lastCreatedSignedEventTags,

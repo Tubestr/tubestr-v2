@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
-import '../../core/theme/theme_descriptor.dart';
 
 class KidLayoutSpec {
   const KidLayoutSpec({
@@ -70,7 +69,7 @@ class KidScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
 
     return Scaffold(
       extendBody: true,

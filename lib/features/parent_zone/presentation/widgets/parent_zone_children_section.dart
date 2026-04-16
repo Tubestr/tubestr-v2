@@ -37,7 +37,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
     final profiles = ref.watch(profilesProvider).valueOrNull ?? const [];
     final pendingVideos =
         ref.watch(pendingApprovalVideosProvider).valueOrNull ?? const [];
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
@@ -70,6 +70,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                   detail:
                       'New videos are scanned automatically. Anything that needs your approval will appear here.',
                   color: palette.success,
+                  palette: palette,
                 )
               else
                 for (final video in pendingVideos.take(8))
@@ -123,6 +124,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                   detail:
                       'Add a child profile below so the app has someone to capture and edit for.',
                   color: palette.warning,
+                  palette: palette,
                 )
               else
                 for (final profile in profiles)
@@ -133,7 +135,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                     ).label,
                     color: ThemeDescriptorX.fromStorage(
                       profile.theme,
-                    ).palette.accent,
+                    ).paletteFor(Theme.of(context).brightness).accent,
                     onDelete: () => onDeleteChild(profile.id),
                   ),
               const Divider(height: 28),
@@ -279,8 +281,9 @@ class _ApprovalCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.76),
+        color: palette.panel.withValues(alpha: 0.76),
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.panelBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,12 +389,14 @@ class _EmptyPanel extends StatelessWidget {
     required this.title,
     required this.detail,
     required this.color,
+    required this.palette,
   });
 
   final IconData icon;
   final String title;
   final String detail;
   final Color color;
+  final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
@@ -399,8 +404,9 @@ class _EmptyPanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.74),
+        color: palette.panel.withValues(alpha: 0.74),
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.panelBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

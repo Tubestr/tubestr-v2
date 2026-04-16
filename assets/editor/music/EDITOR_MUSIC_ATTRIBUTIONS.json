@@ -1,0 +1,2152 @@
+[
+  {
+    "id": "foss_flowerbed_fields",
+    "label": "Flowerbed Fields",
+    "creator": "Zane Little Music",
+    "source_url": "https://opengameart.org/content/flowerbed-fields-loop",
+    "download_url": "https://opengameart.org/sites/default/files/flowerbed_fields.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "Flowerbed Fields by Zane Little Music, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "d440adb8d40f94da2ba58a9456b4e8492170fd253a536533921cbd5f4e6311e2",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_invincibility",
+    "label": "Invincibility",
+    "creator": "Zane Little Music",
+    "source_url": "https://opengameart.org/content/invincibility-loop",
+    "download_url": "https://opengameart.org/sites/default/files/invincible.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "Invincibility by Zane Little Music, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "95474db4074e9c9d32e6a8e1625a0636abdb6776c732762a8e3f4f90f581fc06",
+    "byte_length": 307871,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_icy_heights",
+    "label": "Icy Heights",
+    "creator": "Ecrivain",
+    "source_url": "https://opengameart.org/content/icy-heights",
+    "download_url": "https://opengameart.org/sites/default/files/theme-loop.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game",
+      "loops"
+    ],
+    "attribution": "Icy Heights by Ecrivain, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "2eb363ee1752315fd576f4c521c15eb09b65abec6d4217072774677818b573cf",
+    "byte_length": 504730,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_background_loop",
+    "label": "Background Loop",
+    "creator": "Pro Sensory",
+    "source_url": "https://opengameart.org/content/background-music-loop",
+    "download_url": "https://opengameart.org/sites/default/files/background_music_loop.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "game",
+      "loops"
+    ],
+    "attribution": "Background Music Loop by Pro Sensory, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "9a02c7fe65340e55930922ee0abcdb88b805f66581710b1093c22ac433ad51da",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_fast_background",
+    "label": "Fast Background",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/music-loops",
+    "download_url": "https://opengameart.org/sites/default/files/fast_background.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "game",
+      "loops"
+    ],
+    "attribution": "Fast Background Music by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "30b88a0f5f7a8b3b04d3df98602060fb77463b4ba95a1d9abe4dc238ae08d072",
+    "byte_length": 142776,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_chiptune_battle",
+    "label": "Chiptune Battle",
+    "creator": "subspaceaudio",
+    "source_url": "https://opengameart.org/content/5-chiptunes-action",
+    "download_url": "https://opengameart.org/sites/default/files/battle_music_01-loop.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chiptune",
+      "game",
+      "dramatic",
+      "loops"
+    ],
+    "attribution": "Chiptune Battle by subspaceaudio, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "f19d84a00bea184ccb188859b9dc03e289cb0692841421e09f60e7d92f887c9f",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_happy_synths",
+    "label": "Happy Synths",
+    "creator": "3xBlast",
+    "source_url": "https://opengameart.org/content/happy-synths-loop-with-slight-christmas-feeling",
+    "download_url": "https://opengameart.org/sites/default/files/Christmas%20synths.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "chill",
+      "loops"
+    ],
+    "attribution": "Happy Synths by 3xBlast, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "29997b7eb0e9d2f1dd15c87f559e86fee56e8871d370220b5af84b5654568779",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_loop_town",
+    "label": "Loop Town",
+    "creator": "Fupi",
+    "source_url": "https://opengameart.org/content/loop-town",
+    "download_url": "https://opengameart.org/sites/default/files/loopcity_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "chill",
+      "loops"
+    ],
+    "attribution": "Loop Town by Fupi, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "84c95837848739528000ba897b043494feeeb87ea11e14f6beb917b3a4b9aba6",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_title_theme",
+    "label": "Title Theme",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/title-theme",
+    "download_url": "https://opengameart.org/sites/default/files/Title%20Theme.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "game",
+      "loops"
+    ],
+    "attribution": "Title Theme by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "168178f5098f954d6653c1e20548f1bd013baea267b7ef2dbd984a022bb04a7a",
+    "byte_length": 517059,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_bards_tale",
+    "label": "Bard's Tale",
+    "creator": "RandomMind",
+    "source_url": "https://opengameart.org/content/chiptune-medieval-the-bards-tale",
+    "download_url": "https://opengameart.org/sites/default/files/CHIPTUNE_The_Bards_Tale.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "CHIPTUNE - The Bard's Tale by RandomMind, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "85d70651293f52157405e404036129b33905f277efb9504d35e54de292efcca8",
+    "byte_length": 540910,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_battle_theme_a",
+    "label": "Battle Theme A",
+    "creator": "cynicmusic",
+    "source_url": "https://opengameart.org/content/battle-theme-a",
+    "download_url": "https://opengameart.org/sites/default/files/battleThemeA.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Battle Theme A by cynicmusic, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "029c151ba5c2abdc4c883c4e09e6f8f7c37bc558ad57538707b773cb5f6e03ab",
+    "byte_length": 540961,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_menu_music",
+    "label": "Menu Music",
+    "creator": "mrpoly",
+    "source_url": "https://opengameart.org/content/menu-music",
+    "download_url": "https://opengameart.org/sites/default/files/awesomeness.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "chiptune",
+      "game"
+    ],
+    "attribution": "Menu Music by mrpoly, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "3400635a482da286125bd7b0234dfd66d0826f12cdc29759b166edfaecb73cc5",
+    "byte_length": 539839,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_forgoten_tomb_ambience",
+    "label": "Forgoten tomb ambience",
+    "creator": "kindland",
+    "source_url": "https://opengameart.org/content/forgoten-tomb-ambience",
+    "download_url": "https://opengameart.org/sites/default/files/Forgoten_tombs_1.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Forgoten tomb ambience by kindland, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "2d4a1cff48ad3837195d73b39420a9b4b65e583829c96d815f8d6526301908ca",
+    "byte_length": 540840,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_the_field_of_dreams",
+    "label": "The Field Of Dreams",
+    "creator": "pauliuw",
+    "source_url": "https://opengameart.org/content/the-field-of-dreams",
+    "download_url": "https://opengameart.org/sites/default/files/the_field_of_dreams.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "The Field Of Dreams by pauliuw, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "b44fe4ca1e264f618866e96cf39ed5fa1be92f25eb0cc878f5fccb8695389a4d",
+    "byte_length": 540886,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_desert_theme",
+    "label": "Desert theme",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/desert-theme",
+    "download_url": "https://opengameart.org/sites/default/files/caravan.ogg.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Desert theme by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "106fe139bdc635680a59d6019e4c69fd31ebe4cc59956d12190de5c0423b531f",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_tower_defense_theme",
+    "label": "Tower Defense Theme",
+    "creator": "DST",
+    "source_url": "https://opengameart.org/content/tower-defense-theme",
+    "download_url": "https://opengameart.org/sites/default/files/DST-TowerDefenseTheme_1.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "energy",
+      "chill",
+      "game",
+      "loops"
+    ],
+    "attribution": "Tower Defense Theme by DST, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "e1e152a290206302117213454857e383a5a99d323a6c84dfdb4847c53521a79a",
+    "byte_length": 540980,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_rain_and_thunders",
+    "label": "rain and thunders",
+    "creator": "kindland",
+    "source_url": "https://opengameart.org/content/rain-and-thunders",
+    "download_url": "https://opengameart.org/sites/default/files/Dark_Rainy_Night%28ambience%29.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "rain and thunders by kindland, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "ffd607d81ecd3c2159e22282a83b7158da5da515ef8a803662df7bb70de8877f",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_enchanted_tiki_86",
+    "label": "Enchanted Tiki 86",
+    "creator": "cynicmusic",
+    "source_url": "https://opengameart.org/content/enchanted-tiki-86",
+    "download_url": "https://opengameart.org/sites/default/files/enchanted%20tiki%2086_0.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Enchanted Tiki 86 by cynicmusic, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "2df7395b1985d26e19d3eb456b7e2309badc3d38cb135bb76b2a3a9ea830bff7",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_breves_dies_hominis",
+    "label": "Breves dies hominis",
+    "creator": "ceninan",
+    "source_url": "https://opengameart.org/content/breves-dies-hominis",
+    "download_url": "https://opengameart.org/sites/default/files/breves_dies_hominis.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Breves dies hominis by ceninan, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "156ab797af81d7bc50705452f6e12ad9fd5a9be29a96e3b8107a96f86a2fc68e",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_prepare_your_swords",
+    "label": "\"Prepare your swords\"",
+    "creator": "bojidar-bg",
+    "source_url": "https://opengameart.org/content/prepare-your-swords",
+    "download_url": "https://opengameart.org/sites/default/files/prepare_your_swords_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "\"Prepare your swords\" by bojidar-bg, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "2313caac99c5475016a93b99d29c56664849904b091d7c2a408af66b4e6ecdc8",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_fast_fight_battle_music",
+    "label": "Fast fight / battle music",
+    "creator": "Bonsaiheldin",
+    "source_url": "https://opengameart.org/content/fast-fight-battle-music",
+    "download_url": "https://opengameart.org/sites/default/files/fight.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chill",
+      "game"
+    ],
+    "attribution": "Fast fight / battle music by Bonsaiheldin, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "9283259172353bd2ba66fc7475860980d08eedf003d97a9474b1a0cc44b4b332",
+    "byte_length": 319470,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_spacelife_14",
+    "label": "Spacelife #14",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/spacelife-14",
+    "download_url": "https://opengameart.org/sites/default/files/spacelifeNo14.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Spacelife #14 by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "d84987242fd64272278be7a1f10d7e0e3fb148eae18e50944b1d899d377ce700",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_forest_ambience",
+    "label": "Forest Ambience",
+    "creator": "TinyWorlds",
+    "source_url": "https://opengameart.org/content/forest-ambience",
+    "download_url": "https://opengameart.org/sites/default/files/Forest_Ambience.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Forest Ambience by TinyWorlds, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "ebeaec074d872e2fc29a67b896aa09a91f51f1c88aea15e8fae2c77bc6864c08",
+    "byte_length": 537738,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_zombies_march",
+    "label": "Zombies' March",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/zombies-march",
+    "download_url": "https://opengameart.org/sites/default/files/ZombiesAreComing.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "Zombies' March by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "269bffdab6e641c7c728eac6e848cb0f6dbfd5b61124a0a5a7840ca23bd239e5",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_the_slimeking_s_tower_ost_retro_like",
+    "label": "The Slimeking's Tower OST (Retro lik",
+    "creator": "CodeManu",
+    "source_url": "https://opengameart.org/content/the-slimekings-tower-ost-retro-like",
+    "download_url": "https://opengameart.org/sites/default/files/BGM_Alpha.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "game"
+    ],
+    "attribution": "The Slimeking's Tower OST (Retro like) by CodeManu, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "6b5d439eb21ac640f31e49d2243f9c920b7fdf2c9267f6bece4b2e7487adbb01",
+    "byte_length": 544168,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_adventure_time",
+    "label": "Adventure Time",
+    "creator": "Scribe",
+    "source_url": "https://opengameart.org/content/adventure-time",
+    "download_url": "https://opengameart.org/sites/default/files/adventuring_song.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "energy",
+      "game"
+    ],
+    "attribution": "Adventure Time by Scribe, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "5a5236a87c4e38018878670a1991c738555a552df508911fbb339c934a379ef1",
+    "byte_length": 541225,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_awake_megawall_10",
+    "label": "Awake! (Megawall-10)",
+    "creator": "cynicmusic",
+    "source_url": "https://opengameart.org/content/awake-megawall-10",
+    "download_url": "https://opengameart.org/sites/default/files/awake10_megaWall.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "energy",
+      "game"
+    ],
+    "attribution": "Awake! (Megawall-10) by cynicmusic, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "dac294631d299295cd0d85e3b734eb6b22a0931dc107c5603e0949c0c0ee053e",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_searching",
+    "label": "Searching",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/searching",
+    "download_url": "https://opengameart.org/sites/default/files/Searching.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "Searching by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "a77d729f38a78fc774fc6db01ad0be1046f30db6233a25a057a80178eb862fd8",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_lonelyhood",
+    "label": "Lonelyhood",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/lonelyhood",
+    "download_url": "https://opengameart.org/sites/default/files/Lonelyhood.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Lonelyhood by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "cd72cbed4507a57e5f221135d9926c18465a4c8dfea84ab9bb2dfd46d53caabc",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_i_swear_i_saw_it_background_track",
+    "label": "I swear I saw it - background track",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/i-swear-i-saw-it-background-track",
+    "download_url": "https://opengameart.org/sites/default/files/IswearIsawit_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "I swear I saw it - background track by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "606624657fa60fa30d935eeb9269f605c4ac521ae0eaf927b98d2bf029eebba4",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_insistent_background_loop",
+    "label": "Insistent: background loop",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/insistent-background-loop",
+    "download_url": "https://opengameart.org/sites/default/files/Insistent.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "Insistent: background loop by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "37ef27cbeb8534884cb54e0be796cc781533732c8fb1c3148614b0ab7eabfe47",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_meadow_thoughts",
+    "label": "Meadow Thoughts",
+    "creator": "Écrivain",
+    "source_url": "https://opengameart.org/content/meadow-thoughts",
+    "download_url": "https://opengameart.org/sites/default/files/Meadow%20Thoughts.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Meadow Thoughts by Écrivain, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "e8f876a47f7634eca337327b205eb7dbbbde775d1ca8fe4828288e207d651279",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_shrine",
+    "label": "Shrine",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/shrine",
+    "download_url": "https://opengameart.org/sites/default/files/shrine_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Shrine by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "e355ea2d642315dffea42dd7a94e670c2f9d4d36fe7ad1e713727eade139d3c4",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_carnival_rides",
+    "label": "Carnival Rides",
+    "creator": "Écrivain",
+    "source_url": "https://opengameart.org/content/carnival-rides",
+    "download_url": "https://opengameart.org/sites/default/files/carnivalrides.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Carnival Rides by Écrivain, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "19ee42efd8fba3c70fd6444741ab0f9db7655b73e8bb9ccd025ca3c58c5b1f67",
+    "byte_length": 306931,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_space_music_out_there",
+    "label": "Space Music: Out There",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/space-music-out-there",
+    "download_url": "https://opengameart.org/sites/default/files/OutThere_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game",
+      "loops"
+    ],
+    "attribution": "Space Music: Out There by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "0edc9758e8c26d6cdf5559eaa86bbe8009593867feade8c856ee510107056eaa",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_pressure",
+    "label": "Pressure",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/pressure",
+    "download_url": "https://opengameart.org/sites/default/files/Pressure.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Pressure by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "6b3c4e2d237540a60edce8bd11cc80282c810919f19cd13aade9aa2f63068893",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_factory_ambiance",
+    "label": "Factory ambiance",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/factory-ambiance",
+    "download_url": "https://opengameart.org/sites/default/files/Factory.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "chiptune",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Factory ambiance by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "39ccd3def991e8bbd4809c4a9dd76bf130a5007a50d6d7f8e80cbe9b00135cfd",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_creepy",
+    "label": "Creepy",
+    "creator": "TokyoGeisha",
+    "source_url": "https://opengameart.org/content/creepy",
+    "download_url": "https://opengameart.org/sites/default/files/CrEEP.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "Creepy by TokyoGeisha, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "99a50bb4d96d75b22fcdccf0dc89a66d980a8f32f7f1d28a62e1aa5bb9259324",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_night_prowler",
+    "label": "Night Prowler",
+    "creator": "section31",
+    "source_url": "https://opengameart.org/content/night-prowler",
+    "download_url": "https://opengameart.org/sites/default/files/S31-Night%20Prowler.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Night Prowler by section31, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "7cadbb4599ab770a264b2b375c845e729ca0e0fa58c937864d9c1b2abb609f4c",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_at_the_end_of_hope",
+    "label": "At the end of hope",
+    "creator": "Emma_MA",
+    "source_url": "https://opengameart.org/content/at-the-end-of-hope",
+    "download_url": "https://opengameart.org/sites/default/files/at_the_end_of_hope_loop.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game",
+      "loops"
+    ],
+    "attribution": "At the end of hope by Emma_MA, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "2a44d260c545321e6a766a1a0161afabd9aa93925ade768677a7f3e1a6a57c08",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_dark_shrine_loop",
+    "label": "Dark Shrine Loop",
+    "creator": "qubodup",
+    "source_url": "https://opengameart.org/content/dark-shrine-loop",
+    "download_url": "https://opengameart.org/sites/default/files/qubodup-yd-DarkShrineLoop-OpenGameArt.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "Dark Shrine Loop by qubodup, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "3e2c979f69113745c33e3672083266ae989da0de0e9a7179d152423de58f542d",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_dark_intro",
+    "label": "Dark Intro",
+    "creator": "Nikke",
+    "source_url": "https://opengameart.org/content/dark-intro",
+    "download_url": "https://opengameart.org/sites/default/files/Dark%20Intro_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chill",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Dark Intro by Nikke, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "df4865c24281b1c2be1957a8a5950da7a65d492d4851f2add482493a181bb943",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_where_was_i",
+    "label": "Where was I?",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/where-was-i",
+    "download_url": "https://opengameart.org/sites/default/files/WereWasI_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Where was I? by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "5db634fe1b7654c6552ca93471affb9c5ea665e79208817b1229a35d748f7664",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_menace",
+    "label": "Menace",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/menace",
+    "download_url": "https://opengameart.org/sites/default/files/Menace.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Menace by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "81766ea0edd91d6cfdf927925fead69e3a6a2555c8ab5ab17bf10afc98c351be",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_next_to_you",
+    "label": "Next to You",
+    "creator": "Joth",
+    "source_url": "https://opengameart.org/content/next-to-you",
+    "download_url": "https://opengameart.org/sites/default/files/Next%20to%20You.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Next to You by Joth, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "c8f5c471bc81a7c9992d1a6195a4da6011a158078e90e35e740bf0099affc026",
+    "byte_length": 541055,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_emptycity_background_music",
+    "label": "EmptyCity: Background Music",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/emptycity-background-music",
+    "download_url": "https://opengameart.org/sites/default/files/EmptyCity.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "EmptyCity: Background Music by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "bbecf0ec0c5350c92279823001b104f10971961f0a3d43205ed1afe8c90d806a",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_covert_operations",
+    "label": "Covert Operations",
+    "creator": "artisticdude",
+    "source_url": "https://opengameart.org/content/covert-operations",
+    "download_url": "https://opengameart.org/sites/default/files/covert_operations.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Covert Operations by artisticdude, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "5d4e1703b3ec9b8015c689a6e75303ee499b333b8fabd663bc5636c283c17d28",
+    "byte_length": 541062,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_dungeon_ambience",
+    "label": "Dungeon Ambience",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/dungeon-ambience",
+    "download_url": "https://opengameart.org/sites/default/files/dungeon002_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Dungeon Ambience by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "810b916b1efddd7b7483bfcc676cf41e76f72a37eebdaa462fb38c7c05205f91",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_mythica",
+    "label": "Mythica",
+    "creator": "congusbongus",
+    "source_url": "https://opengameart.org/content/mythica",
+    "download_url": "https://opengameart.org/sites/default/files/mythica.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Mythica by congusbongus, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "cd028c88a3f53ebfdc332904410970e95180eb786687905dad493ad966bbb14f",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_fast_fight_battle_music_looped",
+    "label": "Fast fight / battle music (looped)",
+    "creator": "XCVG",
+    "source_url": "https://opengameart.org/content/fast-fight-battle-music-looped",
+    "download_url": "https://opengameart.org/sites/default/files/fight_looped.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chill",
+      "game",
+      "loops"
+    ],
+    "attribution": "Fast fight / battle music (looped) by XCVG, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "855ed9bb02412ea6e96eb0acde445fa74faa18b4c77d17e142b255ed7b2a999b",
+    "byte_length": 298186,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_determination",
+    "label": "Determination",
+    "creator": "artisticdude",
+    "source_url": "https://opengameart.org/content/determination",
+    "download_url": "https://opengameart.org/sites/default/files/determination.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "game"
+    ],
+    "attribution": "Determination by artisticdude, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "741f1c49e8e97f201325b0bae8784922b7b2236bc060bb6aceb156311e29e797",
+    "byte_length": 541062,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_instrumental_music_3",
+    "label": "Instrumental music(3)",
+    "creator": "pauliuw",
+    "source_url": "https://opengameart.org/content/instrumental-music3",
+    "download_url": "https://opengameart.org/sites/default/files/final_bell.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Instrumental music(3) by pauliuw, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "b8a5be4cdcc5093d29228021b23197f8e0f4a622e90c8a68acbdf8be0a0d23c8",
+    "byte_length": 540884,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_happy_adventure_loop",
+    "label": "Happy Adventure (Loop)",
+    "creator": "TinyWorlds",
+    "source_url": "https://opengameart.org/content/happy-adventure-loop",
+    "download_url": "https://opengameart.org/sites/default/files/happy_adveture.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "Happy Adventure (Loop) by TinyWorlds, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "53620be2bdcc3f65645cd7942b422fc7bd5d65fda01035d970ddcb307e336b03",
+    "byte_length": 539892,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_return_to_nowhere",
+    "label": "Return to Nowhere",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/return-to-nowhere",
+    "download_url": "https://opengameart.org/sites/default/files/Return%20to%20Nowhere.flac",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Return to Nowhere by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "8f49e384401de74fe1b98d565539c4204bf91fdf1224c1e7606e026e7cfe36e1",
+    "byte_length": 540863,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_dream_2_ambience",
+    "label": "Dream 2 Ambience",
+    "creator": "TokyoGeisha",
+    "source_url": "https://opengameart.org/content/dream-2-ambience",
+    "download_url": "https://opengameart.org/sites/default/files/Dream%202%20%28Ambience%29.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Dream 2 Ambience by TokyoGeisha, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "440c5f91d86b9ae350296d1820c304c3cce382e2dbaadd9bd6709111d9bbb2ef",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_15_min_medieval_acid_weird_strings",
+    "label": "(15 min ) Medieval Acid/weird string",
+    "creator": "HaelDB",
+    "source_url": "https://opengameart.org/content/15-min-medieval-acidweird-strings",
+    "download_url": "https://opengameart.org/sites/default/files/3b5.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "game"
+    ],
+    "attribution": "(15 min ) Medieval Acid/weird strings by HaelDB, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "427642327cdcc49451ea4786e2e10bdd7d707ec54f7877c2dcc5abf1528733db",
+    "byte_length": 539839,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_summer_park_8bit_tune_loop",
+    "label": "Summer Park - 8bit tune (loop)",
+    "creator": "Scribe",
+    "source_url": "https://opengameart.org/content/summer-park-8bit-tune-loop",
+    "download_url": "https://opengameart.org/sites/default/files/8bit%20attempt.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "Summer Park - 8bit tune (loop) by Scribe, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "335ad056cca35a4eb2c5e73aa4da7e1f8077dc76e1220d164abbc86dc23563b4",
+    "byte_length": 528867,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_shinsei",
+    "label": "Shinsei",
+    "creator": "obscure music",
+    "source_url": "https://opengameart.org/content/shinsei",
+    "download_url": "https://opengameart.org/sites/default/files/cda98e895139.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Shinsei by obscure music, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "1f6ca0bb410f947ac5bc98f706a305697a34c881098145d553e039fc4b74ff01",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_megasong",
+    "label": "Megasong",
+    "creator": "Emma_MA",
+    "source_url": "https://opengameart.org/content/megasong",
+    "download_url": "https://opengameart.org/sites/default/files/megasong_0.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "game"
+    ],
+    "attribution": "Megasong by Emma_MA, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "ae09b332cc2a6957cd3e9a3a7520cabd030c524f18b5fb0fb77ff8634e387eb1",
+    "byte_length": 540885,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_spacecrusher",
+    "label": "Spacecrusher",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/spacecrusher",
+    "download_url": "https://opengameart.org/sites/default/files/Spacecrusher_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Spacecrusher by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "f2ea64dc844dbfb2c5e3b28424c0bbca954e335eded9b8454d1126c5cc910e2e",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_title_x",
+    "label": "Title-X",
+    "creator": "poinl",
+    "source_url": "https://opengameart.org/content/title-x",
+    "download_url": "https://opengameart.org/sites/default/files/gba1complete.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "Title-X by poinl, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "d016738ffe1d78e2e43b716550112319ff5692ea79c3066eb24737716bb01efb",
+    "byte_length": 540842,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_goodbye_to_friends",
+    "label": "Goodbye to Friends",
+    "creator": "Écrivain",
+    "source_url": "https://opengameart.org/content/goodbye-to-friends",
+    "download_url": "https://opengameart.org/sites/default/files/TS3.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Goodbye to Friends by Écrivain, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "bafb0c40ad704d7aff021b76807c5bbecdbf9bc14c6a515d90f14ffcd716f22b",
+    "byte_length": 540909,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_8_bit_the_hero",
+    "label": "8 Bit The Hero",
+    "creator": "Sygil",
+    "source_url": "https://opengameart.org/content/8-bit-the-hero",
+    "download_url": "https://opengameart.org/sites/default/files/The%20Hero_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "game"
+    ],
+    "attribution": "8 Bit The Hero by Sygil, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "e7cdf4939f3a7d5ba537bec994b957bae300ff6ddb9ae374890688c6ad12fd53",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_war_on_water_tracks",
+    "label": "War on Water: Tracks",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/war-on-water-tracks",
+    "download_url": "https://opengameart.org/sites/default/files/wowchapter1.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "War on Water: Tracks by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "9324735dcc27d779fdff4ec4adf8cd58021d4775ae32dbf2bcc23f271c6ccea5",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_nature_comes",
+    "label": "Nature Comes",
+    "creator": "Écrivain",
+    "source_url": "https://opengameart.org/content/nature-comes",
+    "download_url": "https://opengameart.org/sites/default/files/nature_comes_sharp.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Nature Comes by Écrivain, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "7b4345325689b54db48690e00b542c6e47fab5ab382dcf55224bfcdbe9330191",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_doodle_menu_like_song",
+    "label": "Doodle menu like song",
+    "creator": "StumpyStrust",
+    "source_url": "https://opengameart.org/content/doodle-menu-like-song",
+    "download_url": "https://opengameart.org/sites/default/files/doodle_0.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Doodle menu like song by StumpyStrust, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "08decb7f07929f6275360112405e671dd796ebc9fad6a2939fa1921610f94159",
+    "byte_length": 540842,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_jrpg2_piano",
+    "label": "JRPG2 Piano",
+    "creator": "Joth",
+    "source_url": "https://opengameart.org/content/jrpg2-piano",
+    "download_url": "https://opengameart.org/sites/default/files/JRPG2%20Piano.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game",
+      "loops"
+    ],
+    "attribution": "JRPG2 Piano by Joth, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "c7309ad4ab2b4a0c5dd404f72b632b14a20c15aa25420a13801eb6955b099b78",
+    "byte_length": 385574,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_sad_orchestral_theme",
+    "label": "Sad orchestral theme",
+    "creator": "obscure music",
+    "source_url": "https://opengameart.org/content/sad-orchestral-theme",
+    "download_url": "https://opengameart.org/sites/default/files/mess.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chill",
+      "game"
+    ],
+    "attribution": "Sad orchestral theme by obscure music, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "9dd13738bfa555d7e9c5c7d21b07a1597b810a6c192e40d699abf9fc8a86722c",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_dream_ambience",
+    "label": "Dream Ambience",
+    "creator": "TokyoGeisha",
+    "source_url": "https://opengameart.org/content/dream-ambience",
+    "download_url": "https://opengameart.org/sites/default/files/Dream%20%28Ambience%29_1.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Dream Ambience by TokyoGeisha, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "b01d3cb0bb6a7b447bc5a4e2f8582c452e1e0d241b09add2a96ef6fa0a649e91",
+    "byte_length": 540842,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_action_theme_song",
+    "label": "Action Theme Song",
+    "creator": "Ogrebane",
+    "source_url": "https://opengameart.org/content/action-theme-song",
+    "download_url": "https://opengameart.org/sites/default/files/action%20game%20theme.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "game"
+    ],
+    "attribution": "Action Theme Song by Ogrebane, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "5e804c0f817799c64f9631d2b568e1f90fd90c615d4e6fb8495905dfe0bfc238",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_dark_8bit_song",
+    "label": "Dark 8bit song",
+    "creator": "Anonymous",
+    "source_url": "https://opengameart.org/content/dark-8bit-song",
+    "download_url": "https://opengameart.org/sites/default/files/8bitmelody.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chiptune",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Dark 8bit song by Anonymous, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "1e5de0264c049bd4b473b80ceae267f6a0afe428e1abfb7b0beff38958413d84",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_bossa_nova",
+    "label": "Bossa Nova",
+    "creator": "Joth",
+    "source_url": "https://opengameart.org/content/bossa-nova",
+    "download_url": "https://opengameart.org/sites/default/files/8bit%20Bossa.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chill",
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "Bossa Nova by Joth, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "eb6f4ac333d1ad7cf2d9c738bdde5efe6fa65376c57ab6a7fa0b17aa021f496d",
+    "byte_length": 541061,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_moon_chime",
+    "label": "moon chime",
+    "creator": "obscure music",
+    "source_url": "https://opengameart.org/content/moon-chime",
+    "download_url": "https://opengameart.org/sites/default/files/tipa16.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "game"
+    ],
+    "attribution": "moon chime by obscure music, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "14a9fd2ca1d88897b265594bd743fc6bc02665089bb0ea1008b826fa6878870a",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_nautilus",
+    "label": "Nautilus",
+    "creator": "poinl",
+    "source_url": "https://opengameart.org/content/nautilus",
+    "download_url": "https://opengameart.org/sites/default/files/ambient2%28Nautilus%29_4.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Nautilus by poinl, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "bd591a603c03ed84635016bfb97ac2e2c52f03f7c47ee5652ead74d2be19c6bb",
+    "byte_length": 540841,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_sad_scene_music_what_is_left",
+    "label": "Sad Scene Music (What is Left)",
+    "creator": "SeKa",
+    "source_url": "https://opengameart.org/content/sad-scene-music-what-is-left",
+    "download_url": "https://opengameart.org/sites/default/files/WhatIsLeft_0.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Sad Scene Music (What is Left) by SeKa, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "8064a37c7e5f12a56e5ec4c24ecd372a698b5bbe5adac546e9ff16e7ee1eb81d",
+    "byte_length": 540903,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_short_loop_winter_theme",
+    "label": "Short Loop: winter theme",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/short-loop-winter-theme",
+    "download_url": "https://opengameart.org/sites/default/files/rememberWinter.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Short Loop: winter theme by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "2c19c91d926446fc7f7f02ef939540d06b15e0f5b5ac00292b57da568b7712e1",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_glowsphere",
+    "label": "Glowsphere",
+    "creator": "obscure music",
+    "source_url": "https://opengameart.org/content/glowsphere",
+    "download_url": "https://opengameart.org/sites/default/files/Glowsphere.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Glowsphere by obscure music, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "a25015c924062d789c7c29eb04553d2d40f631c00ab12fc90a1b2a3f21faf604",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_dark_theme",
+    "label": "Dark Theme",
+    "creator": "JaggedStone",
+    "source_url": "https://opengameart.org/content/dark-theme",
+    "download_url": "https://opengameart.org/sites/default/files/theme_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Dark Theme by JaggedStone, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "619aff65e6678fd9dc225dfcb6a59e83459497b507a589dc5e82c70b5de87db4",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_ambience_pack_1_sci_fi_horror",
+    "label": "Ambience Pack 1 -- Sci Fi Horror",
+    "creator": "Joth",
+    "source_url": "https://opengameart.org/content/ambience-pack-1-sci-fi-horror",
+    "download_url": "https://opengameart.org/sites/default/files/The%20Surreal%20Truth.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "Ambience Pack 1 -- Sci Fi Horror by Joth, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "24d9f404aa4c8e588df15960239117fa363f6f4f2289a793fbab4f501684a79b",
+    "byte_length": 541061,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_boss_battle_music",
+    "label": "Boss Battle Music",
+    "creator": "SubspaceAudio",
+    "source_url": "https://opengameart.org/content/boss-battle-music",
+    "download_url": "https://opengameart.org/sites/default/files/Juhani%20Junkala%20-%20Epic%20Boss%20Battle%20%5BSeamlessly%20Looping%5D.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "dramatic",
+      "game",
+      "loops"
+    ],
+    "attribution": "Boss Battle Music by SubspaceAudio, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "7e1ef328fc4a4c416d7027e45e06164ed95023bb8dad6632847be30a952dc28e",
+    "byte_length": 540929,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_fantasy_orchestral_theme",
+    "label": "Fantasy Orchestral Theme",
+    "creator": "Joth",
+    "source_url": "https://opengameart.org/content/fantasy-orchestral-theme",
+    "download_url": "https://opengameart.org/sites/default/files/FantasyOrchestralTheme_1.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Fantasy Orchestral Theme by Joth, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "0394770d1195ffb5843b718a5cde400f6a0f5ff4eff1fd27396723c772ca600f",
+    "byte_length": 541061,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_enemy_ship_approaching",
+    "label": "Enemy Ship Approaching",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/enemy-ship-approaching",
+    "download_url": "https://opengameart.org/sites/default/files/esa_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "game",
+      "loops"
+    ],
+    "attribution": "Enemy Ship Approaching by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "daa6a2e57fab72820ed7bb25aaddfa4c777cd3feb59614407107d1572bbca582",
+    "byte_length": 500655,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_menu_loop",
+    "label": "Menu Loop",
+    "creator": "Akikazer",
+    "source_url": "https://opengameart.org/content/menu-loop",
+    "download_url": "https://opengameart.org/sites/default/files/Loop-Menu.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Menu Loop by Akikazer, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "c7bc825a97a4e6b764af4cbd1cc94631e2b7270ec5dd425a6ceb8905898ce7e6",
+    "byte_length": 178095,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_magic_town",
+    "label": "Magic Town",
+    "creator": "controllerhead",
+    "source_url": "https://opengameart.org/content/magic-town",
+    "download_url": "https://opengameart.org/sites/default/files/Magic%20Town_0.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "game"
+    ],
+    "attribution": "Magic Town by controllerhead, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "35df2f1958c7702333940f21dcdcdb0e2584a9a524638ff5ab4af0204bb6f580",
+    "byte_length": 540930,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_green_hills",
+    "label": "Green Hills",
+    "creator": "Igor Gundarev",
+    "source_url": "https://opengameart.org/content/green-hills",
+    "download_url": "https://opengameart.org/sites/default/files/Green%20Hills.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "happy",
+      "game"
+    ],
+    "attribution": "Green Hills by Igor Gundarev, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "a62cb5c5ba31f43e7af2f0cb6fa5b05b7636242880914973dcd3b37d878b0b46",
+    "byte_length": 540810,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_village_ruins",
+    "label": "Village Ruins",
+    "creator": "isaiah658",
+    "source_url": "https://opengameart.org/content/village-ruins",
+    "download_url": "https://opengameart.org/sites/default/files/Village%20Ruins%20-%20isaiah658.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "chiptune",
+      "game"
+    ],
+    "attribution": "Village Ruins by isaiah658, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "dd15d99c75e2a516c746be3330ee29961b6a5147ac4bb127cce27a447b294732",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_cold_silence",
+    "label": "Cold Silence",
+    "creator": "Eponasoft",
+    "source_url": "https://opengameart.org/content/cold-silence",
+    "download_url": "https://opengameart.org/sites/default/files/cold_silence.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Cold Silence by Eponasoft, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "4e7196af954b721b48624ed6a0132a6054f7e6a7c71a896c78e921b17aab50f6",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_generic_strings",
+    "label": "Generic Strings",
+    "creator": "thisismyusername",
+    "source_url": "https://opengameart.org/content/generic-strings",
+    "download_url": "https://opengameart.org/sites/default/files/generic%20strings.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Generic Strings by thisismyusername, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "1b9380f4dd01d8f473cf110d17ef4f9a5e9add94a3a80ba23c326fe913c132e4",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_space_music",
+    "label": "Space Music",
+    "creator": "mrpoly",
+    "source_url": "https://opengameart.org/content/space-music",
+    "download_url": "https://opengameart.org/sites/default/files/spaceship.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chill",
+      "game"
+    ],
+    "attribution": "Space Music by mrpoly, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "7b00c6f988fdfd1669b50bef1084db1b507396593c1a9294203fc327baa06e53",
+    "byte_length": 451440,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_forgotten_victory",
+    "label": "Forgotten Victory",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/forgotten-victory",
+    "download_url": "https://opengameart.org/sites/default/files/ForgottenVictory.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Forgotten Victory by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "f564db646b1fcced06dd604f612d4f734d9e3b3def001f87ed724794d566dfdf",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_sewer_nightclub",
+    "label": "Sewer Nightclub",
+    "creator": "section31",
+    "source_url": "https://opengameart.org/content/sewer-nightclub",
+    "download_url": "https://opengameart.org/sites/default/files/S31-Sewer%20Nightclub.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Sewer Nightclub by section31, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "525cbed80b8a95cf78a61986e8f23b52d6be4745d81e6773b9238bcbcee8a044",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_techno_geek",
+    "label": "tEcHNo gEeK",
+    "creator": "mrpoly",
+    "source_url": "https://opengameart.org/content/techno-geek",
+    "download_url": "https://opengameart.org/sites/default/files/technogeek.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chill",
+      "game"
+    ],
+    "attribution": "tEcHNo gEeK by mrpoly, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "c26e587e537ad4706c7b6950537805c63ed8857751f64e94b9566d52ca031a52",
+    "byte_length": 541198,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_get_equipped_8_bit_drum_loop",
+    "label": "Get Equipped (8-bit drum loop)",
+    "creator": "bart",
+    "source_url": "https://opengameart.org/content/get-equipped-8-bit-drum-loop",
+    "download_url": "https://opengameart.org/sites/default/files/getequipped.wav",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "energy",
+      "chiptune",
+      "game",
+      "loops"
+    ],
+    "attribution": "Get Equipped (8-bit drum loop) by bart, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "5682cb719db56a9a4af887de910f0fd880b73ae888b767de30e9386726c11b4b",
+    "byte_length": 38601,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_bumblebee_loop",
+    "label": "Bumblebee loop",
+    "creator": "jobromedia",
+    "source_url": "https://opengameart.org/content/bumblebee-loop",
+    "download_url": "https://opengameart.org/sites/default/files/Bumblebee%20loop.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Bumblebee loop by jobromedia, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "99a4ee080db8ebb194c08f6d41846a17f9c1808b675393514876e7d7c50633f9",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_a_wonderful_nightmare_chiptune_version",
+    "label": "A Wonderful Nightmare (Chiptune vers",
+    "creator": "SpiderDave",
+    "source_url": "https://opengameart.org/content/a-wonderful-nightmare-chiptune-version",
+    "download_url": "https://opengameart.org/sites/default/files/46.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "game"
+    ],
+    "attribution": "A Wonderful Nightmare (Chiptune version) by SpiderDave, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "d0b013208376a9d18da9325ac1ec58d20d68075806fafc75c1b97497fe681204",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_delusional_lies",
+    "label": "Delusional Lies",
+    "creator": "megupets",
+    "source_url": "https://opengameart.org/content/delusional-lies",
+    "download_url": "https://opengameart.org/sites/default/files/08%20-%20Delusional%20Lies_0.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game"
+    ],
+    "attribution": "Delusional Lies by megupets, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "810ce7a459108bf873b475832eee4566da0abb6fc20a63177c6b1f0567cb5747",
+    "byte_length": 541194,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_continue",
+    "label": "Continue?",
+    "creator": "megupets",
+    "source_url": "https://opengameart.org/content/continue",
+    "download_url": "https://opengameart.org/sites/default/files/06%20-%20Continue.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chiptune",
+      "game"
+    ],
+    "attribution": "Continue? by megupets, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "f602daa8ae3a64d6f3966483aa86c1be3f3fc45ed1b70e1a7a09e374a91a9eb5",
+    "byte_length": 541001,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_emotional_deluge",
+    "label": "Emotional Deluge",
+    "creator": "Joth",
+    "source_url": "https://opengameart.org/content/emotional-deluge",
+    "download_url": "https://opengameart.org/sites/default/files/This%20is%20Life.mp3",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "game",
+      "loops"
+    ],
+    "attribution": "Emotional Deluge by Joth, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "fc7eeee57e0ed3df71b2aab2f0f27ad6f63b535564fc6d5637757267fd3a87e5",
+    "byte_length": 486825,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_tavern",
+    "label": "Tavern",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/tavern-0",
+    "download_url": "https://opengameart.org/sites/default/files/Tavern_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "chill",
+      "game"
+    ],
+    "attribution": "Tavern by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "ee3127c710bdaa5df14e34a27d64480c799db48ffeba2b0ee872d6fa9dda7335",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  },
+  {
+    "id": "foss_oriented",
+    "label": "Oriented",
+    "creator": "yd",
+    "source_url": "https://opengameart.org/content/oriented",
+    "download_url": "https://opengameart.org/sites/default/files/Oriented_0.ogg",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "categories": [
+      "dramatic",
+      "game"
+    ],
+    "attribution": "Oriented by yd, CC0 via OpenGameArt.",
+    "max_duration_seconds": 45,
+    "blossom_hash": "1a11385f3f58c729ddf1c24aa93560a7bb57b85a9a98d5e61d2cfb0adb550401",
+    "byte_length": 540779,
+    "mime_type": "audio/mpeg",
+    "blossom_servers": [
+      "https://blossom.tubestr.app"
+    ]
+  }
+]

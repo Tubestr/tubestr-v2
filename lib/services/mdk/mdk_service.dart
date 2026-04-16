@@ -78,6 +78,19 @@ class MdkPendingWelcome {
   final String state;
 }
 
+class MdkAlreadyConnectedException implements Exception {
+  const MdkAlreadyConnectedException({
+    required this.memberPubkeyHex,
+    required this.group,
+  });
+
+  final String memberPubkeyHex;
+  final MdkGroupSummary group;
+
+  @override
+  String toString() => 'Already connected to $memberPubkeyHex in ${group.name}';
+}
+
 class MdkCreateGroupResult {
   const MdkCreateGroupResult({
     required this.group,
@@ -299,10 +312,12 @@ class MdkService {
     );
   }
 
-  Future<List<MdkPendingWelcome>> getPendingWelcomes() async {
+  Future<List<MdkPendingWelcome>> getPendingWelcomes({
+    bool includeAlreadyConnected = false,
+  }) async {
     await ensureInitialized();
     final result = await bridge_api.getPendingWelcomeSummaries();
-    return result
+    final welcomes = result
         .map(
           (welcome) => MdkPendingWelcome(
             welcomeEventIdHex: welcome.welcomeEventIdHex,
@@ -318,6 +333,46 @@ class MdkService {
           ),
         )
         .toList(growable: false);
+    if (includeAlreadyConnected) {
+      return welcomes;
+    }
+
+    final filtered = <MdkPendingWelcome>[];
+    final seenWelcomers = <String>{};
+    for (final welcome in welcomes) {
+      final normalizedWelcomer = welcome.welcomerPubkeyHex.toLowerCase();
+      if (!seenWelcomers.add(normalizedWelcomer)) {
+        continue;
+      }
+
+      final existingGroup = await findConnectedGroupForMember(
+        memberPubkeyHex: welcome.welcomerPubkeyHex,
+      );
+      if (existingGroup == null) {
+        filtered.add(welcome);
+      }
+    }
+    return filtered;
+  }
+
+  Future<MdkGroupSummary?> findConnectedGroupForMember({
+    required String memberPubkeyHex,
+  }) async {
+    final normalizedMember = memberPubkeyHex.toLowerCase();
+    final groups = await getGroupSummaries();
+    for (final group in groups) {
+      if (group.adminPubkeysHex.any(
+        (pubkey) => pubkey.toLowerCase() == normalizedMember,
+      )) {
+        return group;
+      }
+
+      final members = await getGroupMembers(mlsGroupIdHex: group.mlsGroupIdHex);
+      if (members.any((pubkey) => pubkey.toLowerCase() == normalizedMember)) {
+        return group;
+      }
+    }
+    return null;
   }
 
   Future<List<MdkValidationNote>> validateOwnershipAssumptions() async {
@@ -420,6 +475,24 @@ class MdkService {
     required String welcomeEventIdHex,
   }) async {
     await ensureInitialized();
+    final pendingWelcomes = await getPendingWelcomes(
+      includeAlreadyConnected: true,
+    );
+    final pendingWelcome = pendingWelcomes
+        .where((welcome) => welcome.welcomeEventIdHex == welcomeEventIdHex)
+        .firstOrNull;
+    if (pendingWelcome != null) {
+      final existingGroup = await findConnectedGroupForMember(
+        memberPubkeyHex: pendingWelcome.welcomerPubkeyHex,
+      );
+      if (existingGroup != null) {
+        throw MdkAlreadyConnectedException(
+          memberPubkeyHex: pendingWelcome.welcomerPubkeyHex,
+          group: existingGroup,
+        );
+      }
+    }
+
     final result = await bridge_api.acceptPendingWelcome(
       welcomeEventIdHex: welcomeEventIdHex,
     );

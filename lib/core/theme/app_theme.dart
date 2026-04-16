@@ -3,24 +3,36 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'theme_descriptor.dart';
 
-ThemeData buildAppTheme(ThemeDescriptor descriptor) {
-  final palette = descriptor.palette;
+ThemeData buildAppTheme(
+  ThemeDescriptor descriptor, {
+  Brightness brightness = Brightness.light,
+}) {
+  final palette = descriptor.paletteFor(brightness);
+  final onAccent = _onColorFor(palette.accent);
   final scheme =
       ColorScheme.fromSeed(
         seedColor: palette.accent,
-        brightness: Brightness.light,
+        brightness: brightness,
       ).copyWith(
         primary: palette.accent,
         secondary: palette.accentSecondary,
         surface: palette.panel,
         error: palette.danger,
-        onPrimary: Colors.white,
-        onSecondary: palette.ink,
+        onPrimary: onAccent,
+        onSecondary: _onColorFor(palette.accentSecondary),
         onSurface: palette.ink,
       );
 
-  final baseText = GoogleFonts.nunitoTextTheme();
-  final displayText = GoogleFonts.fredokaTextTheme(baseText);
+  final materialText = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+  ).textTheme;
+  final baseText = GoogleFonts.nunitoTextTheme(
+    materialText,
+  ).apply(bodyColor: palette.ink, displayColor: palette.ink);
+  final displayText = GoogleFonts.fredokaTextTheme(
+    baseText,
+  ).apply(bodyColor: palette.ink, displayColor: palette.ink);
 
   return ThemeData(
     useMaterial3: true,
@@ -29,10 +41,13 @@ ThemeData buildAppTheme(ThemeDescriptor descriptor) {
     textTheme: displayText.copyWith(
       bodyLarge: baseText.bodyLarge?.copyWith(color: palette.ink),
       bodyMedium: baseText.bodyMedium?.copyWith(color: palette.ink),
+      bodySmall: baseText.bodySmall?.copyWith(color: palette.mutedInk),
       labelLarge: baseText.labelLarge?.copyWith(
-        color: Colors.white,
+        color: palette.ink,
         fontWeight: FontWeight.w800,
       ),
+      labelMedium: baseText.labelMedium?.copyWith(color: palette.mutedInk),
+      labelSmall: baseText.labelSmall?.copyWith(color: palette.mutedInk),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
@@ -63,15 +78,24 @@ ThemeData buildAppTheme(ThemeDescriptor descriptor) {
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Colors.white.withValues(alpha: 0.74),
+      backgroundColor: palette.panel.withValues(alpha: 0.86),
       indicatorColor: palette.accent.withValues(alpha: 0.16),
       labelTextStyle: WidgetStatePropertyAll(
-        baseText.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+        baseText.labelMedium?.copyWith(
+          color: palette.ink,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: palette.accent,
+        foregroundColor: onAccent,
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.68),
+      fillColor: palette.panel.withValues(alpha: 0.72),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(22),
         borderSide: BorderSide(color: palette.panelBorder),
@@ -86,4 +110,8 @@ ThemeData buildAppTheme(ThemeDescriptor descriptor) {
       ),
     ),
   );
+}
+
+Color _onColorFor(Color color) {
+  return color.computeLuminance() > 0.48 ? Colors.black : Colors.white;
 }

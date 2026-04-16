@@ -508,11 +508,21 @@ class OnboardingParentKeyStep extends StatelessWidget {
                               : (value) => onConsentChanged(value ?? false),
                         ),
                         Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 10),
-                            child: Text(
-                              'I am 18 or older and I agree to the Tubestr privacy policy on behalf of any children whose profiles I create.',
-                              style: Theme.of(context).textTheme.bodyMedium,
+                          child: InkWell(
+                            onTap: busy
+                                ? null
+                                : () => onConsentChanged(!consentAccepted),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                top: 10,
+                                bottom: 10,
+                                right: 8,
+                              ),
+                              child: Text(
+                                'I am 18 or older and I agree to the Tubestr privacy policy on behalf of any children whose profiles I create.',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
                             ),
                           ),
                         ),
@@ -870,7 +880,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                           shape: BoxShape.circle,
                           color: ThemeDescriptorX.fromStorage(
                             profile.theme,
-                          ).palette.accent,
+                          ).paletteFor(Theme.of(context).brightness).accent,
                         ),
                       ),
                       const SizedBox(width: 12),

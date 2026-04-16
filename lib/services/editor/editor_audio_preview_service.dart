@@ -21,7 +21,11 @@ class EditorAudioPreviewService {
     }
 
     if (_currentAssetPath != assetPath) {
-      await _player.setAsset(assetPath);
+      if (assetPath.startsWith('assets/')) {
+        await _player.setAsset(assetPath);
+      } else {
+        await _player.setFilePath(assetPath);
+      }
       _currentAssetPath = assetPath;
     }
 

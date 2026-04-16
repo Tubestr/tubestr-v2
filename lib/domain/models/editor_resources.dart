@@ -19,13 +19,37 @@ class EditorStickerAsset {
 class EditorMusicTrackAsset {
   const EditorMusicTrackAsset({
     required this.id,
-    required this.assetPath,
     required this.label,
+    this.assetPath = '',
+    this.creator,
+    this.license,
+    this.licenseUrl,
+    this.sourceUrl,
+    this.categories = const <String>[],
+    this.attribution,
+    this.blossomHash,
+    this.byteLength,
+    this.mimeType = 'audio/mpeg',
+    this.blossomServers = const <String>[],
   });
 
   final String id;
   final String assetPath;
   final String label;
+  final String? creator;
+  final String? license;
+  final String? licenseUrl;
+  final String? sourceUrl;
+  final List<String> categories;
+  final String? attribution;
+  final String? blossomHash;
+  final int? byteLength;
+  final String mimeType;
+  final List<String> blossomServers;
+
+  bool get isBundledAsset => assetPath.startsWith('assets/');
+  bool get isCachedFile => assetPath.isNotEmpty && !isBundledAsset;
+  bool get isBlossomBacked => blossomHash != null && blossomHash!.isNotEmpty;
 }
 
 @immutable

@@ -24,10 +24,10 @@ class ParentZoneSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final headerColor = Color.alphaBlend(
       palette.accent.withValues(alpha: 0.06),
-      const Color(0xFFFFFBF7),
+      palette.panel,
     );
     return Material(
-      color: const Color(0xFFF7F2EA),
+      color: palette.backgroundTop,
       elevation: 12,
       child: Column(
         children: [
@@ -60,10 +60,10 @@ class ParentZoneSidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Parent Zone',
                   style: TextStyle(
-                    color: Color(0xFF201A15),
+                    color: palette.ink,
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                   ),

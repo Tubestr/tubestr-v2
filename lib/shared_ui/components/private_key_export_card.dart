@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/di/providers.dart';
-import '../../core/theme/theme_descriptor.dart';
 
 class PrivateKeyExportCard extends ConsumerStatefulWidget {
   const PrivateKeyExportCard({
@@ -34,7 +33,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final displayedSecret = _revealed
         ? widget.secret
         : _maskSecret(widget.secret);
@@ -76,7 +75,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.76),
+            color: palette.panel.withValues(alpha: 0.76),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: palette.panelBorder),
           ),

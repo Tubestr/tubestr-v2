@@ -601,14 +601,49 @@ class LoopbackMdkService extends MdkService {
   }
 
   @override
-  Future<List<MdkPendingWelcome>> getPendingWelcomes() async {
-    return _pendingWelcomes.values.toList(growable: false);
+  Future<List<MdkPendingWelcome>> getPendingWelcomes({
+    bool includeAlreadyConnected = false,
+  }) async {
+    final welcomes = _pendingWelcomes.values.toList(growable: false);
+    if (includeAlreadyConnected) {
+      return welcomes;
+    }
+
+    final filtered = <MdkPendingWelcome>[];
+    final seenWelcomers = <String>{};
+    for (final welcome in welcomes) {
+      final normalizedWelcomer = welcome.welcomerPubkeyHex.toLowerCase();
+      if (!seenWelcomers.add(normalizedWelcomer)) {
+        continue;
+      }
+
+      final existingGroup = await findConnectedGroupForMember(
+        memberPubkeyHex: welcome.welcomerPubkeyHex,
+      );
+      if (existingGroup == null) {
+        filtered.add(welcome);
+      }
+    }
+    return filtered;
   }
 
   @override
   Future<MdkGroupSummary> acceptPendingWelcome({
     required String welcomeEventIdHex,
   }) async {
+    final pendingWelcome = _pendingWelcomes[welcomeEventIdHex];
+    if (pendingWelcome != null) {
+      final existingGroup = await findConnectedGroupForMember(
+        memberPubkeyHex: pendingWelcome.welcomerPubkeyHex,
+      );
+      if (existingGroup != null) {
+        throw MdkAlreadyConnectedException(
+          memberPubkeyHex: pendingWelcome.welcomerPubkeyHex,
+          group: existingGroup,
+        );
+      }
+    }
+
     final welcome = _pendingWelcomes.remove(welcomeEventIdHex);
     if (welcome == null) {
       throw StateError('Pending welcome not found');

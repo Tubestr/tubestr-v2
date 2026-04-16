@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../../core/di/providers.dart';
-import '../../../../core/theme/theme_descriptor.dart';
 import '../models/launch_diagnostics.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 
@@ -24,7 +23,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     ref.watch(syncDiagnosticsRevisionProvider);
     final diagnostics = ref.read(syncCoordinatorProvider).debugSnapshot();
     final dump = ref.read(syncCoordinatorProvider).debugDescribeState();

@@ -2,10 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/services/editor/editor_resource_catalog.dart';
 
 void main() {
-  test('resource catalog exposes the old app editor assets', () {
+  test('resource catalog exposes the bundled editor assets', () {
     expect(EditorResourceCatalog.lutAssets, hasLength(5));
-    expect(EditorResourceCatalog.builtInStickerAssets, hasLength(13));
-    expect(EditorResourceCatalog.builtInMusicTracks, hasLength(5));
+    expect(EditorResourceCatalog.builtInStickerAssets, hasLength(181));
+    expect(EditorResourceCatalog.builtInMusicTracks.length, greaterThan(5));
+    expect(
+      EditorResourceCatalog.builtInMusicTracks.where(
+        (track) => track.isBlossomBacked,
+      ),
+      isNotEmpty,
+    );
   });
 
   test('filter presets match the tablet editor chips', () {

@@ -300,6 +300,7 @@ Future<EditorExportPlan> buildEditorExportPlan({
     session.filterPresetId,
   );
   final audioSelection = session.audioSelection;
+  final trimDurationSeconds = _secondsString(session.trimRange.duration);
 
   final arguments = <String>[
     '-y',
@@ -314,11 +315,13 @@ Future<EditorExportPlan> buildEditorExportPlan({
 
   String? stagedAudioPath;
   if (audioSelection != null) {
-    stagedAudioPath = await _stageAssetFile(
-      assetBundle: assetBundle,
-      assetPath: audioSelection.assetPath,
-      stagingDir: stagingDir,
-    );
+    stagedAudioPath = audioSelection.assetPath.startsWith('assets/')
+        ? await _stageAssetFile(
+            assetBundle: assetBundle,
+            assetPath: audioSelection.assetPath,
+            stagingDir: stagingDir,
+          )
+        : audioSelection.assetPath;
     arguments.addAll(['-stream_loop', '-1', '-i', stagedAudioPath]);
   }
 
@@ -364,16 +367,19 @@ Future<EditorExportPlan> buildEditorExportPlan({
     String? audioOutputMap;
     if (audioSelection != null && stagedAudioPath != null) {
       final musicInputIndex = 1;
+      final musicVolume = 'volume=${audioSelection.volume.toStringAsFixed(3)}';
+      final musicDurationTrim =
+          'atrim=duration=$trimDurationSeconds,asetpts=N/SR/TB';
       if (sourceHasAudio) {
         filterComplexParts.add('[0:a]volume=1.000[original]');
         if (audioSelection.startOffset > Duration.zero) {
           final delayMs = audioSelection.startOffset.inMilliseconds;
           filterComplexParts.add(
-            '[$musicInputIndex:a]volume=${audioSelection.volume.toStringAsFixed(3)},adelay=$delayMs|$delayMs[music]',
+            '[$musicInputIndex:a]$musicVolume,adelay=$delayMs|$delayMs,$musicDurationTrim[music]',
           );
         } else {
           filterComplexParts.add(
-            '[$musicInputIndex:a]volume=${audioSelection.volume.toStringAsFixed(3)}[music]',
+            '[$musicInputIndex:a]$musicVolume,$musicDurationTrim[music]',
           );
         }
         filterComplexParts.add(
@@ -384,11 +390,11 @@ Future<EditorExportPlan> buildEditorExportPlan({
         if (audioSelection.startOffset > Duration.zero) {
           final delayMs = audioSelection.startOffset.inMilliseconds;
           filterComplexParts.add(
-            '[$musicInputIndex:a]volume=${audioSelection.volume.toStringAsFixed(3)},adelay=$delayMs|$delayMs[music]',
+            '[$musicInputIndex:a]$musicVolume,adelay=$delayMs|$delayMs,$musicDurationTrim[music]',
           );
         } else {
           filterComplexParts.add(
-            '[$musicInputIndex:a]volume=${audioSelection.volume.toStringAsFixed(3)}[music]',
+            '[$musicInputIndex:a]$musicVolume,$musicDurationTrim[music]',
           );
         }
         audioOutputMap = '[music]';
@@ -421,15 +427,16 @@ Future<EditorExportPlan> buildEditorExportPlan({
 
   arguments.addAll(['-c:v', videoCodec]);
   if (videoCodec == 'libx264') {
+    final maxrateKbps = _editorVideoMaxrateKbps(session.trimRange.duration);
     arguments.addAll([
       '-preset',
       'fast',
       '-crf',
-      '20',
+      '22',
       '-maxrate',
-      '10000k',
+      '${maxrateKbps}k',
       '-bufsize',
-      '20000k',
+      '${maxrateKbps * 2}k',
     ]);
   } else {
     arguments.addAll(['-q:v', '4']);
@@ -451,6 +458,14 @@ Future<EditorExportPlan> buildEditorExportPlan({
     outputPath: outputPath,
     renderSize: renderSize,
   );
+}
+
+int _editorVideoMaxrateKbps(Duration duration) {
+  const targetBytes = 90 * 1024 * 1024;
+  const reservedAudioKbps = 192;
+  final seconds = math.max(1.0, duration.inMilliseconds / 1000);
+  final totalKbps = (targetBytes * 8 / 1000 / seconds).floor();
+  return (totalKbps - reservedAudioKbps).clamp(1800, 8000).toInt();
 }
 
 List<_ExportAttempt> _buildExportAttempts(EditorSession session) {

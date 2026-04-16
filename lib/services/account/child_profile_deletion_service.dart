@@ -144,6 +144,7 @@ class ChildProfileDeletionService {
         : server;
     final serverHost = Uri.parse(normalized).host.toLowerCase();
     final deleteUrl = '$normalized/$hashHex';
+    final authCreatedAt = DateTime.now().subtract(const Duration(minutes: 5));
     final expiresAt =
         DateTime.now()
             .add(const Duration(minutes: 10))
@@ -153,7 +154,7 @@ class ChildProfileDeletionService {
       identity: identity,
       kind: 24242,
       content: 'Authorize Blossom delete',
-      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      createdAt: authCreatedAt.millisecondsSinceEpoch ~/ 1000,
       tags: [
         ['t', 'delete'],
         ['x', hashHex],

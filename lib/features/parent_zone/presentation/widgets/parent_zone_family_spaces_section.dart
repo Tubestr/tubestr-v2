@@ -40,7 +40,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final identity = ref.watch(parentIdentityProvider).valueOrNull;
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final busy = isGeneratingInvitePacket || isCreatingWelcome;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -71,6 +71,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 title: 'Create invite',
                 subtitle: 'Show a QR code or send a shareable invite link',
                 busy: isGeneratingInvitePacket,
+                palette: palette,
                 onTap: identity == null || busy ? null : onCreateInvite,
               ),
               const SizedBox(height: 10),
@@ -80,6 +81,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 title: 'Scan invite',
                 subtitle: 'Join the shared family space in one step',
                 busy: isCreatingWelcome,
+                palette: palette,
                 onTap: identity == null || busy ? null : onScanAndProcessInvite,
               ),
               const SizedBox(height: 10),
@@ -89,6 +91,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 title: 'Paste invite',
                 subtitle: 'Enter an invite link or code manually',
                 busy: false,
+                palette: palette,
                 onTap: identity == null || busy
                     ? null
                     : () => _showPasteInviteSheet(
@@ -262,7 +265,7 @@ class _PendingWelcomeDetails extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final welcomer = ref
         .watch(resolvedParentProfileProvider(welcome.welcomerPubkeyHex))
         .valueOrNull;
@@ -296,7 +299,7 @@ class _ActiveGroupDetails extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final adminPubkey = group.adminPubkeysHex.isEmpty
         ? null
         : group.adminPubkeysHex.first;
@@ -428,6 +431,7 @@ class _ActionTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.busy,
+    required this.palette,
     required this.onTap,
   });
 
@@ -436,15 +440,19 @@ class _ActionTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool busy;
+  final KidPalette palette;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: onTap == null
-          ? Colors.grey.shade100
-          : Colors.white.withValues(alpha: 0.72),
-      borderRadius: BorderRadius.circular(16),
+          ? palette.panel.withValues(alpha: 0.42)
+          : palette.panel.withValues(alpha: 0.72),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: palette.panelBorder),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap == null

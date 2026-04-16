@@ -24,7 +24,7 @@ class ParentZoneDashboardSection extends ConsumerWidget {
     final groupSummaries =
         ref.watch(mdkGroupSummariesProvider).valueOrNull ?? const [];
     final safetyStatus = ref.watch(safetyHqStatusProvider).valueOrNull;
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final pendingReports = reports
         .where((report) => report.status != 'delivered')
         .length;
@@ -164,8 +164,9 @@ class _OverviewHero extends StatelessWidget {
     final startHere = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: palette.panel.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: palette.panelBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

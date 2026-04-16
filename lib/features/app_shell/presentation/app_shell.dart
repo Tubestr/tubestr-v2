@@ -141,7 +141,7 @@ class _AppShellState extends ConsumerState<AppShell>
   Widget build(BuildContext context) {
     final tab = ref.watch(appShellTabIndexProvider);
     final theme = ref.watch(activeThemeProvider);
-    final palette = theme.palette;
+    final palette = ref.watch(activePaletteProvider);
     final bottomPad = MediaQuery.of(context).padding.bottom;
     const tabChildren = [
       HomeFeedContent(),
@@ -208,7 +208,7 @@ class _CustomTabBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Color.alphaBlend(
           palette.accent.withValues(alpha: 0.04),
-          Colors.white.withValues(alpha: 0.98),
+          palette.panel.withValues(alpha: 0.96),
         ),
         border: Border(top: BorderSide(color: palette.panelBorder, width: 0.8)),
         boxShadow: [
@@ -285,14 +285,14 @@ class _TabButton extends StatelessWidget {
       _TabKind.standard => palette.mutedInk,
     };
     final activeBackground = switch (kind) {
-      _TabKind.capture => Colors.white.withValues(alpha: 0.92),
-      _TabKind.control => palette.ink,
-      _TabKind.standard => Colors.white.withValues(alpha: 0.92),
+      _TabKind.capture => palette.accent.withValues(alpha: 0.18),
+      _TabKind.control => palette.accent,
+      _TabKind.standard => palette.accent.withValues(alpha: 0.14),
     };
     final color = isActive
         ? switch (kind) {
             _TabKind.capture => palette.accent,
-            _TabKind.control => Colors.white,
+            _TabKind.control => Theme.of(context).colorScheme.onPrimary,
             _TabKind.standard => palette.ink,
           }
         : inactiveColor;
@@ -313,14 +313,8 @@ class _TabButton extends StatelessWidget {
               color: isActive ? activeBackground : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isActive
-                    ? (kind == _TabKind.control
-                          ? Colors.transparent
-                          : palette.panelBorder)
-                    : kind == _TabKind.control
-                    ? palette.ink.withValues(alpha: 0.18)
-                    : Colors.transparent,
-                width: (!isActive && kind == _TabKind.control) ? 1.5 : 1.0,
+                color: isActive ? palette.panelBorder : Colors.transparent,
+                width: 1.0,
               ),
               boxShadow: isActive
                   ? [

@@ -2,5 +2,5 @@ repository: https://github.com/Tubestr/tubestr-v2
 metadata_sources:
     - github
 release_source: build/app/outputs/flutter-apk/app-release.apk
-changelog: CHANGELOG.md
+release_notes: CHANGELOG.md
 pubkey: npub1taycl7qfuqk9dp0rhkse8lxhz3az9eanjug8j4ympwehvslnetxqkujg5y

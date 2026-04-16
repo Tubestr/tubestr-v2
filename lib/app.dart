@@ -5,6 +5,7 @@ import 'core/constants.dart';
 import 'core/di/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_theme_mode.dart';
 
 class MyTubeApp extends ConsumerWidget {
   const MyTubeApp({super.key});
@@ -13,11 +14,14 @@ class MyTubeApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final themeDescriptor = ref.watch(activeThemeProvider);
+    final appearanceMode = ref.watch(activeAppearanceModeProvider);
 
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(themeDescriptor),
+      theme: buildAppTheme(themeDescriptor, brightness: Brightness.light),
+      darkTheme: buildAppTheme(themeDescriptor, brightness: Brightness.dark),
+      themeMode: appearanceMode.materialThemeMode,
       routerConfig: router,
     );
   }

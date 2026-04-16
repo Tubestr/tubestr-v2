@@ -11,6 +11,7 @@ import '../../../services/approval/content_scan_service.dart';
 import '../../../services/approval/media_signal_extraction_service.dart';
 import '../../../services/approval/video_approval_service.dart';
 import '../../../services/connections/family_connection_service.dart';
+import '../../../services/editor/editor_audio_library_service.dart';
 import '../../../services/editor/editor_export_service.dart';
 import '../../../services/engagement/beta_funnel_service.dart';
 import '../../../services/engagement/like_coordinator.dart';
@@ -93,6 +94,14 @@ final blossomClientProvider = Provider<BlossomClient>((ref) {
   return BlossomClient(ref.watch(dioProvider));
 });
 
+final editorAudioLibraryServiceProvider = Provider<EditorAudioLibraryService>((
+  ref,
+) {
+  return EditorAudioLibraryService(
+    blossomClient: ref.watch(blossomClientProvider),
+  );
+});
+
 final nostrServiceProvider = Provider<NostrService>((ref) {
   return NdkNostrService(ref.watch(appDatabaseProvider));
 });
@@ -123,6 +132,7 @@ final familyConnectionServiceProvider = Provider((ref) {
   return FamilyConnectionService(
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
+    database: ref.watch(appDatabaseProvider),
     loadLocalDisplayName: ref
         .watch(parentProfileServiceProvider)
         .loadLocalDisplayName,

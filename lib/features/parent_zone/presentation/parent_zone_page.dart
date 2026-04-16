@@ -16,6 +16,7 @@ import '../../../domain/models/remote_share_projection.dart';
 import '../../../shared_ui/components/external_page_view.dart';
 import '../../../shared_ui/components/qr_scanner_sheet.dart';
 import '../../../shared_ui/motion/app_motion.dart';
+import '../../../services/connections/family_connection_service.dart';
 import '../../../services/mdk/mdk_service.dart';
 import '../../../services/sync/sync_coordinator.dart';
 import 'models/parent_zone_models.dart';
@@ -324,6 +325,19 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       ref.invalidate(mdkGroupSummariesProvider);
       await HapticFeedback.mediumImpact();
       messenger.showSnackBar(SnackBar(content: Text('Joined ${group.name}')));
+    } on MdkAlreadyConnectedException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isAcceptingWelcome = false;
+        _mdkDebugFuture = _loadMdkDebugState();
+      });
+      _pendingWelcomePollTimer?.cancel();
+      _pendingWelcomePollTimer = null;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_alreadyConnectedMessage(error))));
     } catch (error) {
       if (!mounted) {
         return;
@@ -337,6 +351,22 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         ),
       );
     }
+  }
+
+  String _alreadyConnectedMessage(MdkAlreadyConnectedException error) {
+    final groupName = error.group.name.trim();
+    if (groupName.isEmpty) {
+      return 'You\'re already connected.';
+    }
+    return 'You\'re already connected in $groupName.';
+  }
+
+  String _alreadyPendingMessage(FamilyConnectionAlreadyPendingException error) {
+    final groupName = error.group.name.trim();
+    if (groupName.isEmpty) {
+      return 'Connection already sent. They can approve it in Parent Zone.';
+    }
+    return 'Connection already sent for $groupName. They can approve it in Parent Zone.';
   }
 
   void _showQrDialog({
@@ -566,6 +596,36 @@ ${result.payload}
           ),
         ),
       );
+    } on MdkAlreadyConnectedException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isCreatingWelcome = false;
+        _mdkDebugFuture = _loadMdkDebugState();
+      });
+      _inviteImportController.clear();
+      if (clearPendingDeepLink) {
+        ref.read(pendingDeepLinkProvider.notifier).state = null;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_alreadyConnectedMessage(error))));
+    } on FamilyConnectionAlreadyPendingException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isCreatingWelcome = false;
+        _mdkDebugFuture = _loadMdkDebugState();
+      });
+      _inviteImportController.clear();
+      if (clearPendingDeepLink) {
+        ref.read(pendingDeepLinkProvider.notifier).state = null;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_alreadyPendingMessage(error))));
     } catch (error) {
       if (!mounted) {
         return;
@@ -1240,16 +1300,13 @@ ${result.payload}
     final base = Theme.of(context);
     final shell = Color.alphaBlend(
       palette.accent.withValues(alpha: 0.035),
-      const Color(0xFFF6F1E9),
+      palette.backgroundTop,
     );
     final panel = Color.alphaBlend(
       palette.accent.withValues(alpha: 0.045),
-      const Color(0xFFFFFCF8),
+      palette.panel,
     );
-    final panelBorder = Color.alphaBlend(
-      palette.ink.withValues(alpha: 0.08),
-      const Color(0xFFD7CDC0),
-    );
+    final panelBorder = palette.panelBorder;
     final textTheme = GoogleFonts.nunitoTextTheme(base.textTheme).copyWith(
       displaySmall: GoogleFonts.nunito(
         fontSize: 34,
@@ -1294,7 +1351,7 @@ ${result.payload}
       labelLarge: GoogleFonts.nunito(
         fontSize: 14,
         fontWeight: FontWeight.w800,
-        color: Colors.white,
+        color: base.colorScheme.onPrimary,
       ),
       labelMedium: GoogleFonts.nunito(
         fontSize: 12,
@@ -1315,7 +1372,7 @@ ${result.payload}
         ),
       ),
       inputDecorationTheme: base.inputDecorationTheme.copyWith(
-        fillColor: Colors.white.withValues(alpha: 0.92),
+        fillColor: palette.panel.withValues(alpha: 0.88),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(color: panelBorder),
@@ -1332,8 +1389,8 @@ ${result.payload}
       dividerColor: panelBorder,
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: palette.ink,
-          foregroundColor: Colors.white,
+          backgroundColor: palette.accent,
+          foregroundColor: base.colorScheme.onPrimary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -1396,7 +1453,7 @@ ${result.payload}
       return const SizedBox.expand();
     }
 
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final parentZoneTheme = _buildParentZoneTheme(context, palette);
     final parentLabel = ref.watch(parentDisplayNameProvider).valueOrNull;
     _syncDisplayNameController(parentLabel);
@@ -1608,11 +1665,11 @@ class _ParentZoneBackground extends StatelessWidget {
           colors: [
             Color.alphaBlend(
               palette.accent.withValues(alpha: 0.03),
-              const Color(0xFFF7F3EC),
+              palette.backgroundTop,
             ),
             Color.alphaBlend(
               palette.accentSecondary.withValues(alpha: 0.04),
-              const Color(0xFFF0EAE2),
+              palette.backgroundBottom,
             ),
           ],
           begin: Alignment.topCenter,
@@ -1668,13 +1725,13 @@ class _ParentHeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final iconColor =
-        Theme.of(context).textTheme.titleMedium?.color ??
-        const Color(0xFF2F291E);
+        theme.textTheme.titleMedium?.color ?? theme.colorScheme.onSurface;
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: theme.colorScheme.surface.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -1809,7 +1866,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final identity = ref.watch(parentIdentityProvider).valueOrNull;
     return SafeArea(
       child: Padding(
@@ -1873,8 +1930,9 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.76),
+                      color: palette.panel.withValues(alpha: 0.76),
                       borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: palette.panelBorder),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1905,8 +1963,9 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.76),
+                      color: palette.panel.withValues(alpha: 0.76),
                       borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: palette.panelBorder),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1973,7 +2032,7 @@ class _MemberTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final isCurrentIdentity = memberPublicKeyHex == currentIdentityHex;
     final profile = isCurrentIdentity
         ? null

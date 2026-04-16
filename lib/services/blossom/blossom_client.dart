@@ -22,6 +22,24 @@ class UploadedBlob {
   final String server;
 }
 
+class BlossomUploadException implements Exception {
+  const BlossomUploadException({
+    required this.server,
+    required this.statusCode,
+    required this.message,
+  });
+
+  final String server;
+  final int? statusCode;
+  final String message;
+
+  @override
+  String toString() {
+    final status = statusCode == null ? '' : ' ($statusCode)';
+    return 'Blossom upload failed$status for $server: $message';
+  }
+}
+
 class MirroredUploadedBlob {
   const MirroredUploadedBlob({
     required this.hash,
@@ -80,6 +98,15 @@ class BlossomClient {
     };
 
     try {
+      if (auth != null) {
+        await _checkUploadAccepted(
+          server: normalized,
+          hash: hash,
+          length: bytes.length,
+          mimeType: mimeType,
+          auth: auth,
+        );
+      }
       await _dio.put<void>(
         '$normalized/upload',
         data: bytes,
@@ -87,7 +114,7 @@ class BlossomClient {
       );
     } on DioException catch (error) {
       if (error.response?.statusCode != 404) {
-        rethrow;
+        throw _uploadException(server: server, error: error);
       }
       await _dio.put<void>(
         '$normalized/$hash',
@@ -103,6 +130,44 @@ class BlossomClient {
     }
 
     return UploadedBlob(hash: hash, length: bytes.length, server: server);
+  }
+
+  Future<void> _checkUploadAccepted({
+    required String server,
+    required String hash,
+    required int length,
+    required String mimeType,
+    required BlossomUploadAuth auth,
+  }) async {
+    try {
+      final response = await _dio.head<void>(
+        '$server/upload',
+        options: Options(
+          validateStatus: (_) => true,
+          headers: {
+            'authorization': auth.authorizationHeaderValue,
+            'x-content-type': mimeType,
+            'x-content-length': '$length',
+            'x-sha-256': hash,
+          },
+        ),
+      );
+      final statusCode = response.statusCode;
+      if (statusCode == null || (statusCode >= 200 && statusCode < 300)) {
+        return;
+      }
+      if (statusCode == 404 || statusCode == 405) {
+        return;
+      }
+      final reason = _responseReason(response);
+      throw BlossomUploadException(
+        server: server,
+        statusCode: statusCode,
+        message: reason.isEmpty ? 'Upload rejected before sending.' : reason,
+      );
+    } on DioException catch (error) {
+      throw _uploadException(server: server, error: error);
+    }
   }
 
   Future<MirroredUploadedBlob> uploadEncryptedBlobWithMirrors({
@@ -182,6 +247,34 @@ class BlossomClient {
     throw StateError(
       'Unable to download blob $hash: ${lastError ?? 'no servers configured'}',
     );
+  }
+
+  BlossomUploadException _uploadException({
+    required String server,
+    required DioException error,
+  }) {
+    final response = error.response;
+    final reason = response == null ? error.message : _responseReason(response);
+    return BlossomUploadException(
+      server: server,
+      statusCode: response?.statusCode,
+      message: reason?.isNotEmpty == true ? reason! : error.toString(),
+    );
+  }
+
+  String _responseReason(Response<dynamic> response) {
+    final headerReason = response.headers.value('x-reason');
+    if (headerReason != null && headerReason.trim().isNotEmpty) {
+      return headerReason.trim();
+    }
+    final body = response.data;
+    if (body == null) {
+      return '';
+    }
+    if (body is String) {
+      return body.trim();
+    }
+    return body.toString();
   }
 
   Future<void> reportBlob({

@@ -1,5 +1,7 @@
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/constants.dart';
+import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/marmot/invite_transport_models.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/connections/family_connection_service.dart';
@@ -247,6 +249,99 @@ void main() {
         MarmotKinds.keyPackage,
         MarmotKinds.legacyKeyPackage,
       ]);
+    },
+  );
+
+  test(
+    'connectFromInvite stops when the inviter is already connected',
+    () async {
+      final mdk = FakeMdkService()
+        ..groupSummariesResult = const [
+          MdkGroupSummary(
+            mlsGroupIdHex: 'existing-group',
+            nostrGroupIdHex: 'existing-nostr-group',
+            name: 'Lee & Noah',
+            description: 'Connected Lee with Noah',
+            memberCount: 2,
+            adminPubkeysHex: ['parent-pubkey'],
+          ),
+        ]
+        ..groupMembersResult = const ['parent-pubkey', 'remote-parent'];
+      final nostr = FakeNostrService();
+      final service = FamilyConnectionService(
+        mdkService: mdk,
+        nostrService: nostr,
+        loadLocalDisplayName: () async => 'Noah',
+      );
+
+      final payload = const GroupInvitePacket(
+        publicKeyHex: 'remote-parent',
+        createdAt: 1710460800,
+        inviterDisplayName: 'Lee',
+      ).encode();
+
+      await expectLater(
+        service.connectFromInvite(identity: identity, invitePayload: payload),
+        throwsA(isA<MdkAlreadyConnectedException>()),
+      );
+      expect(mdk.lastCreateGroupName, isNull);
+      expect(nostr.lastGiftWrapRecipient, isNull);
+    },
+  );
+
+  test(
+    'connectFromInvite stops when a previous scan already sent a welcome',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      final mdk = FakeMdkService()
+        ..createGroupResult = const MdkCreateGroupResult(
+          group: MdkGroupSummary(
+            mlsGroupIdHex: 'pending-group',
+            nostrGroupIdHex: 'pending-nostr-group',
+            name: 'Lee & Noah',
+            description: 'Connected Lee with Noah',
+            memberCount: 2,
+            adminPubkeysHex: ['parent-pubkey'],
+          ),
+          welcomeRumorJsons: ['{"kind":444,"content":"welcome"}'],
+        );
+      final nostr = FakeNostrService()
+        ..queryEventsResult = [
+          Nip01Event(
+            id: 'keypkg-1',
+            pubKey: 'remote-parent',
+            createdAt: 1710460800,
+            kind: MarmotKinds.legacyKeyPackage,
+            tags: const [],
+            content: 'key-package-content',
+            sig: 'sig-1',
+          ),
+        ];
+      final service = FamilyConnectionService(
+        mdkService: mdk,
+        nostrService: nostr,
+        database: database,
+        loadLocalDisplayName: () async => 'Noah',
+      );
+      final payload = const GroupInvitePacket(
+        publicKeyHex: 'remote-parent',
+        createdAt: 1710460800,
+        keyPackageEventId: 'keypkg-1',
+        inviterDisplayName: 'Lee',
+      ).encode();
+
+      await service.connectFromInvite(
+        identity: identity,
+        invitePayload: payload,
+      );
+
+      await expectLater(
+        service.connectFromInvite(identity: identity, invitePayload: payload),
+        throwsA(isA<FamilyConnectionAlreadyPendingException>()),
+      );
+      expect(mdk.createGroupWithWelcomesCallCount, 1);
+      expect(nostr.lastGiftWrapRecipient, 'remote-parent');
     },
   );
 

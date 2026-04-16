@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
-import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../shared_ui/components/private_key_export_card.dart';
 
@@ -37,7 +36,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final identity = ref.watch(parentIdentityProvider).valueOrNull;
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
@@ -192,8 +191,9 @@ class ParentZoneAccountSection extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.75),
+                    color: palette.panel.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: palette.panelBorder),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

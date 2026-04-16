@@ -6,6 +6,7 @@ class AppConstants {
   static const parentIdentityStorageKey = 'parent_identity_v1';
   static const parentPinStorageKey = 'parent_pin_hash_v1';
   static const parentDisplayNameSettingKey = 'parent_display_name';
+  static const appearanceModeSettingKey = 'appearance_mode';
   static const parentProfileCachePrefix = 'parent_profile_cache:';
   static const approvalRequiredSettingKey = 'approval_required';
   static const offlineActionQueueSettingKey = 'offline_action_queue';

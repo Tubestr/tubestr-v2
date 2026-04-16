@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:ndk/entities.dart';
 
 import '../../core/constants.dart';
+import '../../core/storage/app_database.dart';
 import '../../domain/marmot/invite_transport_models.dart';
 import '../../domain/models/parent_identity.dart';
 import '../mdk/mdk_service.dart';
@@ -29,19 +30,38 @@ class FamilyConnectResult {
   final int publishedWelcomeCount;
 }
 
+class FamilyConnectionAlreadyPendingException implements Exception {
+  const FamilyConnectionAlreadyPendingException({
+    required this.memberPubkeyHex,
+    required this.group,
+  });
+
+  final String memberPubkeyHex;
+  final MdkGroupSummary group;
+
+  @override
+  String toString() =>
+      'Connection already pending for $memberPubkeyHex in ${group.name}';
+}
+
 class FamilyConnectionService {
   static const _keyPackageResolveTimeout = Duration(seconds: 4);
+  static const _pendingConnectionSettingPrefix =
+      'family_pending_connection_v1:';
 
   FamilyConnectionService({
     required MdkService mdkService,
     required NostrService nostrService,
+    AppDatabase? database,
     Future<String?> Function()? loadLocalDisplayName,
   }) : _mdkService = mdkService,
        _nostrService = nostrService,
+       _database = database,
        _loadLocalDisplayName = loadLocalDisplayName;
 
   final MdkService _mdkService;
   final NostrService _nostrService;
+  final AppDatabase? _database;
   final Future<String?> Function()? _loadLocalDisplayName;
 
   Future<FamilyInviteResult> createInvite({
@@ -84,6 +104,24 @@ class FamilyConnectionService {
     required String invitePayload,
   }) async {
     final packet = GroupInvitePacket.decode(invitePayload);
+    final existingGroup = await _mdkService.findConnectedGroupForMember(
+      memberPubkeyHex: packet.publicKeyHex,
+    );
+    if (existingGroup != null) {
+      throw MdkAlreadyConnectedException(
+        memberPubkeyHex: packet.publicKeyHex,
+        group: existingGroup,
+      );
+    }
+
+    final pendingGroup = await _loadPendingConnectionGroup(packet.publicKeyHex);
+    if (pendingGroup != null) {
+      throw FamilyConnectionAlreadyPendingException(
+        memberPubkeyHex: packet.publicKeyHex,
+        group: pendingGroup,
+      );
+    }
+
     final relays = _usableRelays(await _nostrService.loadRelayList());
     final inviterName = packet.inviterDisplayName?.trim().isNotEmpty == true
         ? packet.inviterDisplayName!.trim()
@@ -132,11 +170,66 @@ class FamilyConnectionService {
       );
       publishedWelcomeCount += 1;
     }
+    if (publishedWelcomeCount > 0) {
+      await _savePendingConnectionGroup(packet.publicKeyHex, result.group);
+    }
 
     return FamilyConnectResult(
       group: result.group,
       publishedWelcomeCount: publishedWelcomeCount,
     );
+  }
+
+  Future<MdkGroupSummary?> _loadPendingConnectionGroup(
+    String memberPubkeyHex,
+  ) async {
+    final raw = await _database?.getSetting(
+      _pendingConnectionSettingKey(memberPubkeyHex),
+    );
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+      final adminPubkeys = decoded['admin_pubkeys_hex'];
+      return MdkGroupSummary(
+        mlsGroupIdHex: decoded['mls_group_id_hex']?.toString() ?? '',
+        nostrGroupIdHex: decoded['nostr_group_id_hex']?.toString() ?? '',
+        name: decoded['name']?.toString() ?? '',
+        description: decoded['description']?.toString() ?? '',
+        memberCount: (decoded['member_count'] as num?)?.toInt() ?? 0,
+        adminPubkeysHex: adminPubkeys is List
+            ? adminPubkeys.map((value) => value.toString()).toList()
+            : const [],
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _savePendingConnectionGroup(
+    String memberPubkeyHex,
+    MdkGroupSummary group,
+  ) async {
+    await _database?.putSetting(
+      _pendingConnectionSettingKey(memberPubkeyHex),
+      jsonEncode({
+        'mls_group_id_hex': group.mlsGroupIdHex,
+        'nostr_group_id_hex': group.nostrGroupIdHex,
+        'name': group.name,
+        'description': group.description,
+        'member_count': group.memberCount,
+        'admin_pubkeys_hex': group.adminPubkeysHex,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
+  }
+
+  String _pendingConnectionSettingKey(String memberPubkeyHex) {
+    return '$_pendingConnectionSettingPrefix${memberPubkeyHex.toLowerCase()}';
   }
 
   Future<String?> _resolveInviterDisplayName({

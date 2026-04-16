@@ -130,6 +130,7 @@ class FakeMdkService extends MdkService {
   List<String>? lastCreateKeyPackageRelays;
   int? lastCreatedMessageKind;
   String? lastCreatedMessageGroupId;
+  int createGroupWithWelcomesCallCount = 0;
   final List<String> createdMessageGroupIds = [];
   final List<int> createdMessageKinds = [];
   final List<String> createdMessageContents = [];
@@ -162,6 +163,7 @@ class FakeMdkService extends MdkService {
     required List<String> relays,
     List<String> memberKeyPackageEventJsons = const [],
   }) async {
+    createGroupWithWelcomesCallCount += 1;
     lastCreateGroupName = name;
     lastCreateGroupDescription = description;
     lastCreateGroupWithWelcomesMemberKeyPackageEventJsons = List<String>.from(
@@ -208,8 +210,29 @@ class FakeMdkService extends MdkService {
   }
 
   @override
-  Future<List<MdkPendingWelcome>> getPendingWelcomes() async {
-    return pendingWelcomesResult;
+  Future<List<MdkPendingWelcome>> getPendingWelcomes({
+    bool includeAlreadyConnected = false,
+  }) async {
+    if (includeAlreadyConnected) {
+      return pendingWelcomesResult;
+    }
+
+    final filtered = <MdkPendingWelcome>[];
+    final seenWelcomers = <String>{};
+    for (final welcome in pendingWelcomesResult) {
+      final normalizedWelcomer = welcome.welcomerPubkeyHex.toLowerCase();
+      if (!seenWelcomers.add(normalizedWelcomer)) {
+        continue;
+      }
+
+      final existingGroup = await findConnectedGroupForMember(
+        memberPubkeyHex: welcome.welcomerPubkeyHex,
+      );
+      if (existingGroup == null) {
+        filtered.add(welcome);
+      }
+    }
+    return filtered;
   }
 
   @override
@@ -236,6 +259,20 @@ class FakeMdkService extends MdkService {
     required String welcomeEventIdHex,
   }) async {
     lastAcceptedWelcomeEventId = welcomeEventIdHex;
+    final pendingWelcome = pendingWelcomesResult
+        .where((welcome) => welcome.welcomeEventIdHex == welcomeEventIdHex)
+        .firstOrNull;
+    if (pendingWelcome != null) {
+      final existingGroup = await findConnectedGroupForMember(
+        memberPubkeyHex: pendingWelcome.welcomerPubkeyHex,
+      );
+      if (existingGroup != null) {
+        throw MdkAlreadyConnectedException(
+          memberPubkeyHex: pendingWelcome.welcomerPubkeyHex,
+          group: existingGroup,
+        );
+      }
+    }
     return acceptedWelcomeGroup!;
   }
 
@@ -362,6 +399,7 @@ class FakeNostrService implements NostrService {
   int? lastCreatedSignedEventKind;
   String? lastCreatedSignedEventContent;
   List<List<String>>? lastCreatedSignedEventTags;
+  int? lastCreatedSignedEventCreatedAt;
   String? lastCreatedSignedKeyPackageTagsJson;
   final List<int> createdSignedEventKinds = [];
   final List<String> createdSignedEventContents = [];
@@ -456,6 +494,7 @@ class FakeNostrService implements NostrService {
   }) async {
     lastCreatedSignedEventKind = kind;
     lastCreatedSignedEventContent = content;
+    lastCreatedSignedEventCreatedAt = createdAt;
     lastCreatedSignedEventTags = tags
         .map((tag) => List<String>.from(tag))
         .toList(growable: false);

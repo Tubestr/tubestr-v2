@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import '../../core/constants.dart';
@@ -368,6 +369,12 @@ class VideoShareCoordinator {
       mimeType: 'image/jpeg',
       filename: p.basename(localVideo.thumbPath),
     );
+    final videoEncryptedBlobHash = sha256
+        .convert(videoEncrypted.encryptedBytes)
+        .toString();
+    final thumbEncryptedBlobHash = sha256
+        .convert(thumbEncrypted.encryptedBytes)
+        .toString();
 
     final videoUpload = await _blossomClient.uploadEncryptedBlobWithMirrors(
       servers: configuredServers,
@@ -376,7 +383,7 @@ class VideoShareCoordinator {
       authForServer: (server) => _createBlossomUploadAuth(
         identity: identity,
         server: server,
-        hashHex: videoEncrypted.encryptedHashHex,
+        hashHex: videoEncryptedBlobHash,
       ),
     );
     final thumbUpload = await _blossomClient.uploadEncryptedBlobWithMirrors(
@@ -386,7 +393,7 @@ class VideoShareCoordinator {
       authForServer: (server) => _createBlossomUploadAuth(
         identity: identity,
         server: server,
-        hashHex: thumbEncrypted.encryptedHashHex,
+        hashHex: thumbEncryptedBlobHash,
       ),
     );
     final sharedAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -716,6 +723,7 @@ class VideoShareCoordinator {
         : server;
     final serverHost = Uri.parse(normalized).host.toLowerCase();
     final uploadUrl = '$normalized/upload';
+    final authCreatedAt = DateTime.now().subtract(const Duration(minutes: 5));
     final expiresAt =
         DateTime.now()
             .add(const Duration(minutes: 10))
@@ -725,7 +733,7 @@ class VideoShareCoordinator {
       identity: identity,
       kind: 24242,
       content: 'Authorize Blossom upload',
-      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      createdAt: authCreatedAt.millisecondsSinceEpoch ~/ 1000,
       tags: [
         ['t', 'upload'],
         ['x', hashHex],

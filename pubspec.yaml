@@ -68,7 +68,6 @@ dependencies:
   rust_lib_mytube:
     path: rust_builder
   url_launcher: ^6.3.2
-  webview_flutter: ^4.13.0
   package_info_plus: ^9.0.1
 
 dev_dependencies:
@@ -87,6 +86,10 @@ dev_dependencies:
   json_serializable: ^6.13.0
   integration_test:
     sdk: flutter
+
+dependency_overrides:
+  media_kit:
+    path: vendor/media_kit
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

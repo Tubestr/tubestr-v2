@@ -1,6 +1,8 @@
 import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants.dart';
 import '../../storage/app_database.dart';
 import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/parent_profile.dart';
@@ -9,6 +11,7 @@ import '../../../domain/models/ranking_state.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_reaction_summary.dart';
 import '../../../services/mdk/mdk_service.dart';
+import '../../theme/app_theme_mode.dart';
 import '../../theme/theme_descriptor.dart';
 import 'foundation_providers.dart';
 import 'service_providers.dart';
@@ -187,6 +190,14 @@ final pendingParentZoneSectionProvider = StateProvider<String?>((ref) => null);
 
 final selectedProfileIdProvider = StateProvider<String?>((ref) => null);
 
+final platformBrightnessProvider = Provider<Brightness>((ref) {
+  final binding = WidgetsBinding.instance;
+  final observer = _PlatformBrightnessObserver(ref.invalidateSelf);
+  binding.addObserver(observer);
+  ref.onDispose(() => binding.removeObserver(observer));
+  return binding.platformDispatcher.platformBrightness;
+});
+
 final activeThemeProvider = Provider<ThemeDescriptor>((ref) {
   final profilesState = ref.watch(profilesProvider);
   final selectedId = ref.watch(selectedProfileIdProvider);
@@ -204,6 +215,41 @@ final activeThemeProvider = Provider<ThemeDescriptor>((ref) {
     orElse: () => ThemeDescriptor.campfire,
   );
 });
+
+final appearanceModeProvider = StreamProvider<AppThemeModePreference>((ref) {
+  return ref
+      .watch(appDatabaseProvider)
+      .watchSetting(AppConstants.appearanceModeSettingKey)
+      .map(AppThemeModePreferenceX.fromStorage);
+});
+
+final activeAppearanceModeProvider = Provider<AppThemeModePreference>((ref) {
+  return ref.watch(appearanceModeProvider).valueOrNull ??
+      AppThemeModePreference.system;
+});
+
+final activeBrightnessProvider = Provider<Brightness>((ref) {
+  final preference = ref.watch(activeAppearanceModeProvider);
+  final platformBrightness = ref.watch(platformBrightnessProvider);
+  return preference.resolveBrightness(platformBrightness);
+});
+
+final activePaletteProvider = Provider<KidPalette>((ref) {
+  final theme = ref.watch(activeThemeProvider);
+  final brightness = ref.watch(activeBrightnessProvider);
+  return theme.paletteFor(brightness);
+});
+
+class _PlatformBrightnessObserver with WidgetsBindingObserver {
+  const _PlatformBrightnessObserver(this.onChanged);
+
+  final VoidCallback onChanged;
+
+  @override
+  void didChangePlatformBrightness() {
+    onChanged();
+  }
+}
 
 final videosForSelectedProfileProvider = StreamProvider<List<LocalVideo>>((
   ref,

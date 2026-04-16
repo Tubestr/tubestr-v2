@@ -1,4 +1,6 @@
 import '../../domain/models/editor_resources.dart';
+import 'generated_music_catalog.dart';
+import 'generated_sticker_catalog.dart';
 
 class EditorResourceCatalog {
   static const lutAssets = <EditorLutAsset>[
@@ -141,6 +143,7 @@ class EditorResourceCatalog {
       assetPath: 'assets/editor/stickers/sticker_13.png',
       label: 'Sticker 13',
     ),
+    ...GeneratedStickerCatalog.fluentEmojiStickerAssets,
   ];
 
   static const builtInMusicTracks = <EditorMusicTrackAsset>[
@@ -148,27 +151,33 @@ class EditorResourceCatalog {
       id: 'track_01',
       assetPath: 'assets/editor/music/track_01.mp3',
       label: 'Track 1',
+      categories: <String>['classic', 'bundled'],
     ),
     EditorMusicTrackAsset(
       id: 'track_02',
       assetPath: 'assets/editor/music/track_02.mp3',
       label: 'Track 2',
+      categories: <String>['classic', 'bundled'],
     ),
     EditorMusicTrackAsset(
       id: 'track_03',
       assetPath: 'assets/editor/music/track_03.mp3',
       label: 'Track 3',
+      categories: <String>['classic', 'bundled'],
     ),
     EditorMusicTrackAsset(
       id: 'track_04',
       assetPath: 'assets/editor/music/track_04.mp3',
       label: 'Track 4',
+      categories: <String>['classic', 'bundled'],
     ),
     EditorMusicTrackAsset(
       id: 'track_05',
       assetPath: 'assets/editor/music/track_05.mp3',
       label: 'Track 5',
+      categories: <String>['classic', 'bundled'],
     ),
+    ...GeneratedMusicCatalog.communityMusicTracks,
   ];
 
   static EditorLutAsset? lutById(String id) {

@@ -15,9 +15,10 @@ import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_playback_metrics.dart';
 import '../../../domain/models/video_reaction_summary.dart';
+import '../../../services/engagement/playback_metrics_coordinator.dart';
+import '../../../services/media/video_probe_service.dart';
 import '../../editor/presentation/editor_detail_page.dart';
 import '../../parent_zone/presentation/models/launch_diagnostics.dart';
-import '../../../services/media/video_probe_service.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../../shared_ui/reporting/feeling_report_sheet.dart';
@@ -39,6 +40,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   late final Player _player;
   late final VideoController _videoController;
   late final PlayerRouteArgs _routeArgs;
+  late final PlaybackMetricsCoordinator _playbackMetricsCoordinator;
   late final ProviderSubscription<PlayerRouteState> _routeStateSubscription;
   final List<StreamSubscription<Object?>> _playerSubscriptions = [];
   StreamSubscription<VideoParams>? _videoParamsSubscription;
@@ -66,6 +68,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   Duration _peakPosition = Duration.zero;
   Duration _lastObservedPosition = Duration.zero;
   bool _replayDetected = false;
+  bool _playbackCompleted = false;
 
   @override
   void initState() {
@@ -75,6 +78,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       videoId: widget.videoId,
       remoteShareId: widget.remoteShareId,
     );
+    _playbackMetricsCoordinator = ref.read(playbackMetricsCoordinatorProvider);
     _player = Player();
     _videoController = VideoController(
       _player,
@@ -86,6 +90,24 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       _player.stream.playing.listen((v) {
         if (mounted) setState(() => _playing = v);
         if (v) {
+          _resetHideTimer();
+        }
+      }),
+    );
+    _playerSubscriptions.add(
+      _player.stream.completed.listen((v) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _playbackCompleted = v;
+          if (v) {
+            _showControls = true;
+          }
+        });
+        if (v) {
+          _hideTimer?.cancel();
+        } else {
           _resetHideTimer();
         }
       }),
@@ -164,6 +186,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _peakPosition = Duration.zero;
     _lastObservedPosition = Duration.zero;
     _replayDetected = false;
+    _playbackCompleted = false;
     _videoWidth = null;
     _videoHeight = null;
     _probeDisplayAspectRatio = null;
@@ -194,7 +217,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   void _resetHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && _playing) setState(() => _showControls = false);
+      if (mounted && _playing && !_playbackCompleted) {
+        setState(() => _showControls = false);
+      }
     });
   }
 
@@ -398,33 +423,29 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
     final localVideo = routeState.video;
     if (localVideo != null) {
-      await ref
-          .read(playbackMetricsCoordinatorProvider)
-          .recordLocalPlayback(
-            videoId: localVideo.id,
-            completionRatio: completionRatio,
-            replayed: _replayDetected,
-          );
+      await _playbackMetricsCoordinator.recordLocalPlayback(
+        videoId: localVideo.id,
+        completionRatio: completionRatio,
+        replayed: _replayDetected,
+      );
       return;
     }
 
     final remoteProjection = routeState.remoteShare;
     if (remoteProjection != null) {
-      await ref
-          .read(playbackMetricsCoordinatorProvider)
-          .recordRemotePlayback(
-            remoteShareId: remoteProjection.remoteShareId,
-            videoId: remoteProjection.videoId,
-            completionRatio: completionRatio,
-            replayed: _replayDetected,
-          );
+      await _playbackMetricsCoordinator.recordRemotePlayback(
+        remoteShareId: remoteProjection.remoteShareId,
+        videoId: remoteProjection.videoId,
+        completionRatio: completionRatio,
+        replayed: _replayDetected,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final routeState = ref.watch(playerRouteStateProvider(_routeArgs));
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final mediaQuery = MediaQuery.of(context);
     final isWide = mediaQuery.size.width >= 900;
     final maxPlayerWidth = isWide ? 860.0 : mediaQuery.size.width - 28;
@@ -487,10 +508,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
     final showPlayerSheet =
         mediaPath != null && (remoteShare == null || remoteShare.isDownloaded);
+    final showBottomControls = _showControls || _playbackCompleted;
     final playerHorizontalInset = isWide ? 24.0 : 8.0;
     final playerTopInset = mediaQuery.padding.top + 18.0;
+    final playerSheetClearance = remoteShare == null ? 72.0 : 136.0;
     final playerBottomInset =
-        mediaQuery.padding.bottom + (showPlayerSheet ? 72.0 : 20.0);
+        mediaQuery.padding.bottom +
+        (showPlayerSheet ? playerSheetClearance : 20.0);
 
     return Scaffold(
       backgroundColor: palette.backgroundBottom,
@@ -899,10 +923,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 right: 0,
                 bottom: 0,
                 child: AnimatedOpacity(
-                  opacity: _showControls ? 1.0 : 0.0,
+                  opacity: showBottomControls ? 1.0 : 0.0,
                   duration: stateChangeDuration,
                   child: IgnorePointer(
-                    ignoring: !_showControls,
+                    ignoring: !showBottomControls,
                     child: GestureDetector(
                       onVerticalDragEnd: (details) {
                         if (details.primaryVelocity == null) return;
@@ -954,29 +978,56 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Drag handle
-                                    GestureDetector(
-                                      onTap: () => setState(
-                                        () => _sheetExpanded = !_sheetExpanded,
-                                      ),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 8,
+                                    Align(
+                                      alignment: Alignment.center,
+                                      child: Material(
+                                        color: palette.panelBorder.withValues(
+                                          alpha: 0.32,
                                         ),
-                                        child: Center(
-                                          child: Container(
-                                            width: 36,
-                                            height: 4,
-                                            decoration: BoxDecoration(
-                                              color: palette.panelBorder,
-                                              borderRadius:
-                                                  BorderRadius.circular(2),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          onTap: () => setState(
+                                            () => _sheetExpanded =
+                                                !_sheetExpanded,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  _sheetExpanded
+                                                      ? Icons
+                                                            .keyboard_arrow_down_rounded
+                                                      : Icons
+                                                            .keyboard_arrow_up_rounded,
+                                                  size: 18,
+                                                  color: palette.ink,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  _sheetExpanded
+                                                      ? 'Hide details'
+                                                      : 'Show details',
+                                                  style: TextStyle(
+                                                    color: palette.ink,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
+                                    const SizedBox(height: 8),
 
                                     // ── Collapsed: compact transport bar ──
                                     SliderTheme(
@@ -1092,6 +1143,31 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         ),
                                       ],
                                     ),
+                                    if (remoteShare != null &&
+                                        !_sheetExpanded) ...[
+                                      const SizedBox(height: 12),
+                                      _ReactionSection(
+                                        palette: palette,
+                                        title: 'React',
+                                        reactions: reactionSummaries,
+                                        selectedEmojis: viewerReactions,
+                                        isSendingReaction: _isSendingReaction,
+                                        onSelect: (emoji) async {
+                                          if (identity == null ||
+                                              selectedProfileId == null) {
+                                            return;
+                                          }
+                                          await _sendRemoteReaction(
+                                            identity: identity,
+                                            remoteShare: remoteShare,
+                                            selectedProfileId:
+                                                selectedProfileId,
+                                            selectedEmojis: viewerReactions,
+                                            emoji: emoji,
+                                          );
+                                        },
+                                      ),
+                                    ],
 
                                     // ── Expanded: title, like, metrics ──
                                     if (_sheetExpanded)
@@ -1364,63 +1440,18 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                   onSelect: (emoji) async {
                                                     if (identity == null ||
                                                         selectedProfileId ==
-                                                            null ||
-                                                        _isSendingReaction ||
-                                                        viewerReactions
-                                                            .contains(emoji)) {
+                                                            null) {
                                                       return;
                                                     }
-                                                    setState(
-                                                      () => _isSendingReaction =
-                                                          true,
+                                                    await _sendRemoteReaction(
+                                                      identity: identity,
+                                                      remoteShare: remoteShare,
+                                                      selectedProfileId:
+                                                          selectedProfileId,
+                                                      selectedEmojis:
+                                                          viewerReactions,
+                                                      emoji: emoji,
                                                     );
-                                                    try {
-                                                      await ref
-                                                          .read(
-                                                            reactionCoordinatorProvider,
-                                                          )
-                                                          .sendRemoteReaction(
-                                                            identity: identity,
-                                                            videoId: remoteShare
-                                                                .videoId,
-                                                            childProfileId:
-                                                                selectedProfileId,
-                                                            mlsGroupIdHex:
-                                                                remoteShare
-                                                                    .mlsGroupId,
-                                                            emoji: emoji,
-                                                          );
-                                                      ref.invalidate(
-                                                        offlineActionsProvider,
-                                                      );
-                                                      await HapticFeedback.selectionClick();
-                                                    } catch (error) {
-                                                      ref.invalidate(
-                                                        offlineActionsProvider,
-                                                      );
-                                                      if (!mounted) {
-                                                        return;
-                                                      }
-                                                      ScaffoldMessenger.of(
-                                                        this.context,
-                                                      ).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(
-                                                            _reactionErrorMessage(
-                                                              error,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      );
-                                                    } finally {
-                                                      if (mounted) {
-                                                        setState(
-                                                          () =>
-                                                              _isSendingReaction =
-                                                                  false,
-                                                        );
-                                                      }
-                                                    }
                                                   },
                                                 ),
                                               ],
@@ -1527,6 +1558,44 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
   }
 
+  Future<void> _sendRemoteReaction({
+    required ParentIdentity identity,
+    required RemoteShareProjection remoteShare,
+    required String selectedProfileId,
+    required List<String> selectedEmojis,
+    required String emoji,
+  }) async {
+    if (_isSendingReaction || selectedEmojis.contains(emoji)) {
+      return;
+    }
+    setState(() => _isSendingReaction = true);
+    try {
+      await ref
+          .read(reactionCoordinatorProvider)
+          .sendRemoteReaction(
+            identity: identity,
+            videoId: remoteShare.videoId,
+            childProfileId: selectedProfileId,
+            mlsGroupIdHex: remoteShare.mlsGroupId,
+            emoji: emoji,
+          );
+      ref.invalidate(offlineActionsProvider);
+      await HapticFeedback.selectionClick();
+    } catch (error) {
+      ref.invalidate(offlineActionsProvider);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_reactionErrorMessage(error))));
+    } finally {
+      if (mounted) {
+        setState(() => _isSendingReaction = false);
+      }
+    }
+  }
+
   String _playerStatusTitle({required RemoteShareProjection? remoteShare}) {
     if (remoteShare == null) {
       return 'This video isn\'t here yet';
@@ -1577,10 +1646,23 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (message.contains('approval')) {
       return 'This clip still needs a parent review before it can be shared.';
     }
+    if (_looksLikeShareUploadError(message)) {
+      return "We couldn't upload that clip to the family media server yet. Check your connection and try again.";
+    }
     if (message.contains('group') || message.contains('family')) {
       return 'Connect with a family space first, then try sharing again.';
     }
     return 'We couldn\'t share that clip yet. It\'s still saved safely here.';
+  }
+
+  bool _looksLikeShareUploadError(String message) {
+    return message.contains('blossom') ||
+        message.contains('upload') ||
+        message.contains('auth event') ||
+        message.contains('created_at') ||
+        message.contains('future') ||
+        message.contains('socket') ||
+        message.contains('media server');
   }
 
   String _reportErrorMessage(Object error) {
@@ -1612,8 +1694,8 @@ class _PlayerChromeButton extends StatelessWidget {
     final enabled = onTap != null;
     return Material(
       color: enabled
-          ? Colors.white.withValues(alpha: 0.82)
-          : Colors.white.withValues(alpha: 0.48),
+          ? palette.panel.withValues(alpha: 0.82)
+          : palette.panel.withValues(alpha: 0.48),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -1653,8 +1735,8 @@ class _SharePillButton extends StatelessWidget {
     final enabled = onTap != null && !isBusy;
     return Material(
       color: enabled
-          ? Colors.white.withValues(alpha: 0.92)
-          : Colors.white.withValues(alpha: 0.48),
+          ? palette.panel.withValues(alpha: 0.92)
+          : palette.panel.withValues(alpha: 0.48),
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
@@ -1835,6 +1917,7 @@ class _ReactionSection extends StatelessWidget {
     required this.selectedEmojis,
     required this.isSendingReaction,
     required this.onSelect,
+    this.title = 'Reactions',
   });
 
   final KidPalette palette;
@@ -1842,6 +1925,7 @@ class _ReactionSection extends StatelessWidget {
   final List<String> selectedEmojis;
   final bool isSendingReaction;
   final ValueChanged<String> onSelect;
+  final String title;
 
   static const _emojiChoices = <String>['😂', '😮', '🎉', '🔥'];
 
@@ -1855,7 +1939,7 @@ class _ReactionSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Reactions',
+          title,
           style: TextStyle(
             color: palette.ink,
             fontSize: 14,
@@ -1912,7 +1996,7 @@ class _ReactionChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected
                 ? palette.accent.withValues(alpha: 0.16)
-                : Colors.white.withValues(alpha: 0.78),
+                : palette.panel.withValues(alpha: 0.78),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: isSelected ? palette.accent : palette.panelBorder,
@@ -1950,7 +2034,7 @@ class _NameChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: palette.panel.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: palette.panelBorder),
       ),

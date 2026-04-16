@@ -122,15 +122,39 @@ void main() {
           '-preset',
           'fast',
           '-crf',
-          '20',
+          '22',
           '-maxrate',
-          '10000k',
+          '8000k',
           '-bufsize',
-          '20000k',
+          '16000k',
         ]),
       );
     },
   );
+
+  test('buildEditorExportPlan lowers bitrate for long exports', () async {
+    final plan = await buildEditorExportPlan(
+      session: const EditorSession(
+        videoId: 'video-1',
+        sourcePath: '/tmp/input.mp4',
+        videoDuration: Duration(minutes: 3),
+        trimRange: EditorTrimRange(
+          start: Duration.zero,
+          end: Duration(minutes: 3),
+        ),
+      ),
+      outputPath: '/tmp/output.mp4',
+      stagingDir: '/tmp/editor-staging',
+      assetBundle: _FakeAssetBundle(),
+      renderSize: const ui.Size(720, 1280),
+      sourceRotationDegrees: 0,
+    );
+
+    expect(
+      plan.arguments,
+      containsAllInOrder(['-maxrate', '4002k', '-bufsize', '8004k']),
+    );
+  });
 
   test(
     'buildEditorExportPlan uses named eq parameters for eq presets',
@@ -248,7 +272,12 @@ void main() {
       final filterComplex =
           plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
       expect(filterComplex, contains('[0:a]volume=1.000[original]'));
-      expect(filterComplex, contains('[1:a]volume=0.400[music]'));
+      expect(
+        filterComplex,
+        contains(
+          '[1:a]volume=0.400,atrim=duration=8.000,asetpts=N/SR/TB[music]',
+        ),
+      );
       expect(
         filterComplex,
         contains(
@@ -430,7 +459,12 @@ void main() {
           plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
       expect(filterComplex, contains('[2:v]overlay=0:0:format=auto[vout]'));
       expect(filterComplex, contains('[0:a]volume=1.000[original]'));
-      expect(filterComplex, contains('[1:a]volume=0.500[music]'));
+      expect(
+        filterComplex,
+        contains(
+          '[1:a]volume=0.500,atrim=duration=8.000,asetpts=N/SR/TB[music]',
+        ),
+      );
       expect(
         filterComplex,
         contains(

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants.dart';
 import '../../../../core/di/providers.dart';
-import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../services/safety/safety_hq_service.dart';
 
@@ -37,7 +36,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final hPad = screenWidth < 600 ? 12.0 : 20.0;

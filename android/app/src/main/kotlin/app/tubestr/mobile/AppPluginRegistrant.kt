@@ -20,6 +20,7 @@ import io.flutter.plugins.camerax.CameraAndroidCameraxPlugin
 import io.flutter.plugins.flutter_plugin_android_lifecycle.FlutterAndroidLifecyclePlugin
 import io.flutter.plugins.inapppurchase.InAppPurchasePlugin
 import io.flutter.plugins.pathprovider.PathProviderPlugin
+import io.flutter.plugins.urllauncher.UrlLauncherPlugin
 import xyz.justsoft.video_thumbnail.VideoThumbnailPlugin
 
 object AppPluginRegistrant {
@@ -49,6 +50,7 @@ object AppPluginRegistrant {
         flutterEngine.plugins.add(PackageInfoPlugin())
         flutterEngine.plugins.add(PathProviderPlugin())
         flutterEngine.plugins.add(SharePlusPlugin())
+        flutterEngine.plugins.add(UrlLauncherPlugin())
         flutterEngine.plugins.add(VideoThumbnailPlugin())
         flutterEngine.plugins.add(WakelockPlusPlugin())
     }

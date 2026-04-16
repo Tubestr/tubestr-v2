@@ -38,6 +38,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   bool _showSavedBanner = false;
   bool _isRunningQuickShare = false;
   String? _errorMessage;
+  String? _noticeMessage;
   _CaptureWorkflowState? _workflowState;
   LocalVideo? _lastSavedVideo;
   final Uuid _uuid = const Uuid();
@@ -51,6 +52,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   double _baseZoom = 1.0;
   bool _cameraInitStarted = false;
   bool _cameraDisposeStarted = false;
+  bool _recordsAudio = true;
+
+  static const Duration _cameraOpenTimeout = Duration(seconds: 12);
+  static const Duration _cameraDisposeTimeout = Duration(seconds: 2);
 
   @override
   void initState() {
@@ -77,8 +82,9 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       }
       _controller = null;
       _currentZoom = 1.0;
+      _recordsAudio = true;
       _cameraDisposeStarted = false;
-      unawaited(controller.dispose());
+      unawaited(_disposeController(controller));
       if (mounted) {
         setState(() {});
       }
@@ -104,50 +110,138 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     try {
       _cameras = await availableCameras();
       if (_cameras.isNotEmpty) {
-        await _initCamera(_cameras.first);
+        await _initCamera(_cameras.first, markStarted: false);
       } else if (mounted) {
-        setState(
-          () => _errorMessage =
-              'We couldn\'t find a camera on this device right now.',
-        );
+        setState(() {
+          _noticeMessage = null;
+          _errorMessage =
+              'We couldn\'t find a camera on this device right now.';
+        });
       }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = _cameraErrorMessage(e));
+      if (mounted) {
+        setState(() {
+          _noticeMessage = null;
+          _errorMessage = _cameraErrorMessage(e);
+        });
+      }
     } finally {
       _cameraInitStarted = false;
     }
   }
 
-  Future<void> _initCamera(CameraDescription desc) async {
+  Future<void> _initCamera(
+    CameraDescription desc, {
+    bool markStarted = true,
+  }) async {
     if (_isRecording) return;
-    await _controller?.dispose();
-    final ctrl = CameraController(
+    if (markStarted) {
+      if (_cameraInitStarted) {
+        return;
+      }
+      _cameraInitStarted = true;
+    }
+    final previousController = _controller;
+    if (previousController != null) {
+      _controller = null;
+      if (mounted) {
+        setState(() {});
+      }
+      await _disposeController(previousController);
+    }
+    try {
+      final opened = await _openCamera(desc);
+      if (!mounted) {
+        await _disposeController(opened.controller);
+        return;
+      }
+      setState(() {
+        _controller = opened.controller;
+        _currentZoom = 1.0;
+        _recordsAudio = opened.recordsAudio;
+        _errorMessage = null;
+        _noticeMessage = opened.recordsAudio
+            ? null
+            : 'Microphone access is off, so clips will save without sound. Turn microphone access on in Settings to add audio.';
+        _cameraDisposeStarted = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _controller = null;
+          _noticeMessage = null;
+          _errorMessage = _cameraErrorMessage(e);
+        });
+      }
+      return;
+    } finally {
+      if (markStarted) {
+        _cameraInitStarted = false;
+      }
+    }
+  }
+
+  Future<_OpenedCamera> _openCamera(CameraDescription desc) async {
+    try {
+      final controller = await _createCameraController(desc, enableAudio: true);
+      return _OpenedCamera(controller: controller, recordsAudio: true);
+    } catch (error) {
+      if (!_shouldRetryWithoutAudio(error)) {
+        rethrow;
+      }
+      final controller = await _createCameraController(
+        desc,
+        enableAudio: false,
+      );
+      return _OpenedCamera(controller: controller, recordsAudio: false);
+    }
+  }
+
+  Future<CameraController> _createCameraController(
+    CameraDescription desc, {
+    required bool enableAudio,
+  }) async {
+    final controller = CameraController(
       desc,
       ResolutionPreset.high,
-      enableAudio: true,
+      enableAudio: enableAudio,
     );
     try {
-      await ctrl.initialize();
-    } catch (e) {
-      if (mounted) setState(() => _errorMessage = _cameraErrorMessage(e));
-      return;
+      await controller.initialize().timeout(_cameraOpenTimeout);
+      return controller;
+    } catch (_) {
+      await _disposeController(controller);
+      rethrow;
     }
-    if (!mounted) {
-      await ctrl.dispose();
-      return;
+  }
+
+  Future<void> _disposeController(CameraController controller) async {
+    try {
+      await controller.dispose().timeout(_cameraDisposeTimeout);
+    } catch (_) {
+      // Best effort; cleanup should not keep the camera UI stuck.
     }
-    setState(() {
-      _controller = ctrl;
-      _currentZoom = 1.0;
-      _errorMessage = null;
-      _cameraDisposeStarted = false;
-    });
   }
 
   void _flipCamera() {
-    if (_cameras.length < 2 || _isRecording) return;
+    if (_cameras.length < 2 || _isRecording || _cameraInitStarted) return;
     _cameraIndex = (_cameraIndex + 1) % _cameras.length;
-    _initCamera(_cameras[_cameraIndex]);
+    unawaited(_initCamera(_cameras[_cameraIndex]));
+  }
+
+  void _retryOpeningCamera() {
+    if (_cameraInitStarted) {
+      return;
+    }
+    setState(() {
+      _errorMessage = null;
+      _noticeMessage = null;
+    });
+    if (_cameras.isEmpty) {
+      unawaited(_initCameras());
+    } else {
+      unawaited(_initCamera(_cameras[_cameraIndex]));
+    }
   }
 
   Future<void> _toggleTorch() async {
@@ -216,6 +310,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       setState(() {
         _isRecording = false;
         _isSaving = false;
+        _noticeMessage = null;
         _errorMessage = 'Choose a child profile before recording a clip.';
       });
       return;
@@ -302,6 +397,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       setState(() {
         _isRecording = false;
         _isSaving = false;
+        _noticeMessage = null;
         _errorMessage = _cameraErrorMessage(e);
       });
     }
@@ -336,7 +432,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   @override
   Widget build(BuildContext context) {
     final activeTab = ref.watch(appShellTabIndexProvider);
-    if (activeTab == 1 && !_cameraInitStarted && _controller == null) {
+    if (activeTab == 1 &&
+        !_cameraInitStarted &&
+        _controller == null &&
+        _errorMessage == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           if (_cameras.isEmpty) {
@@ -358,18 +457,20 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
           _cameraDisposeStarted = false;
           return;
         }
-        await controller.dispose();
+        await _disposeController(controller);
         if (!mounted) {
           return;
         }
         setState(() {
           _controller = null;
           _currentZoom = 1.0;
+          _recordsAudio = true;
+          _noticeMessage = null;
           _cameraDisposeStarted = false;
         });
       });
     }
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final topPad = MediaQuery.of(context).padding.top;
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final ctrl = _controller;
@@ -403,7 +504,14 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(color: Colors.white38),
+                        if (_errorMessage == null)
+                          const CircularProgressIndicator(color: Colors.white38)
+                        else
+                          const Icon(
+                            Icons.videocam_off_rounded,
+                            color: Colors.white70,
+                            size: 36,
+                          ),
                         const SizedBox(height: 18),
                         Text(
                           _errorMessage == null
@@ -426,6 +534,17 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                             fontSize: 14,
                           ),
                         ),
+                        if (_errorMessage != null) ...[
+                          const SizedBox(height: 18),
+                          OutlinedButton(
+                            onPressed: _retryOpeningCamera,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white54),
+                            ),
+                            child: const Text('Try again'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -461,6 +580,38 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                   ),
                 ),
               ),
+              if (!_recordsAudio) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.mic_off_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Silent',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               // Torch toggle
               _CaptureCircleBtn(
@@ -598,39 +749,55 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
           ),
         ),
 
-        // Error banner
-        if (_errorMessage != null)
+        // Error / notice banner
+        if (_errorMessage != null || _noticeMessage != null)
           Positioned(
             top: topPad + 60,
             left: 24,
             right: 24,
             child: GestureDetector(
-              onTap: () => setState(() => _errorMessage = null),
+              onTap: () {
+                if (_errorMessage != null) {
+                  _retryOpeningCamera();
+                } else {
+                  setState(() => _noticeMessage = null);
+                }
+              },
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 440),
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xCC4B2B2E),
+                      color: _errorMessage != null
+                          ? const Color(0xCC4B2B2E)
+                          : const Color(0xCC163B3B),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0x66F3B0A4)),
+                      border: Border.all(
+                        color: _errorMessage != null
+                            ? const Color(0x66F3B0A4)
+                            : const Color(0x665FE1D1),
+                      ),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 1),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 1),
                           child: Icon(
-                            Icons.info_outline_rounded,
-                            color: Color(0xFFFFD5C7),
+                            _errorMessage != null
+                                ? Icons.info_outline_rounded
+                                : Icons.mic_off_rounded,
+                            color: _errorMessage != null
+                                ? const Color(0xFFFFD5C7)
+                                : const Color(0xFFC8FFF7),
                             size: 18,
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            _errorMessage!,
+                            _errorMessage ?? _noticeMessage!,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
@@ -788,10 +955,59 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     }
   }
 
+  bool _shouldRetryWithoutAudio(Object error) {
+    return error is TimeoutException || _isAudioAccessError(error);
+  }
+
+  bool _isAudioAccessError(Object error) {
+    final code = _cameraErrorCode(error)?.toLowerCase();
+    if (code != null && code.startsWith('audioaccess')) {
+      return true;
+    }
+    final message = error.toString().toLowerCase();
+    return (message.contains('audio') || message.contains('microphone')) &&
+        (message.contains('access') ||
+            message.contains('permission') ||
+            message.contains('denied') ||
+            message.contains('restricted'));
+  }
+
+  bool _isCameraAccessError(Object error) {
+    final code = _cameraErrorCode(error)?.toLowerCase();
+    if (code != null && code.startsWith('cameraaccess')) {
+      return true;
+    }
+    final message = error.toString().toLowerCase();
+    return message.contains('camera') &&
+        (message.contains('access') ||
+            message.contains('permission') ||
+            message.contains('denied') ||
+            message.contains('restricted'));
+  }
+
+  String? _cameraErrorCode(Object error) {
+    if (error is CameraException) {
+      return error.code;
+    }
+    if (error is PlatformException) {
+      return error.code;
+    }
+    return null;
+  }
+
   String _cameraErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
+    if (error is TimeoutException) {
+      return 'The camera took too long to open. Try again, or close any other app using the camera.';
+    }
+    if (_isCameraAccessError(error)) {
+      return 'Camera access is turned off. Allow camera access in Settings, then try again.';
+    }
+    if (_isAudioAccessError(error)) {
+      return 'Microphone access is off. Try again, or turn microphone access on in Settings to record with sound.';
+    }
     if (message.contains('access') || message.contains('permission')) {
-      return 'Camera or microphone access is still turned off. Allow access in Settings, then try again.';
+      return 'Camera access is still turned off. Allow access in Settings, then try again.';
     }
     if (message.contains('camera') && message.contains('in use')) {
       return 'The camera is busy right now. Close any other app using it and try again.';
@@ -810,11 +1026,31 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     if (message.contains('approval')) {
       return 'This clip needs a parent review before it can be shared.';
     }
+    if (_looksLikeShareUploadError(message)) {
+      return "We couldn't upload that clip to the family media server yet. Check your connection and try again.";
+    }
     if (message.contains('group') || message.contains('family')) {
       return 'Connect with a family space first, then you can share this clip.';
     }
     return 'We couldn\'t share that clip yet. It\'s still saved safely here.';
   }
+
+  bool _looksLikeShareUploadError(String message) {
+    return message.contains('blossom') ||
+        message.contains('upload') ||
+        message.contains('auth event') ||
+        message.contains('created_at') ||
+        message.contains('future') ||
+        message.contains('socket') ||
+        message.contains('media server');
+  }
+}
+
+class _OpenedCamera {
+  const _OpenedCamera({required this.controller, required this.recordsAudio});
+
+  final CameraController controller;
+  final bool recordsAudio;
 }
 
 enum _CaptureWorkflowStage { preparing, processing, scanning, complete }

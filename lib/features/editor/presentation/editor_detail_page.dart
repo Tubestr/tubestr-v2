@@ -17,6 +17,7 @@ import '../../../core/theme/theme_descriptor.dart';
 import '../domain/editor_source.dart';
 import '../../../domain/models/content_scan_summary.dart';
 import '../../../domain/models/editor_resources.dart';
+import '../../../services/editor/editor_audio_library_service.dart';
 import '../../../domain/models/editor_session.dart';
 import '../../../services/editor/editor_audio_preview_service.dart';
 import '../../../services/editor/editor_export_service.dart';
@@ -60,6 +61,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   late final Player _player;
   late final VideoController _videoController;
   late final EditorAudioPreviewService _audioPreviewService;
+  late final EditorAudioLibraryService _audioLibraryService;
   late final EditorStickerLibrary _stickerLibrary;
   late final AnimationController _overlayAnimController;
   late final Animation<Offset> _overlaySlide;
@@ -80,6 +82,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   bool _isExporting = false;
   bool _loopSeekInFlight = false;
   List<EditorStickerAsset> _userStickers = const [];
+  Set<String> _cachedAudioTrackIds = const {};
+  final Set<String> _downloadingAudioTrackIds = {};
   int? _videoWidth;
   int? _videoHeight;
   double? _probeDisplayAspectRatio;
@@ -91,6 +95,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     _player = Player();
     _videoController = VideoController(_player);
     _audioPreviewService = EditorAudioPreviewService();
+    _audioLibraryService = ref.read(editorAudioLibraryServiceProvider);
     _stickerLibrary = EditorStickerLibrary();
     _overlayAnimController = AnimationController(
       vsync: this,
@@ -160,6 +165,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     });
     _probeAndOpen();
     unawaited(_loadUserStickers());
+    unawaited(_refreshAudioCacheState());
   }
 
   @override
@@ -197,7 +203,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    final palette = ref.watch(activeThemeProvider).palette;
+    final palette = ref.watch(activePaletteProvider);
     final isTrimActive = _activeTool == EditorTool.trim;
 
     return Scaffold(
@@ -206,12 +212,20 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final layout = KidLayoutSpec.fromWidth(constraints.maxWidth);
+            final isCompactLandscape =
+                !layout.isTablet &&
+                constraints.maxWidth > constraints.maxHeight;
             final edgeInset = layout.isTablet ? 24.0 : 12.0;
             final sidebarWidth = layout.isTablet ? 72.0 : 64.0;
             final sidebarRight = layout.isTablet ? 20.0 : 12.0;
             final overlayMaxWidth = layout.isTablet ? 680.0 : double.infinity;
             final timelineMaxWidth = layout.isTablet ? 800.0 : double.infinity;
+            final timelineHeight = isTrimActive ? 96.0 : 54.0;
             final overlayBottom = isTrimActive ? 104.0 : 62.0;
+            final toolbarTop = isCompactLandscape ? edgeInset + 58.0 : 0.0;
+            final toolbarBottom = isCompactLandscape
+                ? timelineHeight + 10.0
+                : 0.0;
 
             return Stack(
               children: [
@@ -261,13 +275,14 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                 // Right side toolbar
                 Positioned(
                   right: sidebarRight,
-                  top: 0,
-                  bottom: 0,
+                  top: toolbarTop,
+                  bottom: toolbarBottom,
                   child: _SideToolbar(
                     palette: palette,
                     activeTool: _activeTool,
                     onToolTap: _setActiveTool,
                     isTablet: layout.isTablet,
+                    isCompact: isCompactLandscape,
                   ),
                 ),
 
@@ -314,6 +329,9 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                               onMusicVolumeChanged: _updateMusicVolume,
                               onMusicPreviewToggled: _toggleMusicPreview,
                               previewingTrackId: _previewingTrackId,
+                              cachedAudioTrackIds: _cachedAudioTrackIds,
+                              downloadingAudioTrackIds:
+                                  _downloadingAudioTrackIds,
                               onTextChanged: _updateTextOverlay,
                               onTextRemoved: _removeTextOverlay,
                             ),
@@ -327,7 +345,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                 Positioned(
                   top: edgeInset,
                   left: edgeInset,
-                  right: sidebarRight + sidebarWidth,
+                  right: edgeInset,
                   child: _MinimalHeader(
                     palette: palette,
                     isExporting: _isExporting,
@@ -429,15 +447,22 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     });
   }
 
-  void _selectMusicTrack(String trackId, String assetPath) {
-    setState(() {
-      _session = _session.copyWith(
-        audioSelection: EditorAudioSelection(
-          trackId: trackId,
-          assetPath: assetPath,
-        ),
-      );
-    });
+  Future<void> _selectMusicTrack(EditorMusicTrackAsset track) async {
+    try {
+      final playablePath = await _ensureAudioTrackAvailable(track);
+      if (!mounted) return;
+      setState(() {
+        _session = _session.copyWith(
+          audioSelection: EditorAudioSelection(
+            trackId: track.id,
+            assetPath: playablePath,
+          ),
+        );
+      });
+    } catch (error) {
+      if (!mounted) return;
+      _showAudioError(track, error);
+    }
   }
 
   void _removeMusicTrack() {
@@ -459,19 +484,67 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     });
   }
 
-  Future<void> _toggleMusicPreview(String trackId, String assetPath) async {
+  Future<void> _toggleMusicPreview(EditorMusicTrackAsset track) async {
     final audioSelection = _session.audioSelection;
-    final volume = audioSelection?.trackId == trackId
+    final volume = audioSelection?.trackId == track.id
         ? audioSelection!.volume
         : 0.75;
-    final isPlaying = await _audioPreviewService.togglePreview(
-      assetPath: assetPath,
-      volume: volume,
+    try {
+      final playablePath = await _ensureAudioTrackAvailable(track);
+      final isPlaying = await _audioPreviewService.togglePreview(
+        assetPath: playablePath,
+        volume: volume,
+      );
+      if (!mounted) return;
+      setState(() {
+        _previewingTrackId = isPlaying ? track.id : null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      _showAudioError(track, error);
+    }
+  }
+
+  Future<String> _ensureAudioTrackAvailable(EditorMusicTrackAsset track) async {
+    if (_downloadingAudioTrackIds.contains(track.id)) {
+      throw StateError('${track.label} is still downloading.');
+    }
+
+    setState(() {
+      _downloadingAudioTrackIds.add(track.id);
+    });
+    try {
+      final path = await _audioLibraryService.ensureTrackAvailable(track);
+      if (mounted) {
+        setState(() {
+          _cachedAudioTrackIds = {..._cachedAudioTrackIds, track.id};
+        });
+      }
+      return path;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _downloadingAudioTrackIds.remove(track.id);
+        });
+      }
+    }
+  }
+
+  Future<void> _refreshAudioCacheState() async {
+    final cached = await _audioLibraryService.cachedTrackIds(
+      EditorResourceCatalog.builtInMusicTracks,
     );
     if (!mounted) return;
-    setState(() {
-      _previewingTrackId = isPlaying ? trackId : null;
-    });
+    setState(() => _cachedAudioTrackIds = cached);
+  }
+
+  void _showAudioError(EditorMusicTrackAsset track, Object error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not load ${track.label}. Please try again.'),
+        backgroundColor: Colors.red.shade700,
+      ),
+    );
   }
 
   Future<void> _exportEdit() async {
@@ -539,7 +612,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
         context: context,
         builder: (_) => SelfieStickerCapturePage(
           profileId: widget.source.profileId,
-          palette: ref.read(activeThemeProvider).palette,
+          palette: ref.read(activePaletteProvider),
           stickerLibrary: _stickerLibrary,
         ),
         fullscreenDialog: true,
@@ -577,7 +650,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        final palette = ref.read(activeThemeProvider).palette;
+        final palette = ref.read(activePaletteProvider);
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -778,10 +851,23 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     if (message.contains('approval')) {
       return 'This remix still needs a parent review before it can be shared.';
     }
+    if (_looksLikeShareUploadError(message)) {
+      return "We couldn't upload that remix to the family media server yet. Check your connection and try again.";
+    }
     if (message.contains('group') || message.contains('family')) {
       return 'Connect with a family space first, then try sharing this remix again.';
     }
     return 'We couldn\'t share that remix yet. It\'s still saved safely in your library.';
+  }
+
+  bool _looksLikeShareUploadError(String message) {
+    return message.contains('blossom') ||
+        message.contains('upload') ||
+        message.contains('auth event') ||
+        message.contains('created_at') ||
+        message.contains('future') ||
+        message.contains('socket') ||
+        message.contains('media server');
   }
 
   void _updateTextOverlay({
@@ -1116,34 +1202,53 @@ class _SideToolbar extends StatelessWidget {
     required this.activeTool,
     required this.onToolTap,
     this.isTablet = false,
+    this.isCompact = false,
   });
 
   final KidPalette palette;
   final EditorTool? activeTool;
   final ValueChanged<EditorTool?> onToolTap;
   final bool isTablet;
+  final bool isCompact;
 
   static const _tools = EditorTool.values;
 
   @override
   Widget build(BuildContext context) {
-    final spacing = isTablet ? 10.0 : 6.0;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < _tools.length; i++) ...[
-            if (i > 0) SizedBox(height: spacing),
-            _SideToolButton(
-              palette: palette,
-              tool: _tools[i],
-              isActive: activeTool == _tools[i],
-              onTap: () => onToolTap(_tools[i]),
-              isTablet: isTablet,
-            ),
-          ],
+    final spacing = isCompact ? 2.0 : (isTablet ? 10.0 : 6.0);
+    final toolbar = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < _tools.length; i++) ...[
+          if (i > 0) SizedBox(height: spacing),
+          _SideToolButton(
+            palette: palette,
+            tool: _tools[i],
+            isActive: activeTool == _tools[i],
+            onTap: () => onToolTap(_tools[i]),
+            isTablet: isTablet,
+            isCompact: isCompact,
+          ),
         ],
-      ),
+      ],
+    );
+
+    if (!isCompact) {
+      return Center(child: toolbar);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minHeight = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : 0.0;
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: minHeight),
+            child: Center(child: toolbar),
+          ),
+        );
+      },
     );
   }
 }
@@ -1155,6 +1260,7 @@ class _SideToolButton extends StatelessWidget {
     required this.isActive,
     required this.onTap,
     this.isTablet = false,
+    this.isCompact = false,
   });
 
   final KidPalette palette;
@@ -1162,77 +1268,93 @@ class _SideToolButton extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
   final bool isTablet;
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
-    final btnSize = isTablet ? 60.0 : 52.0;
-    final iconSize = isTablet ? 28.0 : 24.0;
+    final btnSize = isCompact ? 44.0 : (isTablet ? 60.0 : 52.0);
+    final iconSize = isCompact ? 22.0 : (isTablet ? 28.0 : 24.0);
     final labelSize = isTablet ? 11.0 : 10.0;
+    final label = _labelFor(tool);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedScale(
-            scale: isActive ? 1.1 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(btnSize / 2),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  width: btnSize,
-                  height: btnSize,
-                  decoration: BoxDecoration(
-                    gradient: isActive
-                        ? LinearGradient(
-                            colors: [palette.accent, palette.accentSecondary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    color: isActive
-                        ? null
-                        : Colors.black.withValues(alpha: 0.35),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isActive
-                          ? Colors.white.withValues(alpha: 0.3)
-                          : Colors.white.withValues(alpha: 0.1),
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedScale(
+                scale: isActive ? 1.1 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(btnSize / 2),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      width: btnSize,
+                      height: btnSize,
+                      decoration: BoxDecoration(
+                        gradient: isActive
+                            ? LinearGradient(
+                                colors: [
+                                  palette.accent,
+                                  palette.accentSecondary,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: isActive
+                            ? null
+                            : Colors.black.withValues(alpha: 0.35),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isActive
+                              ? Colors.white.withValues(alpha: 0.3)
+                              : Colors.white.withValues(alpha: 0.1),
+                        ),
+                        boxShadow: isActive
+                            ? [
+                                BoxShadow(
+                                  color: palette.accent.withValues(alpha: 0.4),
+                                  blurRadius: 12,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Icon(
+                        _iconFor(tool),
+                        color: Colors.white,
+                        size: iconSize,
+                      ),
                     ),
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                              color: palette.accent.withValues(alpha: 0.4),
-                              blurRadius: 12,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Icon(
-                    _iconFor(tool),
-                    color: Colors.white,
-                    size: iconSize,
                   ),
                 ),
               ),
-            ),
+              if (!isCompact) ...[
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: isActive ? 1.0 : 0.7),
+                    fontSize: labelSize,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    shadows: const [
+                      Shadow(blurRadius: 6, color: Colors.black54),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 5),
-          Text(
-            _labelFor(tool),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: isActive ? 1.0 : 0.7),
-              fontSize: labelSize,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              shadows: const [Shadow(blurRadius: 6, color: Colors.black54)],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1508,6 +1630,8 @@ class _ActiveToolOverlay extends StatelessWidget {
     required this.onMusicVolumeChanged,
     required this.onMusicPreviewToggled,
     required this.previewingTrackId,
+    required this.cachedAudioTrackIds,
+    required this.downloadingAudioTrackIds,
     required this.onTextChanged,
     required this.onTextRemoved,
     this.isTablet = false,
@@ -1523,11 +1647,14 @@ class _ActiveToolOverlay extends StatelessWidget {
   final Future<void> Function() onOpenSelfieStickerCapture;
   final List<EditorStickerAsset> userStickers;
   final Future<void> Function(EditorStickerAsset sticker) onDeleteUserSticker;
-  final void Function(String trackId, String assetPath) onMusicSelected;
+  final Future<void> Function(EditorMusicTrackAsset track) onMusicSelected;
   final VoidCallback onMusicRemoved;
   final ValueChanged<double> onMusicVolumeChanged;
-  final void Function(String trackId, String assetPath) onMusicPreviewToggled;
+  final Future<void> Function(EditorMusicTrackAsset track)
+  onMusicPreviewToggled;
   final String? previewingTrackId;
+  final Set<String> cachedAudioTrackIds;
+  final Set<String> downloadingAudioTrackIds;
   final void Function({
     required String text,
     required String fontFamily,
@@ -1546,7 +1673,13 @@ class _ActiveToolOverlay extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
-          constraints: BoxConstraints(maxHeight: isTablet ? 260 : 210),
+          constraints: BoxConstraints(
+            maxHeight:
+                activeTool == EditorTool.overlays ||
+                    activeTool == EditorTool.audio
+                ? (isTablet ? 360 : 310)
+                : (isTablet ? 260 : 210),
+          ),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(20),
@@ -1590,6 +1723,8 @@ class _ActiveToolOverlay extends StatelessWidget {
         onMusicVolumeChanged: onMusicVolumeChanged,
         onMusicPreviewToggled: onMusicPreviewToggled,
         previewingTrackId: previewingTrackId,
+        cachedTrackIds: cachedAudioTrackIds,
+        downloadingTrackIds: downloadingAudioTrackIds,
       ),
       EditorTool.text => _CompactTextTool(
         key: const ValueKey('text'),
@@ -1792,7 +1927,7 @@ class _CompactSlider extends StatelessWidget {
 
 // ── Compact Overlay (Stickers) Tool ─────────────────────────────────────
 
-class _CompactOverlayTool extends StatelessWidget {
+class _CompactOverlayTool extends StatefulWidget {
   const _CompactOverlayTool({
     super.key,
     required this.palette,
@@ -1813,103 +1948,140 @@ class _CompactOverlayTool extends StatelessWidget {
   final Future<void> Function(EditorStickerAsset sticker) onDeleteUserSticker;
 
   @override
+  State<_CompactOverlayTool> createState() => _CompactOverlayToolState();
+}
+
+class _CompactOverlayToolState extends State<_CompactOverlayTool> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+  String _categoryId = _StickerCategory.all.id;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final hasSticker = session.overlays.any(
+    final hasSticker = widget.session.overlays.any(
       (overlay) => overlay.type == EditorOverlayType.sticker,
     );
-    final allStickers = [
-      ...userStickers,
-      ...EditorResourceCatalog.builtInStickerAssets,
+    final stickerItems = [
+      for (final sticker in widget.userStickers)
+        _StickerPickerItem(sticker: sticker, isUserSticker: true),
+      for (final sticker in EditorResourceCatalog.builtInStickerAssets)
+        _StickerPickerItem(sticker: sticker, isUserSticker: false),
+    ];
+    final categories = _StickerCategory.visibleFor(
+      hasUserStickers: widget.userStickers.isNotEmpty,
+    );
+    final selectedCategory = categories.firstWhere(
+      (category) => category.id == _categoryId,
+      orElse: () => _StickerCategory.all,
+    );
+    final normalizedQuery = _query.trim().toLowerCase();
+    final filteredStickers = stickerItems
+        .where((item) {
+          if (!selectedCategory.matches(item)) return false;
+          if (normalizedQuery.isEmpty) return true;
+          final label = item.sticker.label.toLowerCase();
+          final id = item.sticker.id.toLowerCase().replaceAll('_', ' ');
+          return label.contains(normalizedQuery) ||
+              id.contains(normalizedQuery);
+        })
+        .toList(growable: false);
+    final visibleItems = [
+      _StickerPickerEntry.selfie,
+      for (final item in filteredStickers) _StickerPickerEntry.sticker(item),
     ];
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (hasSticker)
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: onStickerRemoved,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Remove',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 6),
+          _StickerToolHeader(
+            hasSticker: hasSticker,
+            onStickerRemoved: widget.onStickerRemoved,
+            controller: _searchController,
+            onQueryChanged: (value) => setState(() => _query = value),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
-            height: 56,
+            height: 34,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: 1 + allStickers.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemCount: categories.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
-                if (index == 0) {
-                  return GestureDetector(
-                    onTap: onOpenSelfieStickerCapture,
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: palette.accent.withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.photo_camera_front_rounded,
-                        color: palette.accentSecondary,
-                        size: 26,
-                      ),
-                    ),
-                  );
-                }
-                final stickerIndex = index - 1;
-                final sticker = allStickers[stickerIndex];
-                final isUserSticker = stickerIndex < userStickers.length;
-                final isBundled = sticker.assetPath.startsWith('assets/');
-
-                return GestureDetector(
-                  onTap: () => onStickerSelected(sticker.id, sticker.assetPath),
-                  onLongPress: isUserSticker
-                      ? () => onDeleteUserSticker(sticker)
-                      : null,
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.all(6),
-                    child: isBundled
-                        ? Image.asset(sticker.assetPath, fit: BoxFit.contain)
-                        : Image.file(
-                            File(sticker.assetPath),
-                            fit: BoxFit.contain,
-                          ),
-                  ),
+                final category = categories[index];
+                final isSelected = category.id == selectedCategory.id;
+                return _StickerCategoryChip(
+                  palette: widget.palette,
+                  label: category.label,
+                  isSelected: isSelected,
+                  onTap: () => setState(() => _categoryId = category.id),
                 );
               },
             ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: visibleItems.length == 1
+                ? _StickerEmptyState(query: _query)
+                : GridView.builder(
+                    padding: EdgeInsets.zero,
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 64,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                        ),
+                    itemCount: visibleItems.length,
+                    itemBuilder: (context, index) {
+                      final entry = visibleItems[index];
+                      if (entry.isSelfie) {
+                        return _StickerTile(
+                          palette: widget.palette,
+                          onTap: widget.onOpenSelfieStickerCapture,
+                          child: Icon(
+                            Icons.photo_camera_front_rounded,
+                            color: widget.palette.accentSecondary,
+                            size: 26,
+                          ),
+                        );
+                      }
+
+                      final item = entry.item!;
+                      final sticker = item.sticker;
+                      final isBundled = sticker.assetPath.startsWith('assets/');
+                      return _StickerTile(
+                        palette: widget.palette,
+                        onTap: () => widget.onStickerSelected(
+                          sticker.id,
+                          sticker.assetPath,
+                        ),
+                        onLongPress: item.isUserSticker
+                            ? () => widget.onDeleteUserSticker(sticker)
+                            : null,
+                        child: isBundled
+                            ? Image.asset(
+                                sticker.assetPath,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) =>
+                                    const _StickerLoadErrorIcon(),
+                              )
+                            : Image.file(
+                                File(sticker.assetPath),
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) =>
+                                    const _StickerLoadErrorIcon(),
+                              ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -1917,9 +2089,498 @@ class _CompactOverlayTool extends StatelessWidget {
   }
 }
 
+class _StickerToolHeader extends StatelessWidget {
+  const _StickerToolHeader({
+    required this.hasSticker,
+    required this.onStickerRemoved,
+    required this.controller,
+    required this.onQueryChanged,
+  });
+
+  final bool hasSticker;
+  final VoidCallback onStickerRemoved;
+  final TextEditingController controller;
+  final ValueChanged<String> onQueryChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 38,
+            child: TextField(
+              controller: controller,
+              onChanged: onQueryChanged,
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search stickers',
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: Colors.white.withValues(alpha: 0.55),
+                  size: 20,
+                ),
+                suffixIcon: controller.text.isEmpty
+                    ? null
+                    : IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: Colors.white.withValues(alpha: 0.65),
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          controller.clear();
+                          onQueryChanged('');
+                        },
+                      ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.08),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.24),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (hasSticker) ...[
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onStickerRemoved,
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Remove',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _StickerCategoryChip extends StatelessWidget {
+  const _StickerCategoryChip({
+    required this.palette,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final KidPalette palette;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? palette.accent.withValues(alpha: 0.28)
+              : Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? palette.accentSecondary.withValues(alpha: 0.55)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.7),
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StickerTile extends StatelessWidget {
+  const _StickerTile({
+    required this.palette,
+    required this.onTap,
+    required this.child,
+    this.onLongPress,
+  });
+
+  final KidPalette palette;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        padding: const EdgeInsets.all(6),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _StickerLoadErrorIcon extends StatelessWidget {
+  const _StickerLoadErrorIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.image_not_supported_outlined,
+      color: Colors.white.withValues(alpha: 0.45),
+      size: 24,
+    );
+  }
+}
+
+class _StickerEmptyState extends StatelessWidget {
+  const _StickerEmptyState({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        query.trim().isEmpty ? 'No stickers here yet' : 'No matching stickers',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.55),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _StickerPickerItem {
+  const _StickerPickerItem({
+    required this.sticker,
+    required this.isUserSticker,
+  });
+
+  final EditorStickerAsset sticker;
+  final bool isUserSticker;
+}
+
+class _StickerPickerEntry {
+  const _StickerPickerEntry._({required this.isSelfie, this.item});
+
+  const _StickerPickerEntry.sticker(_StickerPickerItem item)
+    : this._(isSelfie: false, item: item);
+
+  static const selfie = _StickerPickerEntry._(isSelfie: true);
+
+  final bool isSelfie;
+  final _StickerPickerItem? item;
+}
+
+class _StickerCategory {
+  const _StickerCategory({
+    required this.id,
+    required this.label,
+    required this.matches,
+  });
+
+  final String id;
+  final String label;
+  final bool Function(_StickerPickerItem item) matches;
+
+  static const all = _StickerCategory(
+    id: 'all',
+    label: 'All',
+    matches: _matchAll,
+  );
+
+  static const _user = _StickerCategory(
+    id: 'yours',
+    label: 'Yours',
+    matches: _matchUser,
+  );
+
+  static const _originals = _StickerCategory(
+    id: 'originals',
+    label: 'Originals',
+    matches: _matchOriginal,
+  );
+
+  static const _faces = _StickerCategory(
+    id: 'faces',
+    label: 'Faces',
+    matches: _matchFaces,
+  );
+
+  static const _hearts = _StickerCategory(
+    id: 'hearts',
+    label: 'Hearts',
+    matches: _matchHearts,
+  );
+
+  static const _party = _StickerCategory(
+    id: 'party',
+    label: 'Party',
+    matches: _matchParty,
+  );
+
+  static const _animals = _StickerCategory(
+    id: 'animals',
+    label: 'Animals',
+    matches: _matchAnimals,
+  );
+
+  static const _food = _StickerCategory(
+    id: 'food',
+    label: 'Food',
+    matches: _matchFood,
+  );
+
+  static const _sports = _StickerCategory(
+    id: 'sports',
+    label: 'Sports',
+    matches: _matchSports,
+  );
+
+  static const _objects = _StickerCategory(
+    id: 'objects',
+    label: 'Objects',
+    matches: _matchObjects,
+  );
+
+  static const _travel = _StickerCategory(
+    id: 'travel',
+    label: 'Travel',
+    matches: _matchTravel,
+  );
+
+  static List<_StickerCategory> visibleFor({required bool hasUserStickers}) {
+    return [
+      all,
+      if (hasUserStickers) _user,
+      _originals,
+      _faces,
+      _hearts,
+      _party,
+      _animals,
+      _food,
+      _sports,
+      _objects,
+      _travel,
+    ];
+  }
+}
+
+bool _matchAll(_StickerPickerItem item) => true;
+
+bool _matchUser(_StickerPickerItem item) => item.isUserSticker;
+
+bool _matchOriginal(_StickerPickerItem item) {
+  return !item.isUserSticker && !item.sticker.id.startsWith('fluent_emoji_');
+}
+
+bool _matchFaces(_StickerPickerItem item) {
+  final label = item.sticker.label.toLowerCase();
+  return label.contains('face') ||
+      label.contains('alien') ||
+      label.contains('clown') ||
+      label.contains('ghost') ||
+      label.contains('robot');
+}
+
+bool _matchHearts(_StickerPickerItem item) {
+  final label = item.sticker.label.toLowerCase();
+  return label.contains('heart');
+}
+
+bool _matchParty(_StickerPickerItem item) {
+  return _labelMatchesAny(item, const {
+    'party',
+    'confetti',
+    'balloon',
+    'gift',
+    'birthday',
+    'sparkle',
+    'star',
+    'rainbow',
+    'fire',
+    'hundred',
+    'collision',
+    'dizzy',
+    'trophy',
+    'medal',
+  });
+}
+
+bool _matchAnimals(_StickerPickerItem item) {
+  return _labelMatchesAny(item, const {
+    'dog',
+    'cat',
+    'mouse',
+    'hamster',
+    'rabbit',
+    'fox',
+    'bear',
+    'panda',
+    'koala',
+    'tiger',
+    'lion',
+    'cow',
+    'pig',
+    'frog',
+    'monkey',
+    'chicken',
+    'penguin',
+    'bird',
+    'unicorn',
+    'butterfly',
+    'beetle',
+    'turtle',
+    'octopus',
+    'dolphin',
+    'whale',
+    'fish',
+    'shark',
+    'snail',
+  });
+}
+
+bool _matchFood(_StickerPickerItem item) {
+  return _labelMatchesAny(item, const {
+    'pizza',
+    'hamburger',
+    'fries',
+    'hot dog',
+    'taco',
+    'burrito',
+    'popcorn',
+    'doughnut',
+    'cookie',
+    'candy',
+    'lollipop',
+    'ice cream',
+    'cupcake',
+    'watermelon',
+    'strawberry',
+    'banana',
+    'apple',
+    'grapes',
+    'cherries',
+  });
+}
+
+bool _matchSports(_StickerPickerItem item) {
+  return _labelMatchesAny(item, const {
+    'soccer',
+    'basketball',
+    'baseball',
+    'softball',
+    'tennis',
+    'volleyball',
+    'disc',
+    'kite',
+    'yo-yo',
+  });
+}
+
+bool _matchObjects(_StickerPickerItem item) {
+  return _labelMatchesAny(item, const {
+    'game',
+    'joystick',
+    'palette',
+    'music',
+    'microphone',
+    'headphone',
+    'guitar',
+    'drum',
+    'trumpet',
+    'violin',
+    'camera',
+    'movie',
+    'clapper',
+    'television',
+    'laptop',
+    'bulb',
+    'magnet',
+    'gem',
+    'crown',
+    'ring',
+    'sunglasses',
+    'wand',
+  });
+}
+
+bool _matchTravel(_StickerPickerItem item) {
+  return _labelMatchesAny(item, const {
+    'rocket',
+    'saucer',
+    'airplane',
+    'bicycle',
+    'skate',
+  });
+}
+
+bool _labelMatchesAny(_StickerPickerItem item, Set<String> terms) {
+  final label = item.sticker.label.toLowerCase();
+  return terms.any(label.contains);
+}
+
 // ── Compact Audio Tool ──────────────────────────────────────────────────
 
-class _CompactAudioTool extends StatelessWidget {
+class _CompactAudioTool extends StatefulWidget {
   const _CompactAudioTool({
     super.key,
     required this.palette,
@@ -1929,160 +2590,539 @@ class _CompactAudioTool extends StatelessWidget {
     required this.onMusicVolumeChanged,
     required this.onMusicPreviewToggled,
     required this.previewingTrackId,
+    required this.cachedTrackIds,
+    required this.downloadingTrackIds,
   });
 
   final KidPalette palette;
   final EditorSession session;
-  final void Function(String trackId, String assetPath) onMusicSelected;
+  final Future<void> Function(EditorMusicTrackAsset track) onMusicSelected;
   final VoidCallback onMusicRemoved;
   final ValueChanged<double> onMusicVolumeChanged;
-  final void Function(String trackId, String assetPath) onMusicPreviewToggled;
+  final Future<void> Function(EditorMusicTrackAsset track)
+  onMusicPreviewToggled;
   final String? previewingTrackId;
+  final Set<String> cachedTrackIds;
+  final Set<String> downloadingTrackIds;
+
+  @override
+  State<_CompactAudioTool> createState() => _CompactAudioToolState();
+}
+
+class _CompactAudioToolState extends State<_CompactAudioTool> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+  String _categoryId = _AudioCategory.all.id;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final selection = session.audioSelection;
+    final selection = widget.session.audioSelection;
+    final categories = _AudioCategory.visibleFor(
+      tracks: EditorResourceCatalog.builtInMusicTracks,
+      cachedTrackIds: widget.cachedTrackIds,
+    );
+    final selectedCategory = categories.firstWhere(
+      (category) => category.id == _categoryId,
+      orElse: () => _AudioCategory.all,
+    );
+    final normalizedQuery = _query.trim().toLowerCase();
+    final tracks = EditorResourceCatalog.builtInMusicTracks
+        .where((track) {
+          if (!selectedCategory.matches(track, widget.cachedTrackIds)) {
+            return false;
+          }
+          if (normalizedQuery.isEmpty) {
+            return true;
+          }
+          final searchable = [
+            track.label,
+            track.creator ?? '',
+            track.id.replaceAll('_', ' '),
+            ...track.categories,
+          ].join(' ').toLowerCase();
+          return searchable.contains(normalizedQuery);
+        })
+        .toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 42,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: EditorResourceCatalog.builtInMusicTracks.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final track = EditorResourceCatalog.builtInMusicTracks[index];
-                  final isSelected = selection?.trackId == track.id;
-                  final isPreviewing = previewingTrackId == track.id;
-
-                  return GestureDetector(
-                    onTap: () => onMusicSelected(track.id, track.assetPath),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _AudioToolHeader(
+            controller: _searchController,
+            onQueryChanged: (value) => setState(() => _query = value),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 34,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                final isSelected = category.id == selectedCategory.id;
+                return _StickerCategoryChip(
+                  palette: widget.palette,
+                  label: category.label,
+                  isSelected: isSelected,
+                  onTap: () => setState(() => _categoryId = category.id),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: tracks.isEmpty
+                ? _AudioEmptyState(query: _query)
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: tracks.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final track = tracks[index];
+                      return _AudioTrackRow(
+                        palette: widget.palette,
+                        track: track,
+                        isSelected: selection?.trackId == track.id,
+                        isPreviewing: widget.previewingTrackId == track.id,
+                        isCached: widget.cachedTrackIds.contains(track.id),
+                        isDownloading: widget.downloadingTrackIds.contains(
+                          track.id,
+                        ),
+                        onSelected: () =>
+                            unawaited(widget.onMusicSelected(track)),
+                        onPreview: () =>
+                            unawaited(widget.onMusicPreviewToggled(track)),
+                      );
+                    },
+                  ),
+          ),
+          if (selection != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(
+                  Icons.volume_up_rounded,
+                  color: Colors.white54,
+                  size: 18,
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderThemeData(
+                      trackHeight: 2,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 6,
                       ),
-                      decoration: BoxDecoration(
-                        gradient: isSelected
-                            ? LinearGradient(
-                                colors: [
-                                  palette.accent,
-                                  palette.accentSecondary,
-                                ],
-                              )
-                            : null,
-                        color: isSelected
-                            ? null
-                            : Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GestureDetector(
-                            onTap: () => onMusicPreviewToggled(
-                              track.id,
-                              track.assetPath,
-                            ),
-                            child: Icon(
-                              isPreviewing
-                                  ? Icons.stop_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            track.label,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (isSelected) ...[
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ],
-                        ],
+                      activeTrackColor: widget.palette.accentSecondary,
+                      inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
+                      thumbColor: Colors.white,
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 12,
                       ),
                     ),
-                  );
-                },
-              ),
+                    child: Slider(
+                      value: selection.volume,
+                      onChanged: widget.onMusicVolumeChanged,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: widget.onMusicRemoved,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Remove',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            if (selection != null) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.volume_up_rounded,
-                    color: Colors.white54,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AudioToolHeader extends StatelessWidget {
+  const _AudioToolHeader({
+    required this.controller,
+    required this.onQueryChanged,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onQueryChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      child: TextField(
+        controller: controller,
+        onChanged: onQueryChanged,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Search music',
+          hintStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.45),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: Colors.white.withValues(alpha: 0.55),
+            size: 20,
+          ),
+          suffixIcon: controller.text.isEmpty
+              ? null
+              : IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: Colors.white.withValues(alpha: 0.65),
                     size: 18,
                   ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderThemeData(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 6,
+                  onPressed: () {
+                    controller.clear();
+                    onQueryChanged('');
+                  },
+                ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.08),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AudioTrackRow extends StatelessWidget {
+  const _AudioTrackRow({
+    required this.palette,
+    required this.track,
+    required this.isSelected,
+    required this.isPreviewing,
+    required this.isCached,
+    required this.isDownloading,
+    required this.onSelected,
+    required this.onPreview,
+  });
+
+  final KidPalette palette;
+  final EditorMusicTrackAsset track;
+  final bool isSelected;
+  final bool isPreviewing;
+  final bool isCached;
+  final bool isDownloading;
+  final VoidCallback onSelected;
+  final VoidCallback onPreview;
+
+  @override
+  Widget build(BuildContext context) {
+    final creator = track.creator;
+    final status = track.isBlossomBacked && !isCached
+        ? 'Download'
+        : (track.license ?? 'Ready');
+
+    return GestureDetector(
+      onTap: isDownloading ? null : onSelected,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [palette.accent, palette.accentSecondary],
+                )
+              : null,
+          color: isSelected ? null : Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? Colors.white.withValues(alpha: 0.24)
+                : Colors.white.withValues(alpha: 0.07),
+          ),
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: isDownloading ? null : onPreview,
+              child: Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(
+                    alpha: isSelected ? 0.16 : 0.2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: isDownloading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
-                        activeTrackColor: palette.accentSecondary,
-                        inactiveTrackColor: Colors.white.withValues(
-                          alpha: 0.15,
-                        ),
-                        thumbColor: Colors.white,
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 12,
-                        ),
+                      )
+                    : Icon(
+                        isPreviewing
+                            ? Icons.stop_rounded
+                            : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 20,
                       ),
-                      child: Slider(
-                        value: selection.volume,
-                        onChanged: onMusicVolumeChanged,
-                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    track.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: onMusicRemoved,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Remove',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  if (creator != null && creator.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      creator,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.68),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              constraints: const BoxConstraints(maxWidth: 86),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: isSelected ? 0.16 : 0.18),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isDownloading ? 'Loading' : status,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.78),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.check_rounded, color: Colors.white, size: 16),
             ],
           ],
         ),
       ),
     );
   }
+}
+
+class _AudioEmptyState extends StatelessWidget {
+  const _AudioEmptyState({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        query.trim().isEmpty ? 'No music here yet' : 'No matching music',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.55),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _AudioCategory {
+  const _AudioCategory({
+    required this.id,
+    required this.label,
+    required this.matches,
+  });
+
+  final String id;
+  final String label;
+  final bool Function(EditorMusicTrackAsset track, Set<String> cachedTrackIds)
+  matches;
+
+  static const all = _AudioCategory(
+    id: 'all',
+    label: 'All',
+    matches: _matchAllAudio,
+  );
+
+  static const downloaded = _AudioCategory(
+    id: 'downloaded',
+    label: 'Ready',
+    matches: _matchDownloadedAudio,
+  );
+
+  static const happy = _AudioCategory(
+    id: 'happy',
+    label: 'Happy',
+    matches: _matchHappyAudio,
+  );
+
+  static const energy = _AudioCategory(
+    id: 'energy',
+    label: 'Energy',
+    matches: _matchEnergyAudio,
+  );
+
+  static const chill = _AudioCategory(
+    id: 'chill',
+    label: 'Chill',
+    matches: _matchChillAudio,
+  );
+
+  static const chiptune = _AudioCategory(
+    id: 'chiptune',
+    label: 'Chiptune',
+    matches: _matchChiptuneAudio,
+  );
+
+  static const dramatic = _AudioCategory(
+    id: 'dramatic',
+    label: 'Dramatic',
+    matches: _matchDramaticAudio,
+  );
+
+  static const loops = _AudioCategory(
+    id: 'loops',
+    label: 'Loops',
+    matches: _matchLoopsAudio,
+  );
+
+  static List<_AudioCategory> visibleFor({
+    required List<EditorMusicTrackAsset> tracks,
+    required Set<String> cachedTrackIds,
+  }) {
+    final base = <_AudioCategory>[
+      all,
+      downloaded,
+      happy,
+      energy,
+      chill,
+      chiptune,
+      dramatic,
+      loops,
+    ];
+    return base
+        .where(
+          (category) =>
+              category == all ||
+              tracks.any((track) => category.matches(track, cachedTrackIds)),
+        )
+        .toList(growable: false);
+  }
+}
+
+bool _matchAllAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
+  return true;
+}
+
+bool _matchDownloadedAudio(
+  EditorMusicTrackAsset track,
+  Set<String> cachedTrackIds,
+) {
+  return cachedTrackIds.contains(track.id);
+}
+
+bool _matchHappyAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
+  return track.categories.contains('happy');
+}
+
+bool _matchEnergyAudio(
+  EditorMusicTrackAsset track,
+  Set<String> cachedTrackIds,
+) {
+  return track.categories.contains('energy');
+}
+
+bool _matchChillAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
+  return track.categories.contains('chill');
+}
+
+bool _matchChiptuneAudio(
+  EditorMusicTrackAsset track,
+  Set<String> cachedTrackIds,
+) {
+  return track.categories.contains('chiptune');
+}
+
+bool _matchDramaticAudio(
+  EditorMusicTrackAsset track,
+  Set<String> cachedTrackIds,
+) {
+  return track.categories.contains('dramatic');
+}
+
+bool _matchLoopsAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
+  return track.categories.contains('loops');
 }
 
 // ── Compact Text Tool ───────────────────────────────────────────────────

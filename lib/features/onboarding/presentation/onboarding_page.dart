@@ -572,7 +572,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(activeThemeProvider);
-    final palette = theme.palette;
+    final palette = ref.watch(activePaletteProvider);
     final profiles = ref.watch(profilesProvider).valueOrNull ?? const [];
     final identity =
         ref.watch(parentIdentityProvider).valueOrNull ?? widget.identity;
