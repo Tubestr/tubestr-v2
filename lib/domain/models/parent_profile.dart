@@ -6,18 +6,21 @@ class ParentProfile {
     required this.displayName,
     this.about,
     this.updatedAt,
+    this.cachedAt,
   });
 
   final String publicKeyHex;
   final String displayName;
   final String? about;
   final DateTime? updatedAt;
+  final DateTime? cachedAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'public_key_hex': publicKeyHex,
     'display_name': displayName,
     'about': about,
     'updated_at': updatedAt?.toUtc().toIso8601String(),
+    'cached_at': cachedAt?.toUtc().toIso8601String(),
   };
 
   String encode() => jsonEncode(toJson());
@@ -28,6 +31,7 @@ class ParentProfile {
       displayName: json['display_name']?.toString() ?? '',
       about: json['about']?.toString(),
       updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? ''),
+      cachedAt: DateTime.tryParse(json['cached_at']?.toString() ?? ''),
     );
   }
 

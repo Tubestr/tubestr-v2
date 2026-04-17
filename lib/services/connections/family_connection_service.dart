@@ -9,6 +9,7 @@ import '../../domain/marmot/invite_transport_models.dart';
 import '../../domain/models/parent_identity.dart';
 import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
+import '../nostr/outbox_relay_resolver.dart';
 
 class FamilyInviteResult {
   const FamilyInviteResult({
@@ -54,15 +55,18 @@ class FamilyConnectionService {
     required NostrService nostrService,
     AppDatabase? database,
     Future<String?> Function()? loadLocalDisplayName,
+    OutboxRelayResolver? outboxRelayResolver,
   }) : _mdkService = mdkService,
        _nostrService = nostrService,
        _database = database,
-       _loadLocalDisplayName = loadLocalDisplayName;
+       _loadLocalDisplayName = loadLocalDisplayName,
+       _outboxRelayResolver = outboxRelayResolver;
 
   final MdkService _mdkService;
   final NostrService _nostrService;
   final AppDatabase? _database;
   final Future<String?> Function()? _loadLocalDisplayName;
+  final OutboxRelayResolver? _outboxRelayResolver;
 
   Future<FamilyInviteResult> createInvite({
     required ParentIdentity identity,
@@ -116,10 +120,13 @@ class FamilyConnectionService {
 
     final pendingGroup = await _loadPendingConnectionGroup(packet.publicKeyHex);
     if (pendingGroup != null) {
-      throw FamilyConnectionAlreadyPendingException(
-        memberPubkeyHex: packet.publicKeyHex,
-        group: pendingGroup,
-      );
+      if (await _mdkHasGroup(pendingGroup.mlsGroupIdHex)) {
+        throw FamilyConnectionAlreadyPendingException(
+          memberPubkeyHex: packet.publicKeyHex,
+          group: pendingGroup,
+        );
+      }
+      await _clearPendingConnectionGroup(packet.publicKeyHex);
     }
 
     final relays = _usableRelays(await _nostrService.loadRelayList());
@@ -160,13 +167,16 @@ class FamilyConnectionService {
       memberKeyPackageEventJsons: keyPackageEventsJson,
     );
 
+    final welcomeRelays =
+        await _outboxRelayResolver?.unionForWrite(packet.publicKeyHex) ??
+        relays;
     var publishedWelcomeCount = 0;
     for (final rumorJson in result.welcomeRumorJsons) {
       await _nostrService.publishGiftWrappedRumor(
         identity: identity,
         rumorEventJson: rumorJson,
         recipientPublicKeyHex: packet.publicKeyHex,
-        relays: relays,
+        relays: welcomeRelays,
       );
       publishedWelcomeCount += 1;
     }
@@ -232,13 +242,41 @@ class FamilyConnectionService {
     return '$_pendingConnectionSettingPrefix${memberPubkeyHex.toLowerCase()}';
   }
 
+  Future<void> _clearPendingConnectionGroup(String memberPubkeyHex) async {
+    await _database?.deleteSetting(
+      _pendingConnectionSettingKey(memberPubkeyHex),
+    );
+  }
+
+  /// Drops any stored "pending connection" markers for [memberPubkeysHex].
+  /// Call this when the local group those markers describe is being torn down
+  /// (e.g. after self-leaving a family space) so future reconnect attempts
+  /// aren't blocked by stale state.
+  Future<void> clearPendingConnectionsFor(
+    Iterable<String> memberPubkeysHex,
+  ) async {
+    for (final pubkey in memberPubkeysHex) {
+      await _clearPendingConnectionGroup(pubkey);
+    }
+  }
+
+  Future<bool> _mdkHasGroup(String mlsGroupIdHex) async {
+    if (mlsGroupIdHex.isEmpty) {
+      return false;
+    }
+    final groups = await _mdkService.getGroupSummaries();
+    return groups.any((group) => group.mlsGroupIdHex == mlsGroupIdHex);
+  }
+
   Future<String?> _resolveInviterDisplayName({
     required String publicKeyHex,
     required List<String> relays,
   }) async {
+    final outboxRelays =
+        await _outboxRelayResolver?.unionForRead(publicKeyHex) ?? relays;
     final events = await _nostrService.queryEvents(
       filter: Filter(authors: [publicKeyHex], kinds: const [0], limit: 1),
-      relays: relays,
+      relays: outboxRelays,
       timeout: const Duration(seconds: 2),
     );
     if (events.isEmpty) {
@@ -530,8 +568,10 @@ class FamilyConnectionService {
     required String publicKeyHex,
     required List<String> relays,
   }) async {
+    final outboxRelays =
+        await _outboxRelayResolver?.unionForRead(publicKeyHex) ?? relays;
     final events = await _nostrService.queryEvents(
-      relays: relays,
+      relays: outboxRelays,
       timeout: _keyPackageResolveTimeout,
       filter: Filter(
         authors: [publicKeyHex],

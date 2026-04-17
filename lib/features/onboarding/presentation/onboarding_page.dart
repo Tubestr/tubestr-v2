@@ -204,6 +204,21 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     ref.invalidate(offlineActionsProvider);
   }
 
+  Future<void> _hydrateUserLists(ParentIdentity identity) async {
+    try {
+      await ref
+          .read(userListSyncServiceProvider)
+          .hydrateFromRelays(identity: identity);
+    } catch (_) {
+      // Hydrate is best-effort; failures do not block onboarding.
+    }
+    if (!mounted) {
+      return;
+    }
+    ref.invalidate(relayListProvider);
+    ref.invalidate(blossomServerListProvider);
+  }
+
   Future<void> _createIdentity() async {
     final messenger = ScaffoldMessenger.of(context);
     final eligibilityMessage = _parentEligibilityMessage();
@@ -229,6 +244,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           // Non-blocking by product decision; queued retry handles offline cases.
         }
       }
+      unawaited(_hydrateUserLists(identity));
       _refreshParentState();
       if (!mounted) {
         return;
@@ -258,9 +274,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       );
     });
     try {
-      await ref
+      final identity = await ref
           .read(identityServiceProvider)
           .importParentIdentity(_restoreKeyController.text);
+      unawaited(_hydrateUserLists(identity));
       _refreshParentState();
       if (!mounted) {
         return;

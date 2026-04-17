@@ -66,7 +66,7 @@ class MdkBridgeApi
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 452026429;
+  int get rustContentHash => -666152521;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -143,6 +143,8 @@ abstract class MdkBridgeApiApi extends BaseApi {
 
   Future<String> crateApiInitMdkUnencrypted({required String dataDir});
 
+  Future<GroupUpdateData> crateApiLeaveGroup({required String mlsGroupIdHex});
+
   Future<String> crateApiMdkDbPath();
 
   Future<ProcessedMessageData> crateApiProcessMessageEvent({
@@ -156,6 +158,13 @@ abstract class MdkBridgeApiApi extends BaseApi {
   Future<GroupUpdateData> crateApiRemoveGroupMembers({
     required String mlsGroupIdHex,
     required List<String> memberPubkeysHex,
+  });
+
+  Future<GroupUpdateData> crateApiSelfDemote({required String mlsGroupIdHex});
+
+  Future<GroupUpdateData> crateApiUpdateGroupAdmins({
+    required String mlsGroupIdHex,
+    required List<String> adminPubkeysHex,
   });
 }
 
@@ -701,6 +710,36 @@ class MdkBridgeApiApiImpl extends MdkBridgeApiApiImplPlatform
   );
 
   @override
+  Future<GroupUpdateData> crateApiLeaveGroup({required String mlsGroupIdHex}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(mlsGroupIdHex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_group_update_data,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLeaveGroupConstMeta,
+        argValues: [mlsGroupIdHex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLeaveGroupConstMeta => const TaskConstMeta(
+    debugName: "leave_group",
+    argNames: ["mlsGroupIdHex"],
+  );
+
+  @override
   Future<String> crateApiMdkDbPath() {
     return handler.executeNormal(
       NormalTask(
@@ -709,7 +748,7 @@ class MdkBridgeApiApiImpl extends MdkBridgeApiApiImplPlatform
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 16,
             port: port_,
           );
         },
@@ -739,7 +778,7 @@ class MdkBridgeApiApiImpl extends MdkBridgeApiApiImplPlatform
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 17,
             port: port_,
           );
         },
@@ -772,7 +811,7 @@ class MdkBridgeApiApiImpl extends MdkBridgeApiApiImplPlatform
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 18,
             port: port_,
           );
         },
@@ -807,7 +846,7 @@ class MdkBridgeApiApiImpl extends MdkBridgeApiApiImplPlatform
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 19,
             port: port_,
           );
         },
@@ -825,6 +864,70 @@ class MdkBridgeApiApiImpl extends MdkBridgeApiApiImplPlatform
   TaskConstMeta get kCrateApiRemoveGroupMembersConstMeta => const TaskConstMeta(
     debugName: "remove_group_members",
     argNames: ["mlsGroupIdHex", "memberPubkeysHex"],
+  );
+
+  @override
+  Future<GroupUpdateData> crateApiSelfDemote({required String mlsGroupIdHex}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(mlsGroupIdHex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_group_update_data,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSelfDemoteConstMeta,
+        argValues: [mlsGroupIdHex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSelfDemoteConstMeta => const TaskConstMeta(
+    debugName: "self_demote",
+    argNames: ["mlsGroupIdHex"],
+  );
+
+  @override
+  Future<GroupUpdateData> crateApiUpdateGroupAdmins({
+    required String mlsGroupIdHex,
+    required List<String> adminPubkeysHex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(mlsGroupIdHex, serializer);
+          sse_encode_list_String(adminPubkeysHex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_group_update_data,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiUpdateGroupAdminsConstMeta,
+        argValues: [mlsGroupIdHex, adminPubkeysHex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiUpdateGroupAdminsConstMeta => const TaskConstMeta(
+    debugName: "update_group_admins",
+    argNames: ["mlsGroupIdHex", "adminPubkeysHex"],
   );
 
   @protected

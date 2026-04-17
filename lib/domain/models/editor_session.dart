@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 
 enum EditorTool { trim, effects, overlays, audio, text }
 
-enum EditorTextPosition { top, center, bottom }
-
 enum EditorOverlayType { sticker, text }
 
 @immutable
@@ -58,7 +56,6 @@ class EditorOverlayItem {
     this.fontFamily,
     this.textColorValue,
     this.textSize = 40,
-    this.textPosition = EditorTextPosition.center,
     this.transform = const StickerTransform(),
   });
 
@@ -70,7 +67,6 @@ class EditorOverlayItem {
   final String? fontFamily;
   final int? textColorValue;
   final double textSize;
-  final EditorTextPosition textPosition;
   final StickerTransform transform;
 
   EditorOverlayItem copyWith({
@@ -82,7 +78,6 @@ class EditorOverlayItem {
     String? fontFamily,
     int? textColorValue,
     double? textSize,
-    EditorTextPosition? textPosition,
     StickerTransform? transform,
   }) {
     return EditorOverlayItem(
@@ -94,7 +89,6 @@ class EditorOverlayItem {
       fontFamily: fontFamily ?? this.fontFamily,
       textColorValue: textColorValue ?? this.textColorValue,
       textSize: textSize ?? this.textSize,
-      textPosition: textPosition ?? this.textPosition,
       transform: transform ?? this.transform,
     );
   }

@@ -1518,30 +1518,29 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     try {
       final dispatchResult = await ref
           .read(videoShareCoordinatorProvider)
-          .shareLocalVideoToEligibleGroups(
+          .queueShareToEligibleGroups(
             identity: identity,
             videoId: localVideo.id,
             profileId: localVideo.profileId,
             childDisplayName: childDisplayName,
           );
+      unawaited(
+        ref.read(offlineActionProcessorProvider).flush().catchError((_) => 0),
+      );
       ref.invalidate(offlineActionsProvider);
       ref.invalidate(shareHistoryProvider);
       if (!mounted) {
         return;
       }
       await HapticFeedback.mediumImpact();
-      final message = switch ((
-        dispatchResult.sharedGroupCount,
-        dispatchResult.queuedGroupCount,
-      )) {
-        (0, final queued) when queued > 0 =>
-          'Queued "${localVideo.title}" for $queued family space${queued == 1 ? '' : 's'}',
-        (final shared, 0) when shared > 0 =>
-          'Shared "${localVideo.title}" with $shared family space${shared == 1 ? '' : 's'}',
-        (final shared, final queued) =>
-          'Shared to $shared family space${shared == 1 ? '' : 's'}, queued $queued more',
-      };
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+      final count = dispatchResult.queuedGroupCount;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sharing "${localVideo.title}" to $count family space${count == 1 ? '' : 's'}…',
+          ),
+        ),
+      );
     } catch (error) {
       ref.invalidate(offlineActionsProvider);
       ref.invalidate(shareHistoryProvider);

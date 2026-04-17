@@ -591,7 +591,7 @@ Future<String?> _stageOverlayImage({
                   ? const ui.Color(0xFFFFFFFF)
                   : ui.Color(overlay.textColorValue!),
               fontFamily: overlay.fontFamily,
-              fontSize: overlay.textSize * fontScale,
+              fontSize: overlay.textSize * fontScale * overlay.transform.scale,
               fontWeight: FontWeight.w800,
               shadows: const [
                 Shadow(
@@ -607,13 +607,18 @@ Future<String?> _stageOverlayImage({
           maxLines: 3,
         )..layout(maxWidth: width * 0.82);
 
-        final textX = (width - textPainter.width) / 2;
-        final textY = switch (overlay.textPosition) {
-          EditorTextPosition.top => height * 0.12,
-          EditorTextPosition.center => (height - textPainter.height) / 2,
-          EditorTextPosition.bottom => height * 0.78 - textPainter.height,
-        };
-        textPainter.paint(canvas, Offset(textX, textY));
+        final center = Offset(
+          overlay.transform.position.dx * width,
+          overlay.transform.position.dy * height,
+        );
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+        canvas.rotate(overlay.transform.rotationDegrees * math.pi / 180);
+        textPainter.paint(
+          canvas,
+          Offset(-textPainter.width / 2, -textPainter.height / 2),
+        );
+        canvas.restore();
     }
   }
 

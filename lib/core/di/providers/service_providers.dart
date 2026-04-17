@@ -19,10 +19,12 @@ import '../../../services/engagement/playback_metrics_coordinator.dart';
 import '../../../services/engagement/reaction_coordinator.dart';
 import '../../../services/identity/identity_service.dart';
 import '../../../services/identity/parent_profile_service.dart';
+import '../../../services/identity/user_list_sync_service.dart';
 import '../../../services/mdk/mdk_service.dart';
 import '../../../services/media/remote_media_service.dart';
 import '../../../services/media/local_media_library_service.dart';
 import '../../../services/nostr/nostr_service.dart';
+import '../../../services/nostr/outbox_relay_resolver.dart';
 import '../../../services/offline/offline_action_processor.dart';
 import '../../../services/offline/offline_action_store.dart';
 import '../../../services/safety/moderation_coordinator.dart';
@@ -106,11 +108,23 @@ final nostrServiceProvider = Provider<NostrService>((ref) {
   return NdkNostrService(ref.watch(appDatabaseProvider));
 });
 
+final outboxRelayResolverProvider = Provider<OutboxRelayResolver>((ref) {
+  return OutboxRelayResolver(nostrService: ref.watch(nostrServiceProvider));
+});
+
 final mdkServiceProvider = Provider((ref) => MdkService());
 
 final parentProfileServiceProvider = Provider((ref) {
   return ParentProfileService(
     database: ref.watch(appDatabaseProvider),
+    nostrService: ref.watch(nostrServiceProvider),
+    offlineActionStore: ref.watch(offlineActionStoreProvider),
+    outboxRelayResolver: ref.watch(outboxRelayResolverProvider),
+  );
+});
+
+final userListSyncServiceProvider = Provider<UserListSyncService>((ref) {
+  return UserListSyncService(
     nostrService: ref.watch(nostrServiceProvider),
     offlineActionStore: ref.watch(offlineActionStoreProvider),
   );
@@ -136,6 +150,7 @@ final familyConnectionServiceProvider = Provider((ref) {
     loadLocalDisplayName: ref
         .watch(parentProfileServiceProvider)
         .loadLocalDisplayName,
+    outboxRelayResolver: ref.watch(outboxRelayResolverProvider),
   );
 });
 
@@ -263,6 +278,9 @@ final moderationCoordinatorProvider = Provider((ref) {
     mdkService: ref.watch(mdkServiceProvider),
     nostrService: ref.watch(nostrServiceProvider),
     videoLifecycleCoordinator: ref.watch(videoLifecycleCoordinatorProvider),
+    familyConnectionService: ref.watch(familyConnectionServiceProvider),
+    userListSyncService: ref.watch(userListSyncServiceProvider),
+    outboxRelayResolver: ref.watch(outboxRelayResolverProvider),
   );
 });
 
@@ -288,5 +306,7 @@ final offlineActionProcessorProvider = Provider((ref) {
     likeCoordinator: ref.watch(likeCoordinatorProvider),
     reactionCoordinator: ref.watch(reactionCoordinatorProvider),
     reportCoordinator: ref.watch(reportCoordinatorProvider),
+    userListSyncService: ref.watch(userListSyncServiceProvider),
+    nostrService: ref.watch(nostrServiceProvider),
   );
 });

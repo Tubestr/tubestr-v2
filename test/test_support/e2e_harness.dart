@@ -9,7 +9,9 @@ import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mytube/core/constants.dart';
 import 'package:mytube/core/storage/app_database.dart';
+import 'package:mytube/domain/models/blossom_server_list.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
+import 'package:mytube/domain/models/relay_entry.dart';
 import 'package:mytube/services/blossom/blossom_client.dart';
 import 'package:mytube/services/connections/family_connection_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
@@ -19,6 +21,7 @@ import 'package:mytube/services/approval/media_signal_extraction_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/identity/identity_service.dart';
 import 'package:mytube/services/identity/parent_profile_service.dart';
+import 'package:mytube/services/identity/user_list_sync_service.dart';
 import 'package:mytube/services/mdk/mdk_service.dart';
 import 'package:mytube/services/media/remote_media_service.dart';
 import 'package:mytube/services/nostr/nostr_service.dart';
@@ -189,29 +192,125 @@ class LoopbackNostrService implements NostrService {
   Future<List<String>> loadRelayList() async => relayList;
 
   @override
-  Future<String> publishBlossomServerList({
+  Future<PublishEventResult> publishBlossomServerList({
     required ParentIdentity identity,
-    List<String>? servers,
+    required List<String> servers,
     List<String>? relays,
   }) async {
     if (failPublishes) {
       throw StateError('Relay offline');
     }
-    final activeServers = servers ?? blossomServers;
-    blossomServers = activeServers;
+    final createdAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final event = Nip01Event(
       id: _bus.nextEventId(),
       pubKey: identity.publicKeyHex,
-      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      createdAt: createdAt,
       kind: MarmotKinds.blossomServers,
-      tags: activeServers
+      tags: servers
           .map((server) => <String>['server', server])
           .toList(growable: false),
       content: '',
       sig: 'sig-${identity.publicKeyHex}',
     );
     await _bus.publish(event);
-    return event.id;
+    return PublishEventResult(
+      eventId: event.id,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
+
+  @override
+  Future<PublishEventResult> publishRelayList({
+    required ParentIdentity identity,
+    required List<RelayEntry> entries,
+    List<String>? relays,
+  }) async {
+    if (failPublishes) {
+      throw StateError('Relay offline');
+    }
+    final createdAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final tags = entries
+        .map((entry) {
+          switch (entry.marker) {
+            case RelayMarker.readWrite:
+              return <String>['r', entry.url];
+            case RelayMarker.read:
+              return <String>['r', entry.url, 'read'];
+            case RelayMarker.write:
+              return <String>['r', entry.url, 'write'];
+          }
+        })
+        .toList(growable: false);
+    final event = Nip01Event(
+      id: _bus.nextEventId(),
+      pubKey: identity.publicKeyHex,
+      createdAt: createdAt,
+      kind: MarmotKinds.relayList,
+      tags: tags,
+      content: '',
+      sig: 'sig-${identity.publicKeyHex}',
+    );
+    await _bus.publish(event);
+    return PublishEventResult(
+      eventId: event.id,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
+
+  @override
+  Future<Nip01Event?> fetchRelayListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    final events = _bus.query(
+      Filter(authors: [publicKeyHex], kinds: [MarmotKinds.relayList], limit: 1),
+    );
+    return events.isEmpty ? null : events.first;
+  }
+
+  @override
+  Future<Nip01Event?> fetchBlossomServerListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    final events = _bus.query(
+      Filter(
+        authors: [publicKeyHex],
+        kinds: [MarmotKinds.blossomServers],
+        limit: 1,
+      ),
+    );
+    return events.isEmpty ? null : events.first;
+  }
+
+  @override
+  Future<RelayList> loadRelayListFull() async {
+    return RelayList(
+      entries: relayList
+          .map((url) => RelayEntry(url: url))
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<void> saveRelayListFull(RelayList list) async {
+    relayList = list.entries.map((entry) => entry.url).toList(growable: false);
+  }
+
+  @override
+  Future<BlossomServerList> loadBlossomServerListFull() async {
+    return BlossomServerList(servers: blossomServers);
+  }
+
+  @override
+  Future<void> saveBlossomServerListFull(BlossomServerList list) async {
+    blossomServers = list.servers;
   }
 
   @override
@@ -964,6 +1063,10 @@ class FamilyAppHarness {
       shareHistoryService: shareHistoryService,
       managedVideoUploadService: ManagedVideoUploadService(database: database),
     );
+    final userListSyncService = UserListSyncService(
+      nostrService: nostr,
+      offlineActionStore: offlineActionStore,
+    );
     final offlineActionProcessor = OfflineActionProcessor(
       store: offlineActionStore,
       identityService: fakeIdentityService,
@@ -972,6 +1075,7 @@ class FamilyAppHarness {
       likeCoordinator: likeCoordinator,
       reactionCoordinator: reactionCoordinator,
       reportCoordinator: reportCoordinator,
+      userListSyncService: userListSyncService,
     );
     return FamilyAppHarness._(
       identity: identity,

@@ -18,7 +18,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
     required this.onResetRelays,
     required this.onReconnectRelays,
     required this.onSaveBlossomServers,
-    required this.onPublishBlossomServers,
+    required this.onRemoveBlossomServer,
     required this.onProvisionSafetyHq,
   });
 
@@ -31,7 +31,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
   final Future<void> Function() onResetRelays;
   final Future<void> Function() onReconnectRelays;
   final VoidCallback onSaveBlossomServers;
-  final Future<void> Function(List<String> servers) onPublishBlossomServers;
+  final Future<void> Function(String server) onRemoveBlossomServer;
   final Future<void> Function() onProvisionSafetyHq;
 
   @override
@@ -95,10 +95,11 @@ class ParentZoneNetworkSection extends ConsumerWidget {
           },
         ),
         const SizedBox(height: 16),
-        FutureBuilder<List<String>>(
-          future: ref.read(nostrServiceProvider).loadRelayList(),
-          builder: (context, snapshot) {
-            final relays = snapshot.data ?? const [];
+        Consumer(
+          builder: (context, ref, _) {
+            final relayListAsync = ref.watch(relayListProvider);
+            final relayList = relayListAsync.valueOrNull;
+            final urls = relayList?.urls ?? const <String>[];
             return FrostCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,13 +110,13 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'These relay addresses carry invites, reports, and family updates.',
+                    'These relay addresses carry invites, reports, and family updates. Changes here also publish to other Nostr clients that use your key.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
                   const SizedBox(height: 12),
-                  for (final relay in relays)
+                  for (final relay in urls)
                     _ServerRow(
                       icon: Icons.circle,
                       color: palette.success,
@@ -125,7 +126,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                         onRefresh();
                       },
                     ),
-                  if (relays.isEmpty)
+                  if (urls.isEmpty)
                     Text(
                       'No custom relays saved yet.',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -166,17 +167,28 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  if (relayList?.updatedAt != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Last published ${_formatTimestamp(relayList!.updatedAt!)}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                    ),
+                  ],
                 ],
               ),
             );
           },
         ),
         const SizedBox(height: 16),
-        FutureBuilder<List<String>>(
-          future: ref.read(nostrServiceProvider).loadBlossomServerList(),
-          builder: (context, snapshot) {
-            final servers = snapshot.data ?? AppConstants.defaultBlossomServers;
-            final identity = ref.watch(parentIdentityProvider).valueOrNull;
+        Consumer(
+          builder: (context, ref, _) {
+            final blossomAsync = ref.watch(blossomServerListProvider);
+            final list = blossomAsync.valueOrNull;
+            final servers = list?.servers.isNotEmpty == true
+                ? list!.servers
+                : AppConstants.defaultBlossomServers;
             return FrostCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +199,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Choose where encrypted media uploads can live for family delivery.',
+                    'Choose where encrypted media uploads can live for family delivery. Saves publish automatically so other devices and clients stay in sync.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -198,6 +210,12 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       icon: Icons.cloud_done_rounded,
                       color: palette.accent,
                       value: server,
+                      onRemove: servers.length > 1
+                          ? () async {
+                              await onRemoveBlossomServer(server);
+                              onRefresh();
+                            }
+                          : null,
                     ),
                   const SizedBox(height: 8),
                   TextField(
@@ -219,16 +237,17 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                         },
                         child: const Text('Save servers'),
                       ),
-                      FilledButton(
-                        onPressed: identity == null
-                            ? null
-                            : () async {
-                                await onPublishBlossomServers(servers);
-                              },
-                        child: const Text('Publish server list'),
-                      ),
                     ],
                   ),
+                  if (list?.updatedAt != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Last published ${_formatTimestamp(list!.updatedAt!)}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                    ),
+                  ],
                 ],
               ),
             );
@@ -458,6 +477,28 @@ class _InlineStatus extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatTimestamp(DateTime value) {
+  final now = DateTime.now();
+  final diff = now.difference(value);
+  if (diff.inSeconds < 60) {
+    return 'just now';
+  }
+  if (diff.inMinutes < 60) {
+    final minutes = diff.inMinutes;
+    return '$minutes minute${minutes == 1 ? '' : 's'} ago';
+  }
+  if (diff.inHours < 24) {
+    final hours = diff.inHours;
+    return '$hours hour${hours == 1 ? '' : 's'} ago';
+  }
+  final days = diff.inDays;
+  if (days < 30) {
+    return '$days day${days == 1 ? '' : 's'} ago';
+  }
+  final local = value.toLocal();
+  return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
 }
 
 class _ServerRow extends StatelessWidget {

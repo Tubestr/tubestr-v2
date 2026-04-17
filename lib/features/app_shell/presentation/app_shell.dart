@@ -58,8 +58,10 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   Future<void> _startBackgroundTasks() async {
+    await _hydrateUserLists();
     await _reconcileSafetyHq();
     await _flushOperationalQueues();
+    ref.invalidate(resolvedParentProfileProvider);
   }
 
   Future<void> _flushOperationalQueues() async {
@@ -73,8 +75,26 @@ class _AppShellState extends ConsumerState<AppShell>
     await ref
         .read(syncCoordinatorProvider)
         .refreshSubscriptions(trigger: SyncRefreshTrigger.resume);
+    await _hydrateUserLists();
     await _reconcileSafetyHq();
     await _flushOperationalQueues();
+    ref.invalidate(resolvedParentProfileProvider);
+  }
+
+  Future<void> _hydrateUserLists() async {
+    final identity = await ref.read(identityServiceProvider).loadIdentity();
+    if (identity == null) {
+      return;
+    }
+    try {
+      await ref
+          .read(userListSyncServiceProvider)
+          .hydrateFromRelays(identity: identity);
+    } catch (_) {
+      // Hydrate is best-effort; never block startup/resume.
+    }
+    ref.invalidate(relayListProvider);
+    ref.invalidate(blossomServerListProvider);
   }
 
   Future<void> _reconcileSafetyHq() async {

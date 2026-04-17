@@ -5,13 +5,27 @@ import 'package:ndk/entities.dart';
 
 import '../../core/constants.dart';
 import '../../core/storage/app_database.dart';
+import '../../domain/models/blossom_server_list.dart';
+import '../../domain/models/mute_list.dart';
 import '../../domain/models/parent_identity.dart';
+import '../../domain/models/relay_entry.dart';
+
+class PublishEventResult {
+  const PublishEventResult({required this.eventId, required this.createdAt});
+
+  final String eventId;
+  final DateTime createdAt;
+}
 
 abstract class NostrService {
   Future<List<String>> loadRelayList();
   Future<void> saveRelayList(List<String> relays);
+  Future<RelayList> loadRelayListFull();
+  Future<void> saveRelayListFull(RelayList list);
   Future<List<String>> loadBlossomServerList();
   Future<void> saveBlossomServerList(List<String> servers);
+  Future<BlossomServerList> loadBlossomServerListFull();
+  Future<void> saveBlossomServerListFull(BlossomServerList list);
   Future<void> connect();
   Future<void> publishParentProfile({
     required ParentIdentity identity,
@@ -40,14 +54,42 @@ abstract class NostrService {
     required String eventJson,
     List<String>? relays,
   });
-  Future<String> publishBlossomServerList({
+  Future<PublishEventResult> publishRelayList({
     required ParentIdentity identity,
-    List<String>? servers,
+    required List<RelayEntry> entries,
+    List<String>? relays,
+  });
+  Future<Nip01Event?> fetchRelayListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  });
+  Future<PublishEventResult> publishBlossomServerList({
+    required ParentIdentity identity,
+    required List<String> servers,
     List<String>? relays,
   });
   Future<List<String>> fetchBlossomServerList({
     required String publicKeyHex,
     List<String>? relays,
+  });
+  Future<Nip01Event?> fetchBlossomServerListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  });
+  Future<MuteList> loadMuteList();
+  Future<void> saveMuteList(MuteList list);
+  Future<PublishEventResult> publishMuteList({
+    required ParentIdentity identity,
+    required List<MuteEntry> entries,
+    List<String>? relays,
+  });
+  Future<Nip01Event?> fetchMuteListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  });
+  Future<MuteList> parseMuteListEventFor({
+    required ParentIdentity identity,
+    required Nip01Event event,
   });
   Future<NdkResponse> subscribe({
     required String subscriptionId,
@@ -70,6 +112,53 @@ abstract class NostrService {
     required ParentIdentity identity,
     required Nip01Event giftWrapEvent,
   });
+
+  /// Parses a kind-10002 event into a [RelayList] per NIP-65.
+  static RelayList parseRelayListEvent(Nip01Event event) {
+    final entries = <RelayEntry>[];
+    final seen = <String>{};
+    for (final tag in event.tags) {
+      if (tag.isEmpty || tag.first != 'r' || tag.length < 2) {
+        continue;
+      }
+      final url = tag[1].trim();
+      if (url.isEmpty || !seen.add(url)) {
+        continue;
+      }
+      final marker = tag.length > 2 ? tag[2].trim() : '';
+      entries.add(RelayEntry(url: url, marker: RelayMarker.fromCode(marker)));
+    }
+    return RelayList(
+      entries: entries,
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(
+        event.createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
+
+  /// Parses a kind-10063 event into a [BlossomServerList].
+  static BlossomServerList parseBlossomServerListEvent(Nip01Event event) {
+    final servers = <String>[];
+    final seen = <String>{};
+    for (final tag in event.tags) {
+      if (tag.isEmpty || tag.first != 'server' || tag.length < 2) {
+        continue;
+      }
+      final url = tag[1].trim();
+      if (url.isEmpty || !seen.add(url)) {
+        continue;
+      }
+      servers.add(url);
+    }
+    return BlossomServerList(
+      servers: servers,
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(
+        event.createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
 }
 
 class NdkNostrService implements NostrService {
@@ -80,51 +169,261 @@ class NdkNostrService implements NostrService {
 
   @override
   Future<List<String>> loadRelayList() async {
-    final raw = await _database.getSetting(AppConstants.relayListSettingKey);
-    if (raw == null || raw.isEmpty) {
+    final list = await loadRelayListFull();
+    if (list.entries.isEmpty) {
       return AppConstants.defaultRelays;
     }
-    final decoded = jsonDecode(raw);
-    if (decoded is! List) {
-      return AppConstants.defaultRelays;
-    }
-    return decoded.map((item) => item.toString()).toList(growable: false);
+    return list.urls;
   }
 
   @override
-  Future<void> saveRelayList(List<String> relays) {
+  Future<RelayList> loadRelayListFull() async {
+    final raw = await _database.getSetting(AppConstants.relayListSettingKey);
+    if (raw == null || raw.isEmpty) {
+      return const RelayList(entries: <RelayEntry>[]);
+    }
+    try {
+      return RelayList.decode(raw);
+    } catch (_) {
+      return const RelayList(entries: <RelayEntry>[]);
+    }
+  }
+
+  @override
+  Future<void> saveRelayList(List<String> relays) async {
     final normalized = _normalizeUrls(relays);
+    final existing = await loadRelayListFull();
+    final byUrl = <String, RelayEntry>{
+      for (final entry in existing.entries) entry.url: entry,
+    };
+    final entries = normalized
+        .map(
+          (url) =>
+              byUrl[url] ?? RelayEntry(url: url, marker: RelayMarker.readWrite),
+        )
+        .toList(growable: false);
+    await saveRelayListFull(
+      RelayList(entries: entries, updatedAt: existing.updatedAt),
+    );
+  }
+
+  @override
+  Future<void> saveRelayListFull(RelayList list) {
+    final normalized = <RelayEntry>[];
+    final seen = <String>{};
+    for (final entry in list.entries) {
+      final url = entry.url.trim();
+      if (url.isEmpty || !seen.add(url)) {
+        continue;
+      }
+      normalized.add(entry.copyWith(url: url));
+    }
     return _database.putSetting(
       AppConstants.relayListSettingKey,
-      jsonEncode(normalized),
+      RelayList(entries: normalized, updatedAt: list.updatedAt).encode(),
     );
   }
 
   @override
   Future<List<String>> loadBlossomServerList() async {
+    final list = await loadBlossomServerListFull();
+    if (list.servers.isEmpty) {
+      return AppConstants.defaultBlossomServers;
+    }
+    return list.servers;
+  }
+
+  @override
+  Future<BlossomServerList> loadBlossomServerListFull() async {
     final raw = await _database.getSetting(
       AppConstants.blossomServerListSettingKey,
     );
     if (raw == null || raw.isEmpty) {
-      return AppConstants.defaultBlossomServers;
+      return const BlossomServerList(servers: <String>[]);
     }
-    final decoded = jsonDecode(raw);
-    if (decoded is! List) {
-      return AppConstants.defaultBlossomServers;
+    try {
+      return BlossomServerList.decode(raw);
+    } catch (_) {
+      return const BlossomServerList(servers: <String>[]);
     }
-    final servers = decoded
-        .map((item) => item.toString())
-        .toList(growable: false);
-    return servers.isEmpty ? AppConstants.defaultBlossomServers : servers;
   }
 
   @override
-  Future<void> saveBlossomServerList(List<String> servers) {
+  Future<void> saveBlossomServerList(List<String> servers) async {
     final normalized = _normalizeUrls(servers);
+    final existing = await loadBlossomServerListFull();
+    await saveBlossomServerListFull(
+      BlossomServerList(servers: normalized, updatedAt: existing.updatedAt),
+    );
+  }
+
+  @override
+  Future<void> saveBlossomServerListFull(BlossomServerList list) {
+    final normalized = _normalizeUrls(list.servers);
     return _database.putSetting(
       AppConstants.blossomServerListSettingKey,
-      jsonEncode(
-        normalized.isEmpty ? AppConstants.defaultBlossomServers : normalized,
+      BlossomServerList(
+        servers: normalized,
+        updatedAt: list.updatedAt,
+      ).encode(),
+    );
+  }
+
+  @override
+  Future<MuteList> loadMuteList() async {
+    final raw = await _database.getSetting(AppConstants.muteListSettingKey);
+    if (raw == null || raw.isEmpty) {
+      return const MuteList(entries: <MuteEntry>[]);
+    }
+    try {
+      return MuteList.decode(raw);
+    } catch (_) {
+      return const MuteList(entries: <MuteEntry>[]);
+    }
+  }
+
+  @override
+  Future<void> saveMuteList(MuteList list) {
+    final seen = <String>{};
+    final normalized = <MuteEntry>[];
+    for (final entry in list.entries) {
+      final pubkey = entry.pubkeyHex.trim().toLowerCase();
+      if (pubkey.isEmpty || !seen.add(pubkey)) {
+        continue;
+      }
+      normalized.add(entry.copyWith(pubkeyHex: pubkey));
+    }
+    return _database.putSetting(
+      AppConstants.muteListSettingKey,
+      MuteList(entries: normalized, updatedAt: list.updatedAt).encode(),
+    );
+  }
+
+  @override
+  Future<PublishEventResult> publishMuteList({
+    required ParentIdentity identity,
+    required List<MuteEntry> entries,
+    List<String>? relays,
+  }) async {
+    _ensureLoggedIn(identity);
+    final signer = _ndk.accounts.getLoggedAccount()?.signer;
+    if (signer == null) {
+      throw StateError('Cannot publish mute list without a signer');
+    }
+    final publishRelays = relays ?? await loadRelayList();
+    await _connectRelays(publishRelays);
+
+    // Private payload: JSON array of ["p", pubkey] tags, NIP-44 self-encrypted.
+    final privateTags = entries
+        .map((e) => <String>['p', e.pubkeyHex.toLowerCase()])
+        .toList(growable: false);
+    final ciphertext = await signer.encryptNip44(
+      plaintext: jsonEncode(privateTags),
+      recipientPubKey: identity.publicKeyHex,
+    );
+    if (ciphertext == null) {
+      throw StateError('Mute list NIP-44 encryption returned null');
+    }
+
+    final createdAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final event = Nip01Event(
+      pubKey: identity.publicKeyHex,
+      kind: MarmotKinds.muteList,
+      tags: const <List<String>>[],
+      content: ciphertext,
+      createdAt: createdAt,
+    );
+    final response = _ndk.broadcast.broadcast(
+      nostrEvent: event,
+      specificRelays: publishRelays,
+    );
+    final results = await response.broadcastDoneFuture;
+    _throwIfNoRelayAccepted('mute list', results);
+    return PublishEventResult(
+      eventId: response.publishEvent.id,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
+
+  @override
+  Future<Nip01Event?> fetchMuteListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    final events = await queryEvents(
+      filter: Filter(
+        authors: [publicKeyHex],
+        kinds: [MarmotKinds.muteList],
+        limit: 1,
+      ),
+      relays: relays,
+      timeout: const Duration(seconds: 3),
+    );
+    if (events.isEmpty) {
+      return null;
+    }
+    return events.first;
+  }
+
+  @override
+  Future<MuteList> parseMuteListEventFor({
+    required ParentIdentity identity,
+    required Nip01Event event,
+  }) async {
+    final entries = <MuteEntry>[];
+    final seen = <String>{};
+
+    void addPubkey(String pubkeyHex) {
+      final normalized = pubkeyHex.trim().toLowerCase();
+      if (normalized.isEmpty || !seen.add(normalized)) {
+        return;
+      }
+      entries.add(MuteEntry(pubkeyHex: normalized));
+    }
+
+    // Public p tags (legacy / foreign clients).
+    for (final tag in event.tags) {
+      if (tag.length >= 2 && tag.first == 'p') {
+        addPubkey(tag[1]);
+      }
+    }
+
+    // Private content: NIP-44-encrypted JSON array of tags.
+    if (event.content.isNotEmpty) {
+      _ensureLoggedIn(identity);
+      final signer = _ndk.accounts.getLoggedAccount()?.signer;
+      if (signer != null) {
+        try {
+          final plaintext = await signer.decryptNip44(
+            ciphertext: event.content,
+            senderPubKey: identity.publicKeyHex,
+          );
+          if (plaintext != null && plaintext.isNotEmpty) {
+            final decoded = jsonDecode(plaintext);
+            if (decoded is List) {
+              for (final tag in decoded) {
+                if (tag is List &&
+                    tag.length >= 2 &&
+                    tag.first.toString() == 'p') {
+                  addPubkey(tag[1].toString());
+                }
+              }
+            }
+          }
+        } catch (_) {
+          // Decrypt failure (foreign NIP-04 or corrupt) — public tags stand.
+        }
+      }
+    }
+
+    return MuteList(
+      entries: entries,
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(
+        event.createdAt * 1000,
+        isUtc: true,
       ),
     );
   }
@@ -301,23 +600,99 @@ class NdkNostrService implements NostrService {
   }
 
   @override
-  Future<String> publishBlossomServerList({
+  Future<PublishEventResult> publishRelayList({
     required ParentIdentity identity,
-    List<String>? servers,
+    required List<RelayEntry> entries,
     List<String>? relays,
   }) async {
     _ensureLoggedIn(identity);
-    final publishRelays = relays ?? await loadRelayList();
-    final activeServers = _normalizeUrls(
-      servers ?? await loadBlossomServerList(),
+    final normalized = <RelayEntry>[];
+    final seen = <String>{};
+    for (final entry in entries) {
+      final url = entry.url.trim();
+      if (url.isEmpty || !seen.add(url)) {
+        continue;
+      }
+      normalized.add(entry.copyWith(url: url));
+    }
+    if (normalized.isEmpty) {
+      throw const FormatException('At least one relay is required');
+    }
+    final publishRelays =
+        relays ?? await _publishRelayUrls(normalized.map((e) => e.url));
+    await _connectRelays(publishRelays);
+
+    final tags = normalized
+        .map((entry) {
+          switch (entry.marker) {
+            case RelayMarker.readWrite:
+              return <String>['r', entry.url];
+            case RelayMarker.read:
+              return <String>['r', entry.url, 'read'];
+            case RelayMarker.write:
+              return <String>['r', entry.url, 'write'];
+          }
+        })
+        .toList(growable: false);
+
+    final createdAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final event = Nip01Event(
+      pubKey: identity.publicKeyHex,
+      kind: MarmotKinds.relayList,
+      tags: tags,
+      content: '',
+      createdAt: createdAt,
     );
+    final response = _ndk.broadcast.broadcast(
+      nostrEvent: event,
+      specificRelays: publishRelays,
+    );
+    final results = await response.broadcastDoneFuture;
+    _throwIfNoRelayAccepted('relay list', results);
+    return PublishEventResult(
+      eventId: response.publishEvent.id,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
+
+  @override
+  Future<Nip01Event?> fetchRelayListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    final events = await queryEvents(
+      filter: Filter(
+        authors: [publicKeyHex],
+        kinds: [MarmotKinds.relayList],
+        limit: 1,
+      ),
+      relays: relays,
+      timeout: const Duration(seconds: 3),
+    );
+    if (events.isEmpty) {
+      return null;
+    }
+    return events.first;
+  }
+
+  @override
+  Future<PublishEventResult> publishBlossomServerList({
+    required ParentIdentity identity,
+    required List<String> servers,
+    List<String>? relays,
+  }) async {
+    _ensureLoggedIn(identity);
+    final activeServers = _normalizeUrls(servers);
     if (activeServers.isEmpty) {
       throw const FormatException('At least one Blossom server is required');
     }
+    final publishRelays = relays ?? await loadRelayList();
+    await _connectRelays(publishRelays);
 
-    await saveBlossomServerList(activeServers);
-    await connect();
-
+    final createdAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final event = Nip01Event(
       pubKey: identity.publicKeyHex,
       kind: MarmotKinds.blossomServers,
@@ -325,14 +700,62 @@ class NdkNostrService implements NostrService {
           .map((server) => <String>['server', server])
           .toList(growable: false),
       content: '',
+      createdAt: createdAt,
     );
 
     final response = _ndk.broadcast.broadcast(
       nostrEvent: event,
       specificRelays: publishRelays,
     );
-    await response.broadcastDoneFuture;
-    return response.publishEvent.id;
+    final results = await response.broadcastDoneFuture;
+    _throwIfNoRelayAccepted('Blossom server list', results);
+    return PublishEventResult(
+      eventId: response.publishEvent.id,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
+
+  @override
+  Future<Nip01Event?> fetchBlossomServerListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    final explicitRelays = relays ?? await loadRelayList();
+    final events = await queryEvents(
+      filter: Filter(
+        authors: [publicKeyHex],
+        kinds: [MarmotKinds.blossomServers],
+        limit: 1,
+      ),
+      relays: explicitRelays,
+      timeout: const Duration(seconds: 3),
+    );
+    if (events.isEmpty) {
+      return null;
+    }
+    return events.first;
+  }
+
+  /// Choose a relay set to broadcast to for a self-published relay list.
+  /// Prefer the list being published; fall back to the previously-saved list,
+  /// then to defaults. This matters during onboarding when no relays have
+  /// been persisted yet.
+  Future<List<String>> _publishRelayUrls(Iterable<String> candidates) async {
+    final fromCandidates = candidates
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .toList(growable: false);
+    if (fromCandidates.isNotEmpty) {
+      return fromCandidates;
+    }
+    final saved = await loadRelayList();
+    if (saved.isNotEmpty) {
+      return saved;
+    }
+    return AppConstants.defaultRelays;
   }
 
   @override

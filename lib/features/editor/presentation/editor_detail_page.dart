@@ -244,10 +244,11 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                       onOverlaySelected: (overlayId) {
                         setState(() => _selectedOverlayId = overlayId);
                       },
-                      onStickerScaleStart: _handleStickerScaleStart,
-                      onStickerScaleUpdate: (details, size, overlay) {
+                      onOverlayScaleStart: _handleStickerScaleStart,
+                      onOverlayScaleUpdate: (details, size, overlay) {
                         _handleStickerScaleUpdate(details, size, overlay);
                       },
+                      onOverlayDeleted: _removeOverlay,
                     ),
                   ),
                 ),
@@ -319,7 +320,6 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                                 });
                               },
                               onStickerSelected: _selectSticker,
-                              onStickerRemoved: _removeSticker,
                               onOpenSelfieStickerCapture:
                                   _openSelfieStickerCapture,
                               userStickers: _userStickers,
@@ -332,8 +332,9 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                               cachedAudioTrackIds: _cachedAudioTrackIds,
                               downloadingAudioTrackIds:
                                   _downloadingAudioTrackIds,
+                              selectedOverlayId: _selectedOverlayId,
+                              onAddTextOverlay: _addTextOverlay,
                               onTextChanged: _updateTextOverlay,
-                              onTextRemoved: _removeTextOverlay,
                             ),
                           ),
                         ),
@@ -434,16 +435,16 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     });
   }
 
-  void _removeSticker() {
-    final selectedOverlayId = _selectedOverlayId;
+  void _removeOverlay(String overlayId) {
     setState(() {
-      final nextOverlays = selectedOverlayId == null
-          ? _session.overlays
-          : _session.overlays
-                .where((overlay) => overlay.id != selectedOverlayId)
-                .toList(growable: false);
-      _selectedOverlayId = null;
-      _session = _session.copyWith(overlays: nextOverlays);
+      _session = _session.copyWith(
+        overlays: _session.overlays
+            .where((overlay) => overlay.id != overlayId)
+            .toList(growable: false),
+      );
+      if (_selectedOverlayId == overlayId) {
+        _selectedOverlayId = null;
+      }
     });
   }
 
@@ -630,12 +631,16 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       stickerPath: sticker.assetPath,
     );
     if (!mounted) return;
-    final currentStickerPath = _session.overlays
-        .where((overlay) => overlay.type == EditorOverlayType.sticker)
-        .map((overlay) => overlay.stickerAssetPath)
-        .firstOrNull;
-    if (currentStickerPath == sticker.assetPath) {
-      _removeSticker();
+    final placed = _session.overlays
+        .where(
+          (overlay) =>
+              overlay.type == EditorOverlayType.sticker &&
+              overlay.stickerAssetPath == sticker.assetPath,
+        )
+        .map((overlay) => overlay.id)
+        .toList(growable: false);
+    for (final id in placed) {
+      _removeOverlay(id);
     }
     await _loadUserStickers();
   }
@@ -805,26 +810,27 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     if (identity == null || profile == null) {
       return;
     }
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final result = await ref
           .read(videoShareCoordinatorProvider)
-          .shareLocalVideoToEligibleGroups(
+          .queueShareToEligibleGroups(
             identity: identity,
             videoId: video.id,
             profileId: profile.id,
             childDisplayName: profile.name,
           );
+      unawaited(
+        ref.read(offlineActionProcessorProvider).flush().catchError((_) => 0),
+      );
       if (!mounted) {
         return;
       }
-      final shared = result.sharedGroupCount;
-      final queued = result.queuedGroupCount;
-      ScaffoldMessenger.of(context).showSnackBar(
+      final count = result.queuedGroupCount;
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
-            queued == 0
-                ? 'Shared with $shared family space${shared == 1 ? '' : 's'}'
-                : 'Shared to $shared family space${shared == 1 ? '' : 's'}, queued $queued more',
+            'Sharing to $count family space${count == 1 ? '' : 's'}…',
           ),
         ),
       );
@@ -832,9 +838,9 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_shareErrorMessage(error))));
+      messenger.showSnackBar(
+        SnackBar(content: Text(_shareErrorMessage(error))),
+      );
     }
   }
 
@@ -870,45 +876,43 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
         message.contains('media server');
   }
 
-  void _updateTextOverlay({
-    required String text,
-    required String fontFamily,
-    required Color color,
-    required double textSize,
-    required EditorTextPosition position,
-  }) {
-    final existingIndex = _session.overlays.indexWhere(
-      (overlay) => overlay.type == EditorOverlayType.text,
-    );
+  void _addTextOverlay() {
     final overlay = EditorOverlayItem(
-      id: 'text:primary',
+      id: 'text:${DateTime.now().microsecondsSinceEpoch}',
       type: EditorOverlayType.text,
-      text: text,
-      fontFamily: fontFamily,
-      textColorValue: color.toARGB32(),
-      textSize: textSize,
-      textPosition: position,
+      text: '',
+      fontFamily: _EditorDetailPageState._fontFamilies.first,
+      textColorValue: _EditorDetailPageState._textColors.first.toARGB32(),
+      textSize: 44,
+      transform: const StickerTransform(position: Offset(0.5, 0.5)),
     );
-    final overlays = [..._session.overlays];
-    if (text.trim().isEmpty) {
-      overlays.removeWhere((item) => item.type == EditorOverlayType.text);
-    } else if (existingIndex == -1) {
-      overlays.add(overlay);
-    } else {
-      overlays[existingIndex] = overlay;
-    }
     setState(() {
-      _session = _session.copyWith(overlays: overlays);
+      _session = _session.copyWith(overlays: [..._session.overlays, overlay]);
+      _selectedOverlayId = overlay.id;
     });
   }
 
-  void _removeTextOverlay() {
+  void _updateTextOverlay({
+    required String overlayId,
+    String? text,
+    String? fontFamily,
+    Color? color,
+    double? textSize,
+  }) {
+    final overlays = _session.overlays
+        .map(
+          (item) => item.id == overlayId
+              ? item.copyWith(
+                  text: text ?? item.text,
+                  fontFamily: fontFamily ?? item.fontFamily,
+                  textColorValue: color?.toARGB32() ?? item.textColorValue,
+                  textSize: textSize ?? item.textSize,
+                )
+              : item,
+        )
+        .toList(growable: false);
     setState(() {
-      _session = _session.copyWith(
-        overlays: _session.overlays
-            .where((overlay) => overlay.type != EditorOverlayType.text)
-            .toList(growable: false),
-      );
+      _session = _session.copyWith(overlays: overlays);
     });
   }
 
@@ -1621,7 +1625,6 @@ class _ActiveToolOverlay extends StatelessWidget {
     required this.onFilterChanged,
     required this.onAdjustmentsChanged,
     required this.onStickerSelected,
-    required this.onStickerRemoved,
     required this.onOpenSelfieStickerCapture,
     required this.userStickers,
     required this.onDeleteUserSticker,
@@ -1632,8 +1635,9 @@ class _ActiveToolOverlay extends StatelessWidget {
     required this.previewingTrackId,
     required this.cachedAudioTrackIds,
     required this.downloadingAudioTrackIds,
+    required this.selectedOverlayId,
+    required this.onAddTextOverlay,
     required this.onTextChanged,
-    required this.onTextRemoved,
     this.isTablet = false,
   });
 
@@ -1643,7 +1647,6 @@ class _ActiveToolOverlay extends StatelessWidget {
   final ValueChanged<String> onFilterChanged;
   final ValueChanged<EditorAdjustments> onAdjustmentsChanged;
   final void Function(String stickerId, String assetPath) onStickerSelected;
-  final VoidCallback onStickerRemoved;
   final Future<void> Function() onOpenSelfieStickerCapture;
   final List<EditorStickerAsset> userStickers;
   final Future<void> Function(EditorStickerAsset sticker) onDeleteUserSticker;
@@ -1655,15 +1658,16 @@ class _ActiveToolOverlay extends StatelessWidget {
   final String? previewingTrackId;
   final Set<String> cachedAudioTrackIds;
   final Set<String> downloadingAudioTrackIds;
+  final String? selectedOverlayId;
+  final VoidCallback onAddTextOverlay;
   final void Function({
-    required String text,
-    required String fontFamily,
-    required Color color,
-    required double textSize,
-    required EditorTextPosition position,
+    required String overlayId,
+    String? text,
+    String? fontFamily,
+    Color? color,
+    double? textSize,
   })
   onTextChanged;
-  final VoidCallback onTextRemoved;
   final bool isTablet;
 
   @override
@@ -1709,7 +1713,6 @@ class _ActiveToolOverlay extends StatelessWidget {
         palette: palette,
         session: session,
         onStickerSelected: onStickerSelected,
-        onStickerRemoved: onStickerRemoved,
         onOpenSelfieStickerCapture: onOpenSelfieStickerCapture,
         userStickers: userStickers,
         onDeleteUserSticker: onDeleteUserSticker,
@@ -1730,8 +1733,9 @@ class _ActiveToolOverlay extends StatelessWidget {
         key: const ValueKey('text'),
         palette: palette,
         session: session,
+        selectedOverlayId: selectedOverlayId,
+        onAddTextOverlay: onAddTextOverlay,
         onTextChanged: onTextChanged,
-        onTextRemoved: onTextRemoved,
       ),
     };
   }
@@ -1933,7 +1937,6 @@ class _CompactOverlayTool extends StatefulWidget {
     required this.palette,
     required this.session,
     required this.onStickerSelected,
-    required this.onStickerRemoved,
     required this.onOpenSelfieStickerCapture,
     required this.userStickers,
     required this.onDeleteUserSticker,
@@ -1942,7 +1945,6 @@ class _CompactOverlayTool extends StatefulWidget {
   final KidPalette palette;
   final EditorSession session;
   final void Function(String stickerId, String assetPath) onStickerSelected;
-  final VoidCallback onStickerRemoved;
   final Future<void> Function() onOpenSelfieStickerCapture;
   final List<EditorStickerAsset> userStickers;
   final Future<void> Function(EditorStickerAsset sticker) onDeleteUserSticker;
@@ -1964,9 +1966,6 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
 
   @override
   Widget build(BuildContext context) {
-    final hasSticker = widget.session.overlays.any(
-      (overlay) => overlay.type == EditorOverlayType.sticker,
-    );
     final stickerItems = [
       for (final sticker in widget.userStickers)
         _StickerPickerItem(sticker: sticker, isUserSticker: true),
@@ -2003,8 +2002,6 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _StickerToolHeader(
-            hasSticker: hasSticker,
-            onStickerRemoved: widget.onStickerRemoved,
             controller: _searchController,
             onQueryChanged: (value) => setState(() => _query = value),
           ),
@@ -2091,108 +2088,69 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
 
 class _StickerToolHeader extends StatelessWidget {
   const _StickerToolHeader({
-    required this.hasSticker,
-    required this.onStickerRemoved,
     required this.controller,
     required this.onQueryChanged,
   });
 
-  final bool hasSticker;
-  final VoidCallback onStickerRemoved;
   final TextEditingController controller;
   final ValueChanged<String> onQueryChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 38,
-            child: TextField(
-              controller: controller,
-              onChanged: onQueryChanged,
-              textInputAction: TextInputAction.search,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search stickers',
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: Colors.white.withValues(alpha: 0.55),
-                  size: 20,
-                ),
-                suffixIcon: controller.text.isEmpty
-                    ? null
-                    : IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          Icons.close_rounded,
-                          color: Colors.white.withValues(alpha: 0.65),
-                          size: 18,
-                        ),
-                        onPressed: () {
-                          controller.clear();
-                          onQueryChanged('');
-                        },
-                      ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.08),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.1),
+    return SizedBox(
+      height: 38,
+      child: TextField(
+        controller: controller,
+        onChanged: onQueryChanged,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Search stickers',
+          hintStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.45),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: Colors.white.withValues(alpha: 0.55),
+            size: 20,
+          ),
+          suffixIcon: controller.text.isEmpty
+              ? null
+              : IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: Colors.white.withValues(alpha: 0.65),
+                    size: 18,
                   ),
+                  onPressed: () {
+                    controller.clear();
+                    onQueryChanged('');
+                  },
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.24),
-                  ),
-                ),
-              ),
-            ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.08),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
           ),
         ),
-        if (hasSticker) ...[
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: onStickerRemoved,
-            child: Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Remove',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }
@@ -3132,47 +3090,50 @@ class _CompactTextTool extends StatefulWidget {
     super.key,
     required this.palette,
     required this.session,
+    required this.selectedOverlayId,
+    required this.onAddTextOverlay,
     required this.onTextChanged,
-    required this.onTextRemoved,
   });
 
   final KidPalette palette;
   final EditorSession session;
+  final String? selectedOverlayId;
+  final VoidCallback onAddTextOverlay;
   final void Function({
-    required String text,
-    required String fontFamily,
-    required Color color,
-    required double textSize,
-    required EditorTextPosition position,
+    required String overlayId,
+    String? text,
+    String? fontFamily,
+    Color? color,
+    double? textSize,
   })
   onTextChanged;
-  final VoidCallback onTextRemoved;
 
   @override
   State<_CompactTextTool> createState() => _CompactTextToolState();
 }
 
 class _CompactTextToolState extends State<_CompactTextTool> {
-  late final TextEditingController _controller;
-  late String _fontFamily;
-  late Color _color;
-  late double _textSize;
-  late EditorTextPosition _position;
+  final TextEditingController _controller = TextEditingController();
+  String? _syncedOverlayId;
+
+  EditorOverlayItem? get _selectedText {
+    final id = widget.selectedOverlayId;
+    if (id == null) return null;
+    return widget.session.overlays
+        .where((item) => item.id == id && item.type == EditorOverlayType.text)
+        .firstOrNull;
+  }
 
   @override
   void initState() {
     super.initState();
-    final overlay = widget.session.overlays
-        .where((item) => item.type == EditorOverlayType.text)
-        .firstOrNull;
-    _controller = TextEditingController(text: overlay?.text ?? '');
-    _fontFamily =
-        overlay?.fontFamily ?? _EditorDetailPageState._fontFamilies.first;
-    _color = overlay?.textColorValue == null
-        ? _EditorDetailPageState._textColors.first
-        : Color(overlay!.textColorValue!);
-    _textSize = overlay?.textSize ?? 44;
-    _position = overlay?.textPosition ?? EditorTextPosition.center;
+    _syncController(_selectedText);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompactTextTool oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncController(_selectedText);
   }
 
   @override
@@ -3181,30 +3142,27 @@ class _CompactTextToolState extends State<_CompactTextTool> {
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(covariant _CompactTextTool oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final overlay = widget.session.overlays
-        .where((item) => item.type == EditorOverlayType.text)
-        .firstOrNull;
-    if (overlay != null && _controller.text != overlay.text) {
-      _controller.text = overlay.text ?? '';
+  void _syncController(EditorOverlayItem? overlay) {
+    if (overlay == null) {
+      if (_syncedOverlayId != null) {
+        _controller.text = '';
+        _syncedOverlayId = null;
+      }
+      return;
     }
-  }
-
-  void _emit() {
-    widget.onTextChanged(
-      text: _controller.text,
-      fontFamily: _fontFamily,
-      color: _color,
-      textSize: _textSize,
-      position: _position,
-    );
+    final incoming = overlay.text ?? '';
+    if (_syncedOverlayId != overlay.id || _controller.text != incoming) {
+      _controller.value = TextEditingValue(
+        text: incoming,
+        selection: TextSelection.collapsed(offset: incoming.length),
+      );
+      _syncedOverlayId = overlay.id;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasText = _controller.text.trim().isNotEmpty;
+    final selected = _selectedText;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
@@ -3216,182 +3174,198 @@ class _CompactTextToolState extends State<_CompactTextTool> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Type something...',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.35),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.08),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onChanged: (_) => _emit(),
-                  ),
+                  child: selected == null
+                      ? Text(
+                          'Tap existing text or add a new one.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        )
+                      : TextField(
+                          controller: _controller,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Type something...',
+                            hintStyle: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.35),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.08),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          onChanged: (value) => widget.onTextChanged(
+                            overlayId: selected.id,
+                            text: value,
+                          ),
+                        ),
                 ),
-                if (hasText) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      _controller.clear();
-                      widget.onTextRemoved();
-                      setState(() {});
-                    },
-                    child: const Icon(
-                      Icons.close_rounded,
-                      color: Colors.white54,
-                      size: 20,
-                    ),
-                  ),
-                ],
+                const SizedBox(width: 8),
+                _AddTextButton(
+                  palette: widget.palette,
+                  onTap: widget.onAddTextOverlay,
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final family
-                      in _EditorDetailPageState._fontFamilies) ...[
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _fontFamily = family);
-                        _emit();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
+            if (selected != null) ...[
+              const SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final family
+                        in _EditorDetailPageState._fontFamilies) ...[
+                      GestureDetector(
+                        onTap: () => widget.onTextChanged(
+                          overlayId: selected.id,
+                          fontFamily: family,
                         ),
-                        decoration: BoxDecoration(
-                          gradient: _fontFamily == family
-                              ? LinearGradient(
-                                  colors: [
-                                    widget.palette.accent,
-                                    widget.palette.accentSecondary,
-                                  ],
-                                )
-                              : null,
-                          color: _fontFamily == family
-                              ? null
-                              : Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Aa',
-                          style: TextStyle(
-                            fontFamily: family,
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: selected.fontFamily == family
+                                ? LinearGradient(
+                                    colors: [
+                                      widget.palette.accent,
+                                      widget.palette.accentSecondary,
+                                    ],
+                                  )
+                                : null,
+                            color: selected.fontFamily == family
+                                ? null
+                                : Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Aa',
+                            style: TextStyle(
+                              fontFamily: family,
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  const SizedBox(width: 4),
-                  for (final color in _EditorDetailPageState._textColors) ...[
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _color = color);
-                        _emit();
-                      },
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _color == color
-                                ? Colors.white
-                                : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
+                      const SizedBox(width: 6),
+                    ],
                     const SizedBox(width: 4),
+                    for (final color in _EditorDetailPageState._textColors) ...[
+                      GestureDetector(
+                        onTap: () => widget.onTextChanged(
+                          overlayId: selected.id,
+                          color: color,
+                        ),
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selected.textColorValue == color.toARGB32()
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
                   ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Text(
+                    'Size',
+                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderThemeData(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 5,
+                        ),
+                        activeTrackColor: Colors.white70,
+                        inactiveTrackColor: Colors.white.withValues(
+                          alpha: 0.15,
+                        ),
+                        thumbColor: Colors.white,
+                        overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 10,
+                        ),
+                      ),
+                      child: Slider(
+                        value: selected.textSize.clamp(24, 96),
+                        min: 24,
+                        max: 96,
+                        onChanged: (value) => widget.onTextChanged(
+                          overlayId: selected.id,
+                          textSize: value,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                for (final pos in EditorTextPosition.values) ...[
-                  GestureDetector(
-                    onTap: () {
-                      setState(() => _position = pos);
-                      _emit();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _position == pos
-                            ? Colors.white.withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        pos.name[0].toUpperCase() + pos.name.substring(1),
-                        style: TextStyle(
-                          color: Colors.white.withValues(
-                            alpha: _position == pos ? 1.0 : 0.6,
-                          ),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                const Spacer(),
-                const Text(
-                  'Size',
-                  style: TextStyle(color: Colors.white54, fontSize: 11),
-                ),
-                SizedBox(
-                  width: 80,
-                  child: SliderTheme(
-                    data: SliderThemeData(
-                      trackHeight: 2,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 5,
-                      ),
-                      activeTrackColor: Colors.white70,
-                      inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
-                      thumbColor: Colors.white,
-                      overlayShape: const RoundSliderOverlayShape(
-                        overlayRadius: 10,
-                      ),
-                    ),
-                    child: Slider(
-                      value: _textSize,
-                      min: 24,
-                      max: 96,
-                      onChanged: (value) {
-                        setState(() => _textSize = value);
-                        _emit();
-                      },
-                    ),
-                  ),
-                ),
-              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddTextButton extends StatelessWidget {
+  const _AddTextButton({required this.palette, required this.onTap});
+
+  final KidPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [palette.accent, palette.accentSecondary],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 4),
+            Text(
+              'Add text',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -3412,8 +3386,9 @@ class _PreviewPane extends StatelessWidget {
     required this.isPlaying,
     required this.onTogglePlayback,
     required this.onOverlaySelected,
-    required this.onStickerScaleStart,
-    required this.onStickerScaleUpdate,
+    required this.onOverlayScaleStart,
+    required this.onOverlayScaleUpdate,
+    required this.onOverlayDeleted,
   });
 
   final KidPalette palette;
@@ -3429,21 +3404,22 @@ class _PreviewPane extends StatelessWidget {
     Size previewSize,
     EditorOverlayItem overlay,
   )
-  onStickerScaleStart;
+  onOverlayScaleStart;
   final void Function(
     ScaleUpdateDetails details,
     Size previewSize,
     EditorOverlayItem overlay,
   )
-  onStickerScaleUpdate;
+  onOverlayScaleUpdate;
+  final ValueChanged<String> onOverlayDeleted;
 
   @override
   Widget build(BuildContext context) {
     final previewFile = File(session.sourcePath);
     final hasPreviewFile = previewFile.existsSync();
-    final textOverlay = session.overlays
+    final textOverlays = session.overlays
         .where((overlay) => overlay.type == EditorOverlayType.text)
-        .firstOrNull;
+        .toList(growable: false);
     final stickerOverlays = session.overlays
         .where((overlay) => overlay.type == EditorOverlayType.sticker)
         .toList(growable: false);
@@ -3527,25 +3503,43 @@ class _PreviewPane extends StatelessWidget {
                               onTap: () => onOverlaySelected(overlay.id),
                               onScaleStart: (details) {
                                 onOverlaySelected(overlay.id);
-                                onStickerScaleStart(
+                                onOverlayScaleStart(
                                   details,
                                   previewSize,
                                   overlay,
                                 );
                               },
                               onScaleUpdate: (details) {
-                                onStickerScaleUpdate(
+                                onOverlayScaleUpdate(
                                   details,
                                   previewSize,
                                   overlay,
                                 );
                               },
+                              onDelete: () => onOverlayDeleted(overlay.id),
                             ),
-                          if (textOverlay case final overlay?)
+                          for (final overlay in textOverlays)
                             _TextOverlay(
                               overlay: overlay,
+                              previewSize: previewSize,
                               selected: overlay.id == selectedOverlayId,
                               onTap: () => onOverlaySelected(overlay.id),
+                              onScaleStart: (details) {
+                                onOverlaySelected(overlay.id);
+                                onOverlayScaleStart(
+                                  details,
+                                  previewSize,
+                                  overlay,
+                                );
+                              },
+                              onScaleUpdate: (details) {
+                                onOverlayScaleUpdate(
+                                  details,
+                                  previewSize,
+                                  overlay,
+                                );
+                              },
+                              onDelete: () => onOverlayDeleted(overlay.id),
                             ),
                         ],
                       ),
@@ -3609,6 +3603,7 @@ class _StickerOverlay extends StatelessWidget {
     required this.onTap,
     required this.onScaleStart,
     required this.onScaleUpdate,
+    required this.onDelete,
   });
 
   final EditorOverlayItem overlay;
@@ -3617,6 +3612,7 @@ class _StickerOverlay extends StatelessWidget {
   final VoidCallback onTap;
   final GestureScaleStartCallback onScaleStart;
   final GestureScaleUpdateCallback onScaleUpdate;
+  final VoidCallback onDelete;
 
   static const _touchPadding = 24.0;
 
@@ -3644,27 +3640,38 @@ class _StickerOverlay extends StatelessWidget {
           padding: const EdgeInsets.all(_touchPadding),
           child: Transform.rotate(
             angle: transform.rotationDegrees * math.pi / 180,
-            child: Container(
-              width: stickerSize,
-              height: stickerSize,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: selected
-                    ? Border.all(color: Colors.white, width: 2)
-                    : null,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 16,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: stickerSize,
+                  height: stickerSize,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: selected
+                        ? Border.all(color: Colors.white, width: 2)
+                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 16,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: isBundledAsset
-                    ? Image.asset(stickerPath, fit: BoxFit.contain)
-                    : Image.file(File(stickerPath), fit: BoxFit.contain),
-              ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: isBundledAsset
+                        ? Image.asset(stickerPath, fit: BoxFit.contain)
+                        : Image.file(File(stickerPath), fit: BoxFit.contain),
+                  ),
+                ),
+                if (selected)
+                  Positioned(
+                    top: -10,
+                    right: -10,
+                    child: _OverlayDeleteBadge(onTap: onDelete),
+                  ),
+              ],
             ),
           ),
         ),
@@ -3678,13 +3685,23 @@ class _StickerOverlay extends StatelessWidget {
 class _TextOverlay extends StatelessWidget {
   const _TextOverlay({
     required this.overlay,
+    required this.previewSize,
     required this.selected,
     required this.onTap,
+    required this.onScaleStart,
+    required this.onScaleUpdate,
+    required this.onDelete,
   });
 
   final EditorOverlayItem overlay;
+  final Size previewSize;
   final bool selected;
   final VoidCallback onTap;
+  final GestureScaleStartCallback onScaleStart;
+  final GestureScaleUpdateCallback onScaleUpdate;
+  final VoidCallback onDelete;
+
+  static const _touchPadding = 24.0;
 
   @override
   Widget build(BuildContext context) {
@@ -3692,44 +3709,92 @@ class _TextOverlay extends StatelessWidget {
     if (text == null || text.trim().isEmpty) {
       return const SizedBox.shrink();
     }
-    final alignment = switch (overlay.textPosition) {
-      EditorTextPosition.top => Alignment.topCenter,
-      EditorTextPosition.center => Alignment.center,
-      EditorTextPosition.bottom => Alignment.bottomCenter,
-    };
-    return Align(
-      alignment: alignment,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: selected
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white, width: 2),
-                )
-              : null,
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: overlay.fontFamily,
-              fontSize: overlay.textSize,
-              fontWeight: FontWeight.w800,
-              color: overlay.textColorValue == null
-                  ? Colors.white
-                  : Color(overlay.textColorValue!),
-              shadows: const [
-                Shadow(
-                  blurRadius: 12,
-                  color: Colors.black54,
-                  offset: Offset(0, 2),
-                ),
-              ],
+    final transform = overlay.transform;
+    return Positioned(
+      left: transform.position.dx * previewSize.width,
+      top: transform.position.dy * previewSize.height,
+      child: FractionalTranslation(
+        translation: const Offset(-0.5, -0.5),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          onScaleStart: onScaleStart,
+          onScaleUpdate: onScaleUpdate,
+          child: Padding(
+            padding: const EdgeInsets.all(_touchPadding),
+            child: Transform.rotate(
+              angle: transform.rotationDegrees * math.pi / 180,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: selected
+                        ? BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white, width: 2),
+                          )
+                        : null,
+                    child: Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: overlay.fontFamily,
+                        fontSize: overlay.textSize * transform.scale,
+                        fontWeight: FontWeight.w800,
+                        color: overlay.textColorValue == null
+                            ? Colors.white
+                            : Color(overlay.textColorValue!),
+                        shadows: const [
+                          Shadow(
+                            blurRadius: 12,
+                            color: Colors.black54,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (selected)
+                    Positioned(
+                      top: -10,
+                      right: -10,
+                      child: _OverlayDeleteBadge(onTap: onDelete),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Overlay Delete Badge ────────────────────────────────────────────────
+
+class _OverlayDeleteBadge extends StatelessWidget {
+  const _OverlayDeleteBadge({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.75),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1.5),
+        ),
+        child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
       ),
     );
   }

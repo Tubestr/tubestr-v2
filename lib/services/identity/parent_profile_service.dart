@@ -8,6 +8,7 @@ import '../../domain/models/offline_action.dart';
 import '../../domain/models/parent_identity.dart';
 import '../../domain/models/parent_profile.dart';
 import '../nostr/nostr_service.dart';
+import '../nostr/outbox_relay_resolver.dart';
 import '../offline/offline_action_store.dart';
 
 class ParentProfileService {
@@ -15,13 +16,19 @@ class ParentProfileService {
     required AppDatabase database,
     required NostrService nostrService,
     required OfflineActionStore offlineActionStore,
+    OutboxRelayResolver? outboxRelayResolver,
   }) : _database = database,
        _nostrService = nostrService,
-       _offlineActionStore = offlineActionStore;
+       _offlineActionStore = offlineActionStore,
+       _outboxRelayResolver = outboxRelayResolver;
+
+  static const Duration _defaultCacheTtl = Duration(hours: 6);
+  static const Duration _relayFetchTimeout = Duration(seconds: 5);
 
   final AppDatabase _database;
   final NostrService _nostrService;
   final OfflineActionStore _offlineActionStore;
+  final OutboxRelayResolver? _outboxRelayResolver;
 
   Future<String?> loadLocalDisplayName() {
     return _database.getSetting(AppConstants.parentDisplayNameSettingKey);
@@ -78,12 +85,17 @@ class ParentProfileService {
     required String publicKeyHex,
     ParentIdentity? localIdentity,
     bool refresh = false,
+    Duration? cacheTtl,
   }) async {
-    if (!refresh) {
-      final cached = await _loadCachedProfile(publicKeyHex);
-      if (cached != null) {
-        return cached;
-      }
+    final cached = await _loadCachedProfile(publicKeyHex);
+    final ttl = cacheTtl ?? _defaultCacheTtl;
+    final isFresh =
+        cached != null &&
+        cached.cachedAt != null &&
+        DateTime.now().difference(cached.cachedAt!) < ttl;
+
+    if (!refresh && cached != null && isFresh) {
+      return cached;
     }
 
     if (localIdentity != null && localIdentity.publicKeyHex == publicKeyHex) {
@@ -100,30 +112,38 @@ class ParentProfileService {
       }
     }
 
-    final events = await _nostrService.queryEvents(
-      filter: Filter(authors: [publicKeyHex], kinds: const [0], limit: 1),
-      timeout: const Duration(seconds: 2),
-    );
-    if (events.isEmpty) {
-      return null;
+    try {
+      final relays = await _outboxRelayResolver?.unionForRead(publicKeyHex);
+      final events = await _nostrService.queryEvents(
+        filter: Filter(authors: [publicKeyHex], kinds: const [0], limit: 1),
+        relays: relays,
+        timeout: _relayFetchTimeout,
+      );
+      if (events.isNotEmpty) {
+        final event = events.first;
+        final content = jsonDecode(event.content) as Map<String, dynamic>;
+        final displayName =
+            content['display_name']?.toString() ??
+            content['displayName']?.toString() ??
+            content['name']?.toString();
+        if (displayName != null && displayName.isNotEmpty) {
+          final profile = ParentProfile(
+            publicKeyHex: publicKeyHex,
+            displayName: displayName,
+            about: content['about']?.toString(),
+            updatedAt: DateTime.fromMillisecondsSinceEpoch(
+              event.createdAt * 1000,
+            ),
+          );
+          await _cacheProfile(profile);
+          return profile;
+        }
+      }
+    } catch (_) {
+      // Relay failure falls through to stale cache fallback below.
     }
-    final event = events.first;
-    final content = jsonDecode(event.content) as Map<String, dynamic>;
-    final displayName =
-        content['display_name']?.toString() ??
-        content['displayName']?.toString() ??
-        content['name']?.toString();
-    if (displayName == null || displayName.isEmpty) {
-      return null;
-    }
-    final profile = ParentProfile(
-      publicKeyHex: publicKeyHex,
-      displayName: displayName,
-      about: content['about']?.toString(),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(event.createdAt * 1000),
-    );
-    await _cacheProfile(profile);
-    return profile;
+
+    return cached;
   }
 
   Future<Map<String, ParentProfile>> resolveProfiles({

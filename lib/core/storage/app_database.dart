@@ -193,6 +193,22 @@ class AppSettings extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
+/// Records family spaces the current account has self-removed from.
+///
+/// MDK keeps the group in local storage until another member commits the
+/// SelfRemove proposal, but the departing account will never process that
+/// commit (its own keys are no longer in the tree after the epoch advances).
+/// We mark the group as left optimistically so feeds, share pickers, and
+/// capture surfaces can hide it immediately instead of showing a read-only
+/// group that still appears active to MDK.
+class LeftFamilySpaces extends Table {
+  TextColumn get mlsGroupIdHex => text()();
+  DateTimeColumn get leftAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {mlsGroupIdHex};
+}
+
 @DriftDatabase(
   tables: [
     Profiles,
@@ -206,6 +222,7 @@ class AppSettings extends Table {
     Reports,
     ModerationAuditLogs,
     AppSettings,
+    LeftFamilySpaces,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -214,7 +231,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -225,6 +242,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(localVideos, localVideos.highestRiskCategory);
         await m.addColumn(localVideos, localVideos.scanConfidence);
         await m.addColumn(localVideos, localVideos.reviewReasons);
+      }
+      if (from < 3) {
+        await m.createTable(leftFamilySpaces);
       }
     },
     beforeOpen: (details) async {
@@ -275,12 +295,18 @@ class AppDatabase extends _$AppDatabase {
 
           final newMediaPath = mediaPath == null
               ? null
-              : _rebaseIosPath(mediaPath, currentSupportPrefix,
-                  marker: 'Application Support/');
+              : _rebaseIosPath(
+                  mediaPath,
+                  currentSupportPrefix,
+                  marker: 'Application Support/',
+                );
           final newThumbPath = thumbPath == null
               ? null
-              : _rebaseIosPath(thumbPath, currentSupportPrefix,
-                  marker: 'Application Support/');
+              : _rebaseIosPath(
+                  thumbPath,
+                  currentSupportPrefix,
+                  marker: 'Application Support/',
+                );
 
           if (newMediaPath != mediaPath || newThumbPath != thumbPath) {
             await customUpdate(
@@ -404,6 +430,32 @@ class AppDatabase extends _$AppDatabase {
     return (select(
       moderationAuditLogs,
     )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).watch();
+  }
+
+  Stream<Set<String>> watchLeftFamilySpaceIds() {
+    return select(
+      leftFamilySpaces,
+    ).watch().map((rows) => rows.map((row) => row.mlsGroupIdHex).toSet());
+  }
+
+  Future<Set<String>> getLeftFamilySpaceIds() async {
+    final rows = await select(leftFamilySpaces).get();
+    return rows.map((row) => row.mlsGroupIdHex).toSet();
+  }
+
+  Future<void> markFamilySpaceLeft(String mlsGroupIdHex) async {
+    await into(leftFamilySpaces).insertOnConflictUpdate(
+      LeftFamilySpacesCompanion.insert(
+        mlsGroupIdHex: mlsGroupIdHex,
+        leftAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> clearFamilySpaceLeftMarker(String mlsGroupIdHex) async {
+    await (delete(
+      leftFamilySpaces,
+    )..where((tbl) => tbl.mlsGroupIdHex.equals(mlsGroupIdHex))).go();
   }
 
   Stream<int> watchLikeCountForVideo(String videoId) {
@@ -617,6 +669,10 @@ class AppDatabase extends _$AppDatabase {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  Future<void> deleteSetting(String key) {
+    return (delete(appSettings)..where((tbl) => tbl.key.equals(key))).go();
   }
 
   Future<void> clearAllData() {

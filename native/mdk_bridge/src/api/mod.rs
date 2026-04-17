@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use mdk_core::encrypted_media::types::MediaReference;
-use mdk_core::groups::NostrGroupConfigData;
+use mdk_core::groups::{NostrGroupConfigData, NostrGroupDataUpdate};
 use mdk_core::key_packages::KeyPackageEventData as MdkKeyPackageEventData;
 use mdk_core::messages::MessageProcessingResult;
 use mdk_core::MDK;
@@ -411,6 +411,93 @@ pub fn remove_group_members(
     let result = runtime
         .mdk
         .remove_members(&mls_group_id, &member_pubkeys)
+        .map_err(|err| err.to_string())?;
+
+    Ok(GroupUpdateData {
+        wrapper_event_json: result.evolution_event.as_json(),
+        wrapper_event_id_hex: result.evolution_event.id.to_hex(),
+        mls_group_id_hex: hex::encode(result.mls_group_id.as_slice()),
+    })
+}
+
+/// Replace the admin set of a group.
+///
+/// [`admin_pubkeys_hex`] is the full desired admin set (not a delta). mdk-core
+/// prunes any pubkeys that aren't group members and rejects an update that
+/// would leave the group with zero admins. Returns the wrapper event the
+/// caller must publish to relays so other members advance the epoch. Only an
+/// existing admin can publish this update.
+pub fn update_group_admins(
+    mls_group_id_hex: String,
+    admin_pubkeys_hex: Vec<String>,
+) -> Result<GroupUpdateData, String> {
+    let guard = MDK_INSTANCE.lock().map_err(|err| err.to_string())?;
+    let runtime = guard
+        .as_ref()
+        .ok_or_else(|| "MDK runtime has not been initialized".to_string())?;
+
+    let mls_group_id = group_id_from_hex(&mls_group_id_hex)?;
+    let admins = admin_pubkeys_hex
+        .into_iter()
+        .map(|pubkey| {
+            PublicKey::parse(&pubkey).map_err(|err| format!("Invalid admin pubkey: {err}"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let update = NostrGroupDataUpdate::new().admins(admins);
+    let result = runtime
+        .mdk
+        .update_group_data(&mls_group_id, update)
+        .map_err(|err| err.to_string())?;
+
+    Ok(GroupUpdateData {
+        wrapper_event_json: result.evolution_event.as_json(),
+        wrapper_event_id_hex: result.evolution_event.id.to_hex(),
+        mls_group_id_hex: hex::encode(result.mls_group_id.as_slice()),
+    })
+}
+
+/// Demote the current account from the admin set of a group.
+///
+/// MIP-03 requires admins to self-demote before leaving. Returns the wrapper
+/// event the caller must publish to relays so remaining members advance the
+/// epoch. Fails if the account is the only active admin.
+pub fn self_demote(mls_group_id_hex: String) -> Result<GroupUpdateData, String> {
+    let guard = MDK_INSTANCE.lock().map_err(|err| err.to_string())?;
+    let runtime = guard
+        .as_ref()
+        .ok_or_else(|| "MDK runtime has not been initialized".to_string())?;
+
+    let mls_group_id = group_id_from_hex(&mls_group_id_hex)?;
+    let result = runtime
+        .mdk
+        .self_demote(&mls_group_id)
+        .map_err(|err| err.to_string())?;
+
+    Ok(GroupUpdateData {
+        wrapper_event_json: result.evolution_event.as_json(),
+        wrapper_event_id_hex: result.evolution_event.id.to_hex(),
+        mls_group_id_hex: hex::encode(result.mls_group_id.as_slice()),
+    })
+}
+
+/// Build a SelfRemove proposal event for the current account.
+///
+/// The caller must publish the returned wrapper event to relays — another
+/// member will commit it on the next epoch. mdk-core refuses this if the
+/// account is still an admin, so callers must `self_demote` first in that
+/// case. After publishing, the caller should treat local state for the
+/// group as departed (no local commit will be processed).
+pub fn leave_group(mls_group_id_hex: String) -> Result<GroupUpdateData, String> {
+    let guard = MDK_INSTANCE.lock().map_err(|err| err.to_string())?;
+    let runtime = guard
+        .as_ref()
+        .ok_or_else(|| "MDK runtime has not been initialized".to_string())?;
+
+    let mls_group_id = group_id_from_hex(&mls_group_id_hex)?;
+    let result = runtime
+        .mdk
+        .leave_group(&mls_group_id)
         .map_err(|err| err.to_string())?;
 
     Ok(GroupUpdateData {

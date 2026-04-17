@@ -11,6 +11,7 @@ import '../../../core/di/providers.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../shared_ui/components/feed_metric_pill.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
 import '../../../shared_ui/components/video_feed_row.dart';
@@ -24,7 +25,7 @@ class HomeFeedContent extends ConsumerWidget {
     final profiles = ref.watch(profilesProvider).valueOrNull ?? const [];
     final videos = ref.watch(videosForSelectedProfileProvider);
     final remoteShares =
-        ref.watch(remoteSharesProvider).valueOrNull ?? const [];
+        ref.watch(remoteSharesFromOthersProvider).valueOrNull ?? const [];
     final selectedProfileId = ref.watch(selectedProfileIdProvider);
     final selectedProfile = profiles.firstWhereOrNull(
       (p) => p.id == selectedProfileId,
@@ -701,6 +702,7 @@ class _MyVideosSection extends StatelessWidget {
           items: items.cast<LocalVideo>(),
           palette: palette,
           onTap: (video) => context.push('/player/${video.id}'),
+          showReactions: true,
         ),
       ],
     );
@@ -945,14 +947,14 @@ class _SharedVideoTile extends ConsumerWidget {
                 runSpacing: 6,
                 children: [
                   if (likeCount > 0)
-                    _FeedMetricPill(
+                    FeedMetricPill(
                       palette: palette,
                       label: '$likeCount ${likeCount == 1 ? 'like' : 'likes'}',
                       icon: Icons.favorite_rounded,
                       iconColor: const Color(0xFFFF6B7A),
                     ),
                   for (final reaction in reactions.take(2))
-                    _FeedMetricPill(
+                    FeedMetricPill(
                       palette: palette,
                       label: '${reaction.emoji} ${reaction.count}',
                     ),
@@ -1012,48 +1014,6 @@ class _StatusBadge extends StatelessWidget {
           color: Colors.white,
           fontWeight: FontWeight.w700,
         ),
-      ),
-    );
-  }
-}
-
-class _FeedMetricPill extends StatelessWidget {
-  const _FeedMetricPill({
-    required this.palette,
-    required this.label,
-    this.icon,
-    this.iconColor,
-  });
-
-  final KidPalette palette;
-  final String label;
-  final IconData? icon;
-  final Color? iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: palette.panelBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: iconColor ?? palette.accent),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: palette.ink,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }

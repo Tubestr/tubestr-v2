@@ -6,7 +6,10 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mytube/core/constants.dart';
+import 'package:mytube/domain/models/blossom_server_list.dart';
+import 'package:mytube/domain/models/mute_list.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
+import 'package:mytube/domain/models/relay_entry.dart';
 import 'package:mytube/services/blossom/blossom_client.dart';
 import 'package:mytube/services/identity/identity_service.dart';
 import 'package:mytube/services/mdk/mdk_service.dart';
@@ -409,6 +412,19 @@ class FakeNostrService implements NostrService {
   List<String> relayList = const ['wss://relay.example'];
   List<String> blossomServers = const ['https://blossom.example'];
   List<String> fetchedBlossomServers = const ['https://blossom.example'];
+  Nip01Event? fetchedRelayListEvent;
+  Nip01Event? fetchedBlossomServerListEvent;
+  Nip01Event? fetchedMuteListEvent;
+  RelayList? savedRelayListFull;
+  BlossomServerList? savedBlossomServerListFull;
+  MuteList? savedMuteList;
+  MuteList? parsedMuteListResult;
+  final List<List<RelayEntry>> publishedRelayListEntries = [];
+  final List<List<String>> publishedBlossomServerLists = [];
+  final List<List<MuteEntry>> publishedMuteListEntries = [];
+  bool throwOnPublishRelayList = false;
+  bool throwOnPublishBlossomServerList = false;
+  bool throwOnPublishMuteList = false;
   String? unwrapGiftWrapRumorJsonResult;
   bool throwOnPublishSignedEvent = false;
   int? throwOnPublishSignedEventCall;
@@ -510,12 +526,79 @@ class FakeNostrService implements NostrService {
   Future<List<String>> loadRelayList() async => relayList;
 
   @override
-  Future<String> publishBlossomServerList({
+  Future<PublishEventResult> publishBlossomServerList({
     required ParentIdentity identity,
-    List<String>? servers,
+    required List<String> servers,
     List<String>? relays,
   }) async {
-    return 'blossom-event-id';
+    if (throwOnPublishBlossomServerList) {
+      throw StateError('relay unavailable');
+    }
+    publishedBlossomServerLists.add(List<String>.from(servers));
+    return PublishEventResult(
+      eventId: 'blossom-event-id',
+      createdAt: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<PublishEventResult> publishRelayList({
+    required ParentIdentity identity,
+    required List<RelayEntry> entries,
+    List<String>? relays,
+  }) async {
+    if (throwOnPublishRelayList) {
+      throw StateError('relay unavailable');
+    }
+    publishedRelayListEntries.add(List<RelayEntry>.from(entries));
+    return PublishEventResult(
+      eventId: 'relay-list-event-id',
+      createdAt: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<Nip01Event?> fetchRelayListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    return fetchedRelayListEvent;
+  }
+
+  @override
+  Future<Nip01Event?> fetchBlossomServerListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    return fetchedBlossomServerListEvent;
+  }
+
+  @override
+  Future<RelayList> loadRelayListFull() async {
+    return savedRelayListFull ??
+        RelayList(
+          entries: relayList
+              .map((url) => RelayEntry(url: url))
+              .toList(growable: false),
+        );
+  }
+
+  @override
+  Future<void> saveRelayListFull(RelayList list) async {
+    savedRelayListFull = list;
+    relayList = list.entries.map((entry) => entry.url).toList(growable: false);
+  }
+
+  @override
+  Future<BlossomServerList> loadBlossomServerListFull() async {
+    return savedBlossomServerListFull ??
+        BlossomServerList(servers: blossomServers);
+  }
+
+  @override
+  Future<void> saveBlossomServerListFull(BlossomServerList list) async {
+    savedBlossomServerListFull = list;
+    blossomServers = list.servers;
   }
 
   @override
@@ -633,6 +716,48 @@ class FakeNostrService implements NostrService {
     required Nip01Event giftWrapEvent,
   }) async {
     return unwrapGiftWrapRumorJsonResult;
+  }
+
+  @override
+  Future<MuteList> loadMuteList() async {
+    return savedMuteList ?? const MuteList(entries: <MuteEntry>[]);
+  }
+
+  @override
+  Future<void> saveMuteList(MuteList list) async {
+    savedMuteList = list;
+  }
+
+  @override
+  Future<PublishEventResult> publishMuteList({
+    required ParentIdentity identity,
+    required List<MuteEntry> entries,
+    List<String>? relays,
+  }) async {
+    if (throwOnPublishMuteList) {
+      throw StateError('relay unavailable');
+    }
+    publishedMuteListEntries.add(List<MuteEntry>.from(entries));
+    return PublishEventResult(
+      eventId: 'mute-list-event-id',
+      createdAt: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<Nip01Event?> fetchMuteListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    return fetchedMuteListEvent;
+  }
+
+  @override
+  Future<MuteList> parseMuteListEventFor({
+    required ParentIdentity identity,
+    required Nip01Event event,
+  }) async {
+    return parsedMuteListResult ?? const MuteList(entries: <MuteEntry>[]);
   }
 
   @override

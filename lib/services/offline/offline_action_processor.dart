@@ -4,6 +4,8 @@ import '../engagement/like_coordinator.dart';
 import '../engagement/reaction_coordinator.dart';
 import '../identity/identity_service.dart';
 import '../identity/parent_profile_service.dart';
+import '../identity/user_list_sync_service.dart';
+import '../nostr/nostr_service.dart';
 import '../offline/offline_action_store.dart';
 import '../safety/report_coordinator.dart';
 import '../share/video_share_coordinator.dart';
@@ -17,13 +19,17 @@ class OfflineActionProcessor {
     required LikeCoordinator likeCoordinator,
     required ReactionCoordinator reactionCoordinator,
     required ReportCoordinator reportCoordinator,
+    required UserListSyncService userListSyncService,
+    required NostrService nostrService,
   }) : _store = store,
        _identityService = identityService,
        _parentProfileService = parentProfileService,
        _videoShareCoordinator = videoShareCoordinator,
        _likeCoordinator = likeCoordinator,
        _reactionCoordinator = reactionCoordinator,
-       _reportCoordinator = reportCoordinator;
+       _reportCoordinator = reportCoordinator,
+       _userListSyncService = userListSyncService,
+       _nostrService = nostrService;
 
   final OfflineActionStore _store;
   final IdentityService _identityService;
@@ -32,6 +38,8 @@ class OfflineActionProcessor {
   final LikeCoordinator _likeCoordinator;
   final ReactionCoordinator _reactionCoordinator;
   final ReportCoordinator _reportCoordinator;
+  final UserListSyncService _userListSyncService;
+  final NostrService _nostrService;
 
   Future<int> flush() async {
     final identity = await _identityService.loadIdentity();
@@ -39,18 +47,49 @@ class OfflineActionProcessor {
       return 0;
     }
     final actions = await _deduplicate(await _store.load());
+    if (actions.isEmpty) return 0;
+
+    // Preload relay + blossom lists once if this batch includes any video shares,
+    // so N queued shares don't each re-read the same settings rows.
+    List<String>? preloadedRelays;
+    List<String>? preloadedBlossomServers;
+    final hasShareVideo = actions.any(
+      (a) => a.type == OfflineActionType.shareVideo,
+    );
+    if (hasShareVideo) {
+      preloadedRelays = await _nostrService.loadRelayList();
+      preloadedBlossomServers = await _nostrService.loadBlossomServerList();
+    }
+
+    final limit = _flushConcurrency.clamp(1, actions.length);
     var flushed = 0;
-    for (final action in actions) {
-      try {
-        await _processAction(identity: identity, action: action);
-        await _store.markSucceeded(action.id);
-        flushed += 1;
-      } catch (error) {
-        await _store.markFailed(actionId: action.id, error: error);
+    var next = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        final index = next++;
+        if (index >= actions.length) return;
+        final action = actions[index];
+        try {
+          await _processAction(
+            identity: identity,
+            action: action,
+            preloadedRelays: preloadedRelays,
+            preloadedBlossomServers: preloadedBlossomServers,
+          );
+          await _store.markSucceeded(action.id);
+          flushed += 1;
+        } catch (error) {
+          await _store.markFailed(actionId: action.id, error: error);
+        }
       }
     }
+
+    await Future.wait(List.generate(limit, (_) => worker()));
     return flushed;
   }
+
+  static const int _flushConcurrency = 4;
 
   /// Collapse duplicate actions (same type + payload) keeping the oldest.
   /// This heals queues bloated by the re-enqueue bug.
@@ -75,6 +114,8 @@ class OfflineActionProcessor {
   Future<void> _processAction({
     required ParentIdentity identity,
     required OfflineAction action,
+    List<String>? preloadedRelays,
+    List<String>? preloadedBlossomServers,
   }) {
     switch (action.type) {
       case OfflineActionType.shareVideo:
@@ -86,6 +127,8 @@ class OfflineActionProcessor {
               action.payload['child_display_name']?.toString() ?? '',
           mlsGroupIdHex: action.payload['mls_group_id']?.toString() ?? '',
           allowQueueOnFailure: false,
+          preloadedRelays: preloadedRelays,
+          preloadedBlossomServers: preloadedBlossomServers,
         );
       case OfflineActionType.sendLike:
         return _likeCoordinator.sendRemoteLike(
@@ -130,6 +173,21 @@ class OfflineActionProcessor {
               allowQueueOnFailure: false,
             )
             .then((_) {});
+      case OfflineActionType.publishRelayList:
+        return _userListSyncService.replayRelayListPublish(
+          identity: identity,
+          payload: action.payload,
+        );
+      case OfflineActionType.publishBlossomServerList:
+        return _userListSyncService.replayBlossomServerListPublish(
+          identity: identity,
+          payload: action.payload,
+        );
+      case OfflineActionType.publishMuteList:
+        return _userListSyncService.replayMuteListPublish(
+          identity: identity,
+          payload: action.payload,
+        );
     }
   }
 }

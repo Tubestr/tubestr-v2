@@ -14,6 +14,7 @@ class AppConstants {
   static const managedVideoUploadsSettingKey = 'managed_video_uploads';
   static const relayListSettingKey = 'relay_list';
   static const blossomServerListSettingKey = 'blossom_server_list';
+  static const muteListSettingKey = 'mute_list';
   static const safetyJoinQueuedKey = 'safety_join_queued';
   static const safetyJoinedKey = 'safety_joined';
   static const safetyGroupIdSettingKey = 'safety_group_id';
@@ -46,5 +47,6 @@ class MarmotKinds {
   static const tombstone = 30302;
   static const blossomServers = 10063;
   static const relayList = 10002;
+  static const muteList = 10000;
   static const keyPackageRelays = 10051;
 }

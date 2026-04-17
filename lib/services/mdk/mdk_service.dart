@@ -527,6 +527,53 @@ class MdkService {
     );
   }
 
+  /// Replace the admin set of a group. [adminPubkeysHex] must be the full
+  /// desired admin list (not a delta). mdk-core prunes non-members and
+  /// rejects an empty admin set. Publish the returned wrapper event so other
+  /// members advance the epoch. Only an existing admin can invoke this.
+  Future<MdkGroupUpdate> updateGroupAdmins({
+    required String mlsGroupIdHex,
+    required List<String> adminPubkeysHex,
+  }) async {
+    await ensureInitialized();
+    final result = await bridge_api.updateGroupAdmins(
+      mlsGroupIdHex: mlsGroupIdHex,
+      adminPubkeysHex: adminPubkeysHex,
+    );
+    return MdkGroupUpdate(
+      wrapperEventJson: result.wrapperEventJson,
+      wrapperEventIdHex: result.wrapperEventIdHex,
+      mlsGroupIdHex: result.mlsGroupIdHex,
+    );
+  }
+
+  /// Commit a self-demotion for the current account. Required before
+  /// [leaveGroup] if the account is in the admin set. Publish the returned
+  /// wrapper event to the group's relays.
+  Future<MdkGroupUpdate> selfDemote({required String mlsGroupIdHex}) async {
+    await ensureInitialized();
+    final result = await bridge_api.selfDemote(mlsGroupIdHex: mlsGroupIdHex);
+    return MdkGroupUpdate(
+      wrapperEventJson: result.wrapperEventJson,
+      wrapperEventIdHex: result.wrapperEventIdHex,
+      mlsGroupIdHex: result.mlsGroupIdHex,
+    );
+  }
+
+  /// Build a SelfRemove proposal event for the current account and return
+  /// the wrapper event the caller must publish. Another member commits it
+  /// on the next epoch; the departing account will never merge the commit
+  /// locally, so the caller must mark the group as departed separately.
+  Future<MdkGroupUpdate> leaveGroup({required String mlsGroupIdHex}) async {
+    await ensureInitialized();
+    final result = await bridge_api.leaveGroup(mlsGroupIdHex: mlsGroupIdHex);
+    return MdkGroupUpdate(
+      wrapperEventJson: result.wrapperEventJson,
+      wrapperEventIdHex: result.wrapperEventIdHex,
+      mlsGroupIdHex: result.mlsGroupIdHex,
+    );
+  }
+
   Future<MdkCreatedMessage> createApplicationMessage({
     required String mlsGroupIdHex,
     required String senderPublicKeyHex,

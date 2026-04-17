@@ -18,6 +18,41 @@ import '../offline/offline_action_store.dart';
 import 'managed_video_upload_service.dart';
 import 'share_history_service.dart';
 
+const int _shareFanoutConcurrency = 4;
+
+Future<List<R>> _runBounded<T, R>(
+  List<T> items,
+  int concurrency,
+  Future<R> Function(T) task,
+) async {
+  if (items.isEmpty) return const <Never>[];
+  final results = List<R?>.filled(items.length, null);
+  final limit = concurrency.clamp(1, items.length);
+  var next = 0;
+  Future<void> worker() async {
+    while (true) {
+      final index = next++;
+      if (index >= items.length) return;
+      results[index] = await task(items[index]);
+    }
+  }
+
+  await Future.wait(List.generate(limit, (_) => worker()));
+  return results.cast<R>();
+}
+
+class _GroupShareAttempt {
+  const _GroupShareAttempt._(this.group, this.eventId, this.error);
+  factory _GroupShareAttempt.success(MdkGroupSummary group, String eventId) =>
+      _GroupShareAttempt._(group, eventId, null);
+  factory _GroupShareAttempt.failure(MdkGroupSummary group, String error) =>
+      _GroupShareAttempt._(group, null, error);
+
+  final MdkGroupSummary group;
+  final String? eventId;
+  final String? error;
+}
+
 class VideoShareCoordinator {
   VideoShareCoordinator({
     required AppDatabase database,
@@ -332,7 +367,7 @@ class VideoShareCoordinator {
     required String mlsGroupIdHex,
     List<String>? blossomServers,
   }) async {
-    await warmUp();
+    await _mdkService.ensureInitialized();
 
     if (localVideo.approvalStatus != 'approved') {
       throw StateError(
@@ -559,6 +594,8 @@ class VideoShareCoordinator {
     required String childDisplayName,
     required String mlsGroupIdHex,
     bool allowQueueOnFailure = true,
+    List<String>? preloadedRelays,
+    List<String>? preloadedBlossomServers,
   }) async {
     var localVideo = await _database.getLocalVideoById(videoId);
     if (localVideo == null) {
@@ -579,8 +616,9 @@ class VideoShareCoordinator {
         localVideo: localVideo,
         childDisplayName: childDisplayName,
         mlsGroupIdHex: mlsGroupIdHex,
+        blossomServers: preloadedBlossomServers,
       );
-      final relays = await _nostrService.loadRelayList();
+      final relays = preloadedRelays ?? await _nostrService.loadRelayList();
       final eventId = await publishSignedGroupMessage(
         identity: identity,
         signedEventJson: messages.nativeShare.wrapperEventJson,
@@ -666,29 +704,47 @@ class VideoShareCoordinator {
       );
     }
 
+    // Hoist per-share DB lookups out of the fanout — one read for N groups.
+    final preloadedRelays = await _nostrService.loadRelayList();
+    final preloadedBlossomServers = await _nostrService.loadBlossomServerList();
+
     final sharedGroupIds = <String>[];
     final queuedGroupIds = <String>[];
     final eventIds = <String>[];
     final errors = <String>[];
 
-    for (final group in groups) {
-      try {
-        final eventId = await shareLocalVideo(
-          identity: identity,
-          videoId: videoId,
-          profileId: profileId,
-          childDisplayName: childDisplayName,
-          mlsGroupIdHex: group.mlsGroupIdHex,
-          allowQueueOnFailure: allowQueueOnFailure,
-        );
-        sharedGroupIds.add(group.mlsGroupIdHex);
-        eventIds.add(eventId);
-      } catch (error) {
-        final message = '$error';
-        if (message.startsWith('Share queued for retry:')) {
-          queuedGroupIds.add(group.mlsGroupIdHex);
+    final attempts = await _runBounded<MdkGroupSummary, _GroupShareAttempt>(
+      groups,
+      _shareFanoutConcurrency,
+      (group) async {
+        try {
+          final eventId = await shareLocalVideo(
+            identity: identity,
+            videoId: videoId,
+            profileId: profileId,
+            childDisplayName: childDisplayName,
+            mlsGroupIdHex: group.mlsGroupIdHex,
+            allowQueueOnFailure: allowQueueOnFailure,
+            preloadedRelays: preloadedRelays,
+            preloadedBlossomServers: preloadedBlossomServers,
+          );
+          return _GroupShareAttempt.success(group, eventId);
+        } catch (error) {
+          return _GroupShareAttempt.failure(group, '$error');
         }
-        errors.add('${group.name}: $message');
+      },
+    );
+
+    for (final attempt in attempts) {
+      if (attempt.eventId != null) {
+        sharedGroupIds.add(attempt.group.mlsGroupIdHex);
+        eventIds.add(attempt.eventId!);
+      } else {
+        final message = attempt.error ?? 'Unknown error';
+        if (message.startsWith('Share queued for retry:')) {
+          queuedGroupIds.add(attempt.group.mlsGroupIdHex);
+        }
+        errors.add('${attempt.group.name}: $message');
       }
     }
 
@@ -711,6 +767,76 @@ class VideoShareCoordinator {
       );
     }
     return result;
+  }
+
+  /// Optimistic fanout: resolve eligible groups, scan once upfront, enqueue one
+  /// offline share action per group, return immediately. Callers are expected
+  /// to trigger [OfflineActionProcessor.flush] so the queue drains right away
+  /// instead of waiting for the next connectivity/resume tick.
+  Future<ShareDispatchResult> queueShareToEligibleGroups({
+    required ParentIdentity identity,
+    required String videoId,
+    required String profileId,
+    required String childDisplayName,
+  }) async {
+    await warmUp();
+    final summaries = await _mdkService.getGroupSummaries();
+    var groups = _eligibleShareGroups(summaries);
+    if (groups.isEmpty) {
+      final fallback = await _loadPrimaryGroupFallback(
+        profileId: profileId,
+        groups: summaries,
+      );
+      if (fallback != null) {
+        groups = [fallback];
+      }
+    }
+    if (groups.isEmpty) {
+      throw StateError(
+        'Join a family connection with at least one other parent before sharing.',
+      );
+    }
+
+    // Scan once upfront so parallel workers don't race on an unscanned video.
+    var localVideo = await _database.getLocalVideoById(videoId);
+    if (localVideo == null) {
+      throw StateError('Local video not found: $videoId');
+    }
+    if (localVideo.scanCompletedAt == null ||
+        localVideo.scanResults == null ||
+        localVideo.scanResults!.isEmpty) {
+      await _videoApprovalService.scanAndClassifyVideo(videoId: videoId);
+      localVideo = await _database.getLocalVideoById(videoId);
+      if (localVideo == null) {
+        throw StateError('Local video disappeared before sharing: $videoId');
+      }
+    }
+    if (localVideo.approvalStatus != 'approved') {
+      throw StateError(
+        'This video still needs parent approval before it can be shared.',
+      );
+    }
+
+    final queuedGroupIds = <String>[];
+    for (final group in groups) {
+      await _offlineActionStore.enqueue(
+        type: OfflineActionType.shareVideo,
+        payload: <String, dynamic>{
+          'video_id': videoId,
+          'profile_id': profileId,
+          'child_display_name': childDisplayName,
+          'mls_group_id': group.mlsGroupIdHex,
+        },
+      );
+      queuedGroupIds.add(group.mlsGroupIdHex);
+    }
+
+    return ShareDispatchResult(
+      sharedGroupIds: const <String>[],
+      queuedGroupIds: queuedGroupIds,
+      eventIds: const <String>[],
+      errors: const <String>[],
+    );
   }
 
   Future<BlossomUploadAuth> _createBlossomUploadAuth({

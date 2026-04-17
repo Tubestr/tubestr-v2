@@ -12,12 +12,15 @@ import '../../../core/di/providers.dart';
 import '../../../core/nostr/nostr_key_format.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/marmot/invite_transport_models.dart';
+import '../../../domain/models/parent_identity.dart';
+import '../../../domain/models/relay_entry.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../shared_ui/components/external_page_view.dart';
 import '../../../shared_ui/components/qr_scanner_sheet.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../../services/connections/family_connection_service.dart';
 import '../../../services/mdk/mdk_service.dart';
+import '../../../services/safety/moderation_coordinator.dart';
 import '../../../services/sync/sync_coordinator.dart';
 import 'models/parent_zone_models.dart';
 import 'widgets/parent_zone_account_section.dart';
@@ -73,6 +76,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
   Timer? _pendingWelcomePollTimer;
   bool _pendingWelcomePollInFlight = false;
   int _pendingWelcomePollsRemaining = 0;
+  BuildContext? _inviteSheetContext;
 
   @override
   void initState() {
@@ -205,7 +209,13 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     final version = await service.bridgeVersion();
     final dbPath = await service.mdkDbPath();
     final groupCount = await service.groupCount();
-    final groups = await service.getGroupSummaries();
+    final allGroups = await service.getGroupSummaries();
+    final leftIds = await ref.read(appDatabaseProvider).getLeftFamilySpaceIds();
+    final groups = leftIds.isEmpty
+        ? allGroups
+        : allGroups
+              .where((group) => !leftIds.contains(group.mlsGroupIdHex))
+              .toList(growable: false);
     final pendingWelcomes = await service.getPendingWelcomes();
     return ParentZoneMdkDebugState(
       version: version,
@@ -279,12 +289,15 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
           if (!mounted) {
             return;
           }
+          final welcomeArrived = state.pendingWelcomes.isNotEmpty;
           final shouldStop =
-              state.pendingWelcomes.isNotEmpty ||
-              _pendingWelcomePollsRemaining <= 1;
+              welcomeArrived || _pendingWelcomePollsRemaining <= 1;
           setState(() {
             _mdkDebugFuture = Future<ParentZoneMdkDebugState>.value(state);
           });
+          if (welcomeArrived) {
+            _closeInviteSheetIfOpen();
+          }
           if (shouldStop) {
             timer.cancel();
             _pendingWelcomePollTimer = null;
@@ -369,94 +382,130 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     return 'Connection already sent for $groupName. They can approve it in Parent Zone.';
   }
 
-  void _showQrDialog({
+  void _closeInviteSheetIfOpen() {
+    final sheetCtx = _inviteSheetContext;
+    _inviteSheetContext = null;
+    if (sheetCtx != null && sheetCtx.mounted) {
+      Navigator.of(sheetCtx).pop();
+    }
+  }
+
+  void _showQrSheet({
     required String title,
     required String payload,
     String? shareText,
   }) {
-    showDialog<void>(
+    final payloadUri = Uri.tryParse(payload);
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) {
-        final payloadUri = Uri.tryParse(payload);
-        final qrSize = (MediaQuery.sizeOf(context).width - 120).clamp(
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        _inviteSheetContext = sheetContext;
+        final qrSize = (MediaQuery.sizeOf(sheetContext).width - 120).clamp(
           0.0,
-          240.0,
+          260.0,
         );
-        return SimpleDialog(
-          title: Text(title, textAlign: TextAlign.center),
-          children: [
-            Center(
-              child: SizedBox(
-                width: qrSize,
-                height: qrSize,
-                child: QrImageView(
-                  data: payload,
-                  version: QrVersions.auto,
-                  size: qrSize,
-                  backgroundColor: Colors.white,
-                ),
-              ),
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              0,
+              20,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 24,
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: payload));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied to clipboard')),
-                    );
-                  },
-                  icon: const Icon(Icons.copy_rounded, size: 16),
-                  label: const Text('Copy'),
+                Text(title, style: Theme.of(sheetContext).textTheme.titleLarge),
+                const SizedBox(height: 6),
+                Text(
+                  'Have the other parent scan this from their Parent Zone. This will close automatically once they connect.',
+                  style: Theme.of(sheetContext).textTheme.bodyMedium,
                 ),
-                const SizedBox(width: 12),
-                Builder(
-                  builder: (context) => OutlinedButton.icon(
-                    onPressed: () async {
-                      final box = context.findRenderObject() as RenderBox?;
-                      final origin = box != null
-                          ? box.localToGlobal(Offset.zero) & box.size
-                          : null;
-                      if (shareText != null && shareText.isNotEmpty) {
-                        await SharePlus.instance.share(
-                          ShareParams(
-                            text: shareText,
-                            sharePositionOrigin: origin,
-                          ),
-                        );
-                      } else if (payloadUri != null && payloadUri.hasScheme) {
-                        await SharePlus.instance.share(
-                          ShareParams(
-                            uri: payloadUri,
-                            sharePositionOrigin: origin,
-                          ),
-                        );
-                      } else {
-                        await SharePlus.instance.share(
-                          ShareParams(
-                            text: payload,
-                            sharePositionOrigin: origin,
-                          ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.ios_share_rounded, size: 16),
-                    label: const Text('Share'),
+                const SizedBox(height: 20),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: SizedBox(
+                      width: qrSize,
+                      height: qrSize,
+                      child: QrImageView(
+                        data: payload,
+                        version: QrVersions.auto,
+                        size: qrSize,
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Done'),
+                const SizedBox(height: 20),
+                Builder(
+                  builder: (buttonContext) => SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        HapticFeedback.selectionClick();
+                        final box =
+                            buttonContext.findRenderObject() as RenderBox?;
+                        final origin = box != null
+                            ? box.localToGlobal(Offset.zero) & box.size
+                            : null;
+                        if (shareText != null && shareText.isNotEmpty) {
+                          await SharePlus.instance.share(
+                            ShareParams(
+                              text: shareText,
+                              sharePositionOrigin: origin,
+                            ),
+                          );
+                        } else if (payloadUri != null && payloadUri.hasScheme) {
+                          await SharePlus.instance.share(
+                            ShareParams(
+                              uri: payloadUri,
+                              sharePositionOrigin: origin,
+                            ),
+                          );
+                        } else {
+                          await SharePlus.instance.share(
+                            ShareParams(
+                              text: payload,
+                              sharePositionOrigin: origin,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.ios_share_rounded),
+                      label: const Text('Share link'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: payload));
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(content: Text('Copied to clipboard')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded),
+                    label: const Text('Copy code'),
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
         );
       },
-    );
+    ).whenComplete(() {
+      _inviteSheetContext = null;
+    });
   }
 
   Future<String?> _openScanner() {
@@ -493,7 +542,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       }
       setState(() => _isGeneratingInvitePacket = false);
       _startPendingWelcomePolling();
-      _showQrDialog(
+      _showQrSheet(
         title: 'Your Invite Code',
         payload: result.payload,
         shareText:
@@ -875,27 +924,62 @@ ${result.payload}
     if (next.isEmpty) {
       return;
     }
-    final relays = await ref.read(nostrServiceProvider).loadRelayList();
-    await ref.read(nostrServiceProvider).saveRelayList([...relays, next]);
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    final existing = await ref
+        .read(userListSyncServiceProvider)
+        .loadRelayList();
+    if (existing.entries.any((entry) => entry.url == next)) {
+      _relayController.clear();
+      return;
+    }
+    final entries = <RelayEntry>[...existing.entries, RelayEntry(url: next)];
+    await _persistRelayEntries(identity: identity, entries: entries);
     _relayController.clear();
     await HapticFeedback.lightImpact();
   }
 
   Future<void> _removeRelay(String relay) async {
-    final relays = await ref.read(nostrServiceProvider).loadRelayList();
-    await ref
-        .read(nostrServiceProvider)
-        .saveRelayList(
-          relays.where((item) => item != relay).toList(growable: false),
-        );
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    final existing = await ref
+        .read(userListSyncServiceProvider)
+        .loadRelayList();
+    final entries = existing.entries
+        .where((entry) => entry.url != relay)
+        .toList(growable: false);
+    await _persistRelayEntries(identity: identity, entries: entries);
     await HapticFeedback.lightImpact();
   }
 
   Future<void> _resetRelays() async {
-    await ref
-        .read(nostrServiceProvider)
-        .saveRelayList(AppConstants.defaultRelays);
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    final entries = AppConstants.defaultRelays
+        .map((url) => RelayEntry(url: url))
+        .toList(growable: false);
+    await _persistRelayEntries(identity: identity, entries: entries);
     await HapticFeedback.lightImpact();
+  }
+
+  Future<void> _persistRelayEntries({
+    required ParentIdentity identity,
+    required List<RelayEntry> entries,
+  }) async {
+    try {
+      await ref
+          .read(userListSyncServiceProvider)
+          .saveAndPublishRelayList(identity: identity, entries: entries);
+    } catch (_) {
+      // Local state was still saved; the publish has been queued for retry.
+    }
+    ref.invalidate(relayListProvider);
   }
 
   Future<void> _reconnectRelays() async {
@@ -920,33 +1004,59 @@ ${result.payload}
     if (next.isEmpty) {
       return;
     }
-    final servers = await ref
-        .read(nostrServiceProvider)
-        .loadBlossomServerList();
-    await ref.read(nostrServiceProvider).saveBlossomServerList([
-      ...servers,
-      next,
-    ]);
-    _blossomController.clear();
-    await HapticFeedback.lightImpact();
-  }
-
-  Future<void> _publishBlossomServers(List<String> servers) async {
-    final messenger = ScaffoldMessenger.of(context);
     final identity = ref.read(parentIdentityProvider).valueOrNull;
     if (identity == null) {
       return;
     }
-    await ref
-        .read(nostrServiceProvider)
-        .publishBlossomServerList(identity: identity, servers: servers);
-    if (!mounted) {
+    final existing = await ref
+        .read(userListSyncServiceProvider)
+        .loadBlossomServerList();
+    if (existing.servers.contains(next)) {
+      _blossomController.clear();
       return;
     }
+    final servers = <String>[...existing.servers, next];
+    try {
+      await ref
+          .read(userListSyncServiceProvider)
+          .saveAndPublishBlossomServerList(
+            identity: identity,
+            servers: servers,
+          );
+    } catch (_) {
+      // Local state saved; publish queued for retry.
+    }
+    ref.invalidate(blossomServerListProvider);
+    _blossomController.clear();
     await HapticFeedback.lightImpact();
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Published Blossom server list')),
-    );
+  }
+
+  Future<void> _removeBlossomServer(String server) async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    final existing = await ref
+        .read(userListSyncServiceProvider)
+        .loadBlossomServerList();
+    final servers = existing.servers
+        .where((url) => url != server)
+        .toList(growable: false);
+    if (servers.isEmpty) {
+      return;
+    }
+    try {
+      await ref
+          .read(userListSyncServiceProvider)
+          .saveAndPublishBlossomServerList(
+            identity: identity,
+            servers: servers,
+          );
+    } catch (_) {
+      // Local state saved; publish queued for retry.
+    }
+    ref.invalidate(blossomServerListProvider);
+    await HapticFeedback.lightImpact();
   }
 
   Future<void> _updatePin() async {
@@ -994,20 +1104,25 @@ ${result.payload}
           ? 'Safety HQ is connecting. We sent the setup welcome to the moderation service.'
           : 'Safety HQ is still connecting. Leave the app online for a moment and check again.';
       messenger.showSnackBar(SnackBar(content: Text(message)));
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('Safety HQ provisioning failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       ref.invalidate(safetyHqStatusProvider);
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            error is FormatException
-                ? error.message
-                : 'We couldn\'t set up Safety HQ yet. Please try again.',
-          ),
-        ),
-      );
+      final errorText = error.toString();
+      final String message;
+      if (error is FormatException) {
+        message = error.message;
+      } else if (errorText.contains('Proposals are not acceptable') ||
+          errorText.contains('KeyPackage')) {
+        message =
+            'Safety HQ is temporarily unavailable while Tubestr refreshes the moderation service keys. Please try again later.';
+      } else {
+        message = 'We couldn\'t set up Safety HQ yet. Please try again.';
+      }
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -1282,7 +1397,7 @@ ${result.payload}
         onResetRelays: _resetRelays,
         onReconnectRelays: _reconnectRelays,
         onSaveBlossomServers: _saveBlossomServer,
-        onPublishBlossomServers: _publishBlossomServers,
+        onRemoveBlossomServer: _removeBlossomServer,
         onProvisionSafetyHq: _provisionSafetyHq,
       ),
       ParentZoneSection.diagnostics => ParentZoneDiagnosticsSection(
@@ -1760,6 +1875,7 @@ class _GroupModerationSheet extends ConsumerStatefulWidget {
 
 class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
   bool _working = false;
+  String? _leaveError;
   late Future<_GroupModerationSnapshot> _snapshotFuture;
 
   @override
@@ -1864,6 +1980,136 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
     }
   }
 
+  Future<void> _promoteMember(String memberPubkeyHex) async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _working = true);
+    try {
+      await ref
+          .read(moderationCoordinatorProvider)
+          .promoteMemberToAdmin(
+            identity: identity,
+            mlsGroupIdHex: widget.group.mlsGroupIdHex,
+            currentAdminPubkeysHex: widget.group.adminPubkeysHex,
+            memberPubkeyHex: memberPubkeyHex,
+          );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _working = false);
+      _refresh();
+      await HapticFeedback.mediumImpact();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Promoted member to admin')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _working = false);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We couldn\'t promote that member just yet. Please try again.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _leaveGroup({required bool isAdmin}) async {
+    final identity = ref.read(parentIdentityProvider).valueOrNull;
+    if (identity == null) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Leave this family space?'),
+          content: Text(
+            isAdmin
+                ? 'You\'ll step down as admin and leave "${widget.group.name}". '
+                      'You will stop receiving new shares from this family and '
+                      'will no longer be able to send to it. Past clips already '
+                      'on your device stay on your device.\n\n'
+                      'If you are the only admin of a multi-member space, '
+                      'promote another member to admin first using the Make '
+                      'admin button above.'
+                : 'You will leave "${widget.group.name}". You will stop '
+                      'receiving new shares from this family and will no longer '
+                      'be able to send to it. Past clips already on your device '
+                      'stay on your device.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Leave'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _working = true;
+      _leaveError = null;
+    });
+    try {
+      await ref
+          .read(moderationCoordinatorProvider)
+          .leaveGroup(
+            identity: identity,
+            mlsGroupIdHex: widget.group.mlsGroupIdHex,
+            isAdmin: isAdmin,
+          );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _working = false);
+      await HapticFeedback.mediumImpact();
+      widget.onChanged();
+      navigator.pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Left ${widget.group.name}')),
+      );
+    } on LastAdminCannotLeaveException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _working = false;
+        _leaveError =
+            'You\'re the only admin. Use Make admin on another member above, '
+            'then try again.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _working = false;
+        _leaveError =
+            'We couldn\'t leave that family space just yet. Please try again.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = ref.watch(activePaletteProvider);
@@ -1952,8 +2198,15 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                             _MemberTile(
                               memberPublicKeyHex: member,
                               currentIdentityHex: identity?.publicKeyHex,
+                              adminPubkeysHex: widget.group.adminPubkeysHex,
+                              currentUserIsAdmin:
+                                  identity != null &&
+                                  widget.group.adminPubkeysHex.contains(
+                                    identity.publicKeyHex,
+                                  ),
                               working: _working,
                               onRemove: () => _removeMember(member),
+                              onPromote: () => _promoteMember(member),
                             ),
                       ],
                     ),
@@ -2000,6 +2253,68 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: palette.panel.withValues(alpha: 0.76),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: palette.panelBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Leave this family space',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _leaveSubtitle(
+                            identity: identity,
+                            members: data.members,
+                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: palette.mutedInk),
+                        ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.errorContainer,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                            ),
+                            onPressed: _working
+                                ? null
+                                : () => _leaveGroup(
+                                    isAdmin:
+                                        identity != null &&
+                                        widget.group.adminPubkeysHex.contains(
+                                          identity.publicKeyHex,
+                                        ),
+                                  ),
+                            child: const Text('Leave family space'),
+                          ),
+                        ),
+                        if (_leaveError != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            _leaveError!,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             );
@@ -2007,6 +2322,24 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
         ),
       ),
     );
+  }
+
+  String _leaveSubtitle({
+    required ParentIdentity? identity,
+    required List<String> members,
+  }) {
+    final isAdmin =
+        identity != null &&
+        widget.group.adminPubkeysHex.contains(identity.publicKeyHex);
+    final otherMembers = identity == null
+        ? members.length
+        : members.where((m) => m != identity.publicKeyHex).length;
+    if (isAdmin) {
+      return otherMembers == 0
+          ? 'You are the only member. Leaving abandons the group — nobody else can receive new shares here.'
+          : 'You\'ll self-demote, then publish a leave request. Another member commits the removal when they come online.';
+    }
+    return 'You\'ll publish a leave request. Another member commits the removal when they come online; new shares stop arriving in this space.';
   }
 }
 
@@ -2021,19 +2354,28 @@ class _MemberTile extends ConsumerWidget {
   const _MemberTile({
     required this.memberPublicKeyHex,
     required this.currentIdentityHex,
+    required this.adminPubkeysHex,
+    required this.currentUserIsAdmin,
     required this.working,
     required this.onRemove,
+    required this.onPromote,
   });
 
   final String memberPublicKeyHex;
   final String? currentIdentityHex;
+  final List<String> adminPubkeysHex;
+  final bool currentUserIsAdmin;
   final bool working;
   final VoidCallback onRemove;
+  final VoidCallback onPromote;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = ref.watch(activePaletteProvider);
     final isCurrentIdentity = memberPublicKeyHex == currentIdentityHex;
+    final memberIsAdmin = adminPubkeysHex.any(
+      (pubkey) => pubkey.toLowerCase() == memberPublicKeyHex.toLowerCase(),
+    );
     final profile = isCurrentIdentity
         ? null
         : ref
@@ -2078,19 +2420,64 @@ class _MemberTile extends ConsumerWidget {
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  isCurrentIdentity ? 'Current parent identity' : displayKey,
-                  style: Theme.of(context).textTheme.bodySmall,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        isCurrentIdentity
+                            ? 'Current parent identity'
+                            : displayKey,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (memberIsAdmin) ...[
+                      const SizedBox(width: 6),
+                      _AdminBadge(palette: palette),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
-          if (!isCurrentIdentity)
+          if (!isCurrentIdentity && currentUserIsAdmin) ...[
+            if (!memberIsAdmin) ...[
+              TextButton(
+                onPressed: working ? null : onPromote,
+                child: const Text('Make admin'),
+              ),
+              const SizedBox(width: 4),
+            ],
             FilledButton.tonal(
               onPressed: working ? null : onRemove,
               child: Text(working ? 'Working…' : 'Remove'),
             ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _AdminBadge extends StatelessWidget {
+  const _AdminBadge({required this.palette});
+
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: palette.accent.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        'Admin',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: palette.accent,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

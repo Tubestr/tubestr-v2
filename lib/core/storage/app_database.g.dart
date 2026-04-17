@@ -6497,6 +6497,227 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $LeftFamilySpacesTable extends LeftFamilySpaces
+    with TableInfo<$LeftFamilySpacesTable, LeftFamilySpace> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LeftFamilySpacesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _mlsGroupIdHexMeta = const VerificationMeta(
+    'mlsGroupIdHex',
+  );
+  @override
+  late final GeneratedColumn<String> mlsGroupIdHex = GeneratedColumn<String>(
+    'mls_group_id_hex',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _leftAtMeta = const VerificationMeta('leftAt');
+  @override
+  late final GeneratedColumn<DateTime> leftAt = GeneratedColumn<DateTime>(
+    'left_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [mlsGroupIdHex, leftAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'left_family_spaces';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LeftFamilySpace> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('mls_group_id_hex')) {
+      context.handle(
+        _mlsGroupIdHexMeta,
+        mlsGroupIdHex.isAcceptableOrUnknown(
+          data['mls_group_id_hex']!,
+          _mlsGroupIdHexMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_mlsGroupIdHexMeta);
+    }
+    if (data.containsKey('left_at')) {
+      context.handle(
+        _leftAtMeta,
+        leftAt.isAcceptableOrUnknown(data['left_at']!, _leftAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_leftAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {mlsGroupIdHex};
+  @override
+  LeftFamilySpace map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LeftFamilySpace(
+      mlsGroupIdHex: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mls_group_id_hex'],
+      )!,
+      leftAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}left_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LeftFamilySpacesTable createAlias(String alias) {
+    return $LeftFamilySpacesTable(attachedDatabase, alias);
+  }
+}
+
+class LeftFamilySpace extends DataClass implements Insertable<LeftFamilySpace> {
+  final String mlsGroupIdHex;
+  final DateTime leftAt;
+  const LeftFamilySpace({required this.mlsGroupIdHex, required this.leftAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['mls_group_id_hex'] = Variable<String>(mlsGroupIdHex);
+    map['left_at'] = Variable<DateTime>(leftAt);
+    return map;
+  }
+
+  LeftFamilySpacesCompanion toCompanion(bool nullToAbsent) {
+    return LeftFamilySpacesCompanion(
+      mlsGroupIdHex: Value(mlsGroupIdHex),
+      leftAt: Value(leftAt),
+    );
+  }
+
+  factory LeftFamilySpace.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LeftFamilySpace(
+      mlsGroupIdHex: serializer.fromJson<String>(json['mlsGroupIdHex']),
+      leftAt: serializer.fromJson<DateTime>(json['leftAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'mlsGroupIdHex': serializer.toJson<String>(mlsGroupIdHex),
+      'leftAt': serializer.toJson<DateTime>(leftAt),
+    };
+  }
+
+  LeftFamilySpace copyWith({String? mlsGroupIdHex, DateTime? leftAt}) =>
+      LeftFamilySpace(
+        mlsGroupIdHex: mlsGroupIdHex ?? this.mlsGroupIdHex,
+        leftAt: leftAt ?? this.leftAt,
+      );
+  LeftFamilySpace copyWithCompanion(LeftFamilySpacesCompanion data) {
+    return LeftFamilySpace(
+      mlsGroupIdHex: data.mlsGroupIdHex.present
+          ? data.mlsGroupIdHex.value
+          : this.mlsGroupIdHex,
+      leftAt: data.leftAt.present ? data.leftAt.value : this.leftAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LeftFamilySpace(')
+          ..write('mlsGroupIdHex: $mlsGroupIdHex, ')
+          ..write('leftAt: $leftAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(mlsGroupIdHex, leftAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LeftFamilySpace &&
+          other.mlsGroupIdHex == this.mlsGroupIdHex &&
+          other.leftAt == this.leftAt);
+}
+
+class LeftFamilySpacesCompanion extends UpdateCompanion<LeftFamilySpace> {
+  final Value<String> mlsGroupIdHex;
+  final Value<DateTime> leftAt;
+  final Value<int> rowid;
+  const LeftFamilySpacesCompanion({
+    this.mlsGroupIdHex = const Value.absent(),
+    this.leftAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LeftFamilySpacesCompanion.insert({
+    required String mlsGroupIdHex,
+    required DateTime leftAt,
+    this.rowid = const Value.absent(),
+  }) : mlsGroupIdHex = Value(mlsGroupIdHex),
+       leftAt = Value(leftAt);
+  static Insertable<LeftFamilySpace> custom({
+    Expression<String>? mlsGroupIdHex,
+    Expression<DateTime>? leftAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (mlsGroupIdHex != null) 'mls_group_id_hex': mlsGroupIdHex,
+      if (leftAt != null) 'left_at': leftAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LeftFamilySpacesCompanion copyWith({
+    Value<String>? mlsGroupIdHex,
+    Value<DateTime>? leftAt,
+    Value<int>? rowid,
+  }) {
+    return LeftFamilySpacesCompanion(
+      mlsGroupIdHex: mlsGroupIdHex ?? this.mlsGroupIdHex,
+      leftAt: leftAt ?? this.leftAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (mlsGroupIdHex.present) {
+      map['mls_group_id_hex'] = Variable<String>(mlsGroupIdHex.value);
+    }
+    if (leftAt.present) {
+      map['left_at'] = Variable<DateTime>(leftAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LeftFamilySpacesCompanion(')
+          ..write('mlsGroupIdHex: $mlsGroupIdHex, ')
+          ..write('leftAt: $leftAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6513,6 +6734,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ModerationAuditLogsTable moderationAuditLogs =
       $ModerationAuditLogsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $LeftFamilySpacesTable leftFamilySpaces = $LeftFamilySpacesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6529,6 +6753,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     reports,
     moderationAuditLogs,
     appSettings,
+    leftFamilySpaces,
   ];
 }
 
@@ -10372,6 +10597,157 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$LeftFamilySpacesTableCreateCompanionBuilder =
+    LeftFamilySpacesCompanion Function({
+      required String mlsGroupIdHex,
+      required DateTime leftAt,
+      Value<int> rowid,
+    });
+typedef $$LeftFamilySpacesTableUpdateCompanionBuilder =
+    LeftFamilySpacesCompanion Function({
+      Value<String> mlsGroupIdHex,
+      Value<DateTime> leftAt,
+      Value<int> rowid,
+    });
+
+class $$LeftFamilySpacesTableFilterComposer
+    extends Composer<_$AppDatabase, $LeftFamilySpacesTable> {
+  $$LeftFamilySpacesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get mlsGroupIdHex => $composableBuilder(
+    column: $table.mlsGroupIdHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get leftAt => $composableBuilder(
+    column: $table.leftAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LeftFamilySpacesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LeftFamilySpacesTable> {
+  $$LeftFamilySpacesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get mlsGroupIdHex => $composableBuilder(
+    column: $table.mlsGroupIdHex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get leftAt => $composableBuilder(
+    column: $table.leftAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LeftFamilySpacesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LeftFamilySpacesTable> {
+  $$LeftFamilySpacesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get mlsGroupIdHex => $composableBuilder(
+    column: $table.mlsGroupIdHex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get leftAt =>
+      $composableBuilder(column: $table.leftAt, builder: (column) => column);
+}
+
+class $$LeftFamilySpacesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LeftFamilySpacesTable,
+          LeftFamilySpace,
+          $$LeftFamilySpacesTableFilterComposer,
+          $$LeftFamilySpacesTableOrderingComposer,
+          $$LeftFamilySpacesTableAnnotationComposer,
+          $$LeftFamilySpacesTableCreateCompanionBuilder,
+          $$LeftFamilySpacesTableUpdateCompanionBuilder,
+          (
+            LeftFamilySpace,
+            BaseReferences<
+              _$AppDatabase,
+              $LeftFamilySpacesTable,
+              LeftFamilySpace
+            >,
+          ),
+          LeftFamilySpace,
+          PrefetchHooks Function()
+        > {
+  $$LeftFamilySpacesTableTableManager(
+    _$AppDatabase db,
+    $LeftFamilySpacesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LeftFamilySpacesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LeftFamilySpacesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LeftFamilySpacesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> mlsGroupIdHex = const Value.absent(),
+                Value<DateTime> leftAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LeftFamilySpacesCompanion(
+                mlsGroupIdHex: mlsGroupIdHex,
+                leftAt: leftAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String mlsGroupIdHex,
+                required DateTime leftAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LeftFamilySpacesCompanion.insert(
+                mlsGroupIdHex: mlsGroupIdHex,
+                leftAt: leftAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LeftFamilySpacesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LeftFamilySpacesTable,
+      LeftFamilySpace,
+      $$LeftFamilySpacesTableFilterComposer,
+      $$LeftFamilySpacesTableOrderingComposer,
+      $$LeftFamilySpacesTableAnnotationComposer,
+      $$LeftFamilySpacesTableCreateCompanionBuilder,
+      $$LeftFamilySpacesTableUpdateCompanionBuilder,
+      (
+        LeftFamilySpace,
+        BaseReferences<_$AppDatabase, $LeftFamilySpacesTable, LeftFamilySpace>,
+      ),
+      LeftFamilySpace,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10398,4 +10774,6 @@ class $AppDatabaseManager {
       $$ModerationAuditLogsTableTableManager(_db, _db.moderationAuditLogs);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$LeftFamilySpacesTableTableManager get leftFamilySpaces =>
+      $$LeftFamilySpacesTableTableManager(_db, _db.leftFamilySpaces);
 }

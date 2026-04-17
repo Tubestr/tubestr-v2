@@ -89,6 +89,39 @@ Future<GroupUpdateData> removeGroupMembers({
   memberPubkeysHex: memberPubkeysHex,
 );
 
+/// Replace the admin set of a group.
+///
+/// [`admin_pubkeys_hex`] is the full desired admin set (not a delta). mdk-core
+/// prunes any pubkeys that aren't group members and rejects an update that
+/// would leave the group with zero admins. Returns the wrapper event the
+/// caller must publish to relays so other members advance the epoch. Only an
+/// existing admin can publish this update.
+Future<GroupUpdateData> updateGroupAdmins({
+  required String mlsGroupIdHex,
+  required List<String> adminPubkeysHex,
+}) => MdkBridgeApi.instance.api.crateApiUpdateGroupAdmins(
+  mlsGroupIdHex: mlsGroupIdHex,
+  adminPubkeysHex: adminPubkeysHex,
+);
+
+/// Demote the current account from the admin set of a group.
+///
+/// MIP-03 requires admins to self-demote before leaving. Returns the wrapper
+/// event the caller must publish to relays so remaining members advance the
+/// epoch. Fails if the account is the only active admin.
+Future<GroupUpdateData> selfDemote({required String mlsGroupIdHex}) =>
+    MdkBridgeApi.instance.api.crateApiSelfDemote(mlsGroupIdHex: mlsGroupIdHex);
+
+/// Build a SelfRemove proposal event for the current account.
+///
+/// The caller must publish the returned wrapper event to relays — another
+/// member will commit it on the next epoch. mdk-core refuses this if the
+/// account is still an admin, so callers must `self_demote` first in that
+/// case. After publishing, the caller should treat local state for the
+/// group as departed (no local commit will be processed).
+Future<GroupUpdateData> leaveGroup({required String mlsGroupIdHex}) =>
+    MdkBridgeApi.instance.api.crateApiLeaveGroup(mlsGroupIdHex: mlsGroupIdHex);
+
 Future<MessageEventData> createApplicationMessage({
   required String mlsGroupIdHex,
   required String senderPublicKeyHex,

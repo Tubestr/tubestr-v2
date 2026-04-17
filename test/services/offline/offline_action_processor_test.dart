@@ -12,6 +12,7 @@ import 'package:mytube/services/approval/video_approval_service.dart';
 import 'package:mytube/services/engagement/like_coordinator.dart';
 import 'package:mytube/services/engagement/reaction_coordinator.dart';
 import 'package:mytube/services/identity/parent_profile_service.dart';
+import 'package:mytube/services/identity/user_list_sync_service.dart';
 import 'package:mytube/services/offline/offline_action_processor.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/safety/report_coordinator.dart';
@@ -133,6 +134,11 @@ void main() {
             dio: Dio(),
           ),
         ),
+        userListSyncService: UserListSyncService(
+          nostrService: nostr,
+          offlineActionStore: store,
+        ),
+        nostrService: nostr,
       );
 
       await store.enqueue(

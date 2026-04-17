@@ -6,6 +6,9 @@ enum OfflineActionType {
   sendReaction,
   submitReport,
   publishParentProfile,
+  publishRelayList,
+  publishBlossomServerList,
+  publishMuteList,
 }
 
 class OfflineAction {

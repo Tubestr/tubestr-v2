@@ -26,7 +26,7 @@ class EditorHubContent extends ConsumerWidget {
     final palette = ref.watch(activePaletteProvider);
     final videos = ref.watch(videosForSelectedProfileProvider);
     final remoteShares =
-        ref.watch(remoteSharesProvider).valueOrNull ?? const [];
+        ref.watch(remoteSharesFromOthersProvider).valueOrNull ?? const [];
 
     return SafeArea(
       bottom: false,
@@ -442,6 +442,7 @@ class _SharedVideoTile extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
+              width: double.infinity,
               height: 128,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),

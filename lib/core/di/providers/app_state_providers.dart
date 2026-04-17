@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants.dart';
 import '../../storage/app_database.dart';
+import '../../../domain/models/blossom_server_list.dart';
 import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/parent_profile.dart';
 import '../../../domain/models/ranking_engine.dart';
 import '../../../domain/models/ranking_state.dart';
+import '../../../domain/models/relay_entry.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_reaction_summary.dart';
 import '../../../services/mdk/mdk_service.dart';
@@ -22,6 +24,14 @@ final parentIdentityProvider = FutureProvider<ParentIdentity?>((ref) {
 
 final parentDisplayNameProvider = FutureProvider<String?>((ref) {
   return ref.watch(parentProfileServiceProvider).loadLocalDisplayName();
+});
+
+final relayListProvider = FutureProvider<RelayList>((ref) {
+  return ref.watch(userListSyncServiceProvider).loadRelayList();
+});
+
+final blossomServerListProvider = FutureProvider<BlossomServerList>((ref) {
+  return ref.watch(userListSyncServiceProvider).loadBlossomServerList();
 });
 
 final profilesProvider = StreamProvider<List<Profile>>((ref) {
@@ -39,6 +49,30 @@ final shareRecordsProvider = StreamProvider<List<ShareRecord>>((ref) {
 final remoteSharesProvider = StreamProvider<List<RemoteShareProjection>>((ref) {
   return ref.watch(appDatabaseProvider).watchRemoteShareProjections();
 });
+
+/// Remote shares excluding the current user's own sends.
+///
+/// The sync pipeline projects every video share it sees into the local DB —
+/// including shares authored by this device — because they arrive back through
+/// the same MLS group subscription. Surfaces that show "videos from others"
+/// should watch this provider to avoid echoing the user's own shares.
+final remoteSharesFromOthersProvider =
+    Provider<AsyncValue<List<RemoteShareProjection>>>((ref) {
+      final sharesAsync = ref.watch(remoteSharesProvider);
+      final identity = ref.watch(parentIdentityProvider).valueOrNull;
+      final myPubkey = identity?.publicKeyHex;
+      final leftIds =
+          ref.watch(leftFamilySpaceIdsProvider).valueOrNull ?? const {};
+      return sharesAsync.whenData(
+        (shares) => shares
+            .where(
+              (share) =>
+                  (myPubkey == null || share.senderParentKey != myPubkey) &&
+                  !leftIds.contains(share.mlsGroupId),
+            )
+            .toList(growable: false),
+      );
+    });
 
 final remoteShareByIdProvider =
     StreamProvider.family<RemoteShareProjection?, String>((ref, remoteShareId) {
@@ -65,7 +99,33 @@ final shareHistoryProvider = StreamProvider((ref) {
   return ref.watch(shareHistoryServiceProvider).watch();
 });
 
+/// Watches the local set of family spaces the current account has self-left.
+///
+/// MDK keeps left groups active until another member commits the SelfRemove
+/// proposal. Surfaces that pick a group for sharing/capture should hide these
+/// immediately — consult [mdkGroupSummariesProvider] which already filters.
+final leftFamilySpaceIdsProvider = StreamProvider<Set<String>>((ref) {
+  return ref.watch(appDatabaseProvider).watchLeftFamilySpaceIds();
+});
+
 final mdkGroupSummariesProvider = FutureProvider<List<MdkGroupSummary>>((
+  ref,
+) async {
+  ref.watch(syncRevisionProvider);
+  final groups = await ref.watch(mdkServiceProvider).getGroupSummaries();
+  final leftIds = ref.watch(leftFamilySpaceIdsProvider).valueOrNull;
+  if (leftIds == null || leftIds.isEmpty) {
+    return groups;
+  }
+  return groups
+      .where((group) => !leftIds.contains(group.mlsGroupIdHex))
+      .toList(growable: false);
+});
+
+/// Unfiltered MDK group list — includes groups the user has left. Use this
+/// only when you need the raw MDK view (e.g. for cleanup pipelines). All
+/// user-facing surfaces should watch [mdkGroupSummariesProvider].
+final mdkGroupSummariesRawProvider = FutureProvider<List<MdkGroupSummary>>((
   ref,
 ) async {
   ref.watch(syncRevisionProvider);

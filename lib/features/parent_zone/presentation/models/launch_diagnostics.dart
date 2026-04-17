@@ -91,6 +91,9 @@ String describeOfflineActionType(OfflineActionType type) {
     OfflineActionType.sendReaction => 'Queued reactions',
     OfflineActionType.submitReport => 'Queued reports',
     OfflineActionType.publishParentProfile => 'Queued profile updates',
+    OfflineActionType.publishRelayList => 'Queued relay list updates',
+    OfflineActionType.publishBlossomServerList => 'Queued media server updates',
+    OfflineActionType.publishMuteList => 'Queued mute list updates',
   };
 }
 

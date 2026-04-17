@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
@@ -30,6 +31,11 @@ class ParentZoneDashboardSection extends ConsumerWidget {
         .length;
     final attentionCount =
         pendingVideos.length + pendingReports + queuedActions.length;
+    final safetyHqName = AppConstants.safetyHqGroupName.toLowerCase();
+    final nonSafetyFamilySpaces = groupSummaries
+        .where((group) => group.name.trim().toLowerCase() != safetyHqName)
+        .length;
+    final needsFamilySpace = nonSafetyFamilySpaces == 0;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
@@ -37,16 +43,25 @@ class ParentZoneDashboardSection extends ConsumerWidget {
     return ListView(
       padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
       children: [
-        _OverviewHero(
+        _StartHereCard(
+          palette: palette,
+          attentionCount: attentionCount,
+          pendingVideos: pendingVideos.length,
+          pendingReports: pendingReports,
+          queuedActions: queuedActions.length,
+          needsFamilySpace: needsFamilySpace,
+          onOpenChildren: () => onSelectSection(ParentZoneSection.children),
+          onOpenNetwork: () => onSelectSection(ParentZoneSection.network),
+          onOpenFamilySpaces: () =>
+              onSelectSection(ParentZoneSection.familySpaces),
+        ),
+        const SizedBox(height: 16),
+        _ControlRoomCard(
           palette: palette,
           attentionCount: attentionCount,
           childCount: profiles.length,
           familySpaceCount: groupSummaries.length,
-          pendingVideos: pendingVideos.length,
-          pendingReports: pendingReports,
-          queuedActions: queuedActions.length,
-          onOpenChildren: () => onSelectSection(ParentZoneSection.children),
-          onOpenNetwork: () => onSelectSection(ParentZoneSection.network),
+          needsFamilySpace: needsFamilySpace,
         ),
         const SizedBox(height: 16),
         FrostCard(
@@ -98,87 +113,50 @@ class ParentZoneDashboardSection extends ConsumerWidget {
   }
 }
 
-class _OverviewHero extends StatelessWidget {
-  const _OverviewHero({
+class _StartHereCard extends StatelessWidget {
+  const _StartHereCard({
     required this.palette,
     required this.attentionCount,
-    required this.childCount,
-    required this.familySpaceCount,
     required this.pendingVideos,
     required this.pendingReports,
     required this.queuedActions,
+    required this.needsFamilySpace,
     required this.onOpenChildren,
     required this.onOpenNetwork,
+    required this.onOpenFamilySpaces,
   });
 
   final KidPalette palette;
   final int attentionCount;
-  final int childCount;
-  final int familySpaceCount;
   final int pendingVideos;
   final int pendingReports;
   final int queuedActions;
+  final bool needsFamilySpace;
   final VoidCallback onOpenChildren;
   final VoidCallback onOpenNetwork;
+  final VoidCallback onOpenFamilySpaces;
 
   @override
   Widget build(BuildContext context) {
-    final overview = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Control Room', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 6),
-        Text(
-          attentionCount == 0
-              ? 'Everything looks steady. Review your family spaces or jump into settings when you need them.'
-              : 'Start here with the decisions that need a parent now, then move into connection and safety health.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
-        ),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _ControlMetric(
-              label: 'Needs review',
-              value: '$attentionCount',
-              tone: attentionCount == 0 ? palette.success : palette.warning,
-            ),
-            _ControlMetric(
-              label: 'Children',
-              value: '$childCount',
-              tone: palette.ink,
-            ),
-            _ControlMetric(
-              label: 'Family spaces',
-              value: '$familySpaceCount',
-              tone: palette.accent,
-            ),
-          ],
-        ),
-      ],
-    );
-
-    final startHere = Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: palette.panelBorder),
-      ),
+    return FrostCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Start Here',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
+          Text('Start Here', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          if (attentionCount == 0)
+          if (needsFamilySpace)
+            _AttentionRow(
+              icon: Icons.group_add_rounded,
+              color: palette.warning,
+              title: 'Join or create a family space',
+              detail:
+                  'You need at least one family space to share clips with. '
+                  'Scan a parent\'s invite QR or create a new space to invite '
+                  'someone.',
+              actionLabel: 'Open Family Spaces',
+              onTap: onOpenFamilySpaces,
+            ),
+          if (attentionCount == 0 && !needsFamilySpace)
             _AttentionRow(
               icon: Icons.verified_rounded,
               color: palette.success,
@@ -186,7 +164,7 @@ class _OverviewHero extends StatelessWidget {
               detail:
                   'No waiting approvals, pending reports, or offline retries right now.',
             )
-          else ...[
+          else if (attentionCount > 0) ...[
             _AttentionRow(
               icon: pendingVideos == 0
                   ? Icons.verified_rounded
@@ -231,27 +209,65 @@ class _OverviewHero extends StatelessWidget {
         ],
       ),
     );
+  }
+}
 
+class _ControlRoomCard extends StatelessWidget {
+  const _ControlRoomCard({
+    required this.palette,
+    required this.attentionCount,
+    required this.childCount,
+    required this.familySpaceCount,
+    required this.needsFamilySpace,
+  });
+
+  final KidPalette palette;
+  final int attentionCount;
+  final int childCount;
+  final int familySpaceCount;
+  final bool needsFamilySpace;
+
+  @override
+  Widget build(BuildContext context) {
     return FrostCard(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 760;
-          if (wide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 6, child: overview),
-                const SizedBox(width: 18),
-                Expanded(flex: 5, child: startHere),
-              ],
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [overview, const SizedBox(height: 16), startHere],
-          );
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Control Room', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(
+            needsFamilySpace
+                ? 'Your first step: join or create a family space so you can share clips with someone.'
+                : attentionCount == 0
+                ? 'Everything looks steady. Review your family spaces or jump into settings when you need them.'
+                : 'The decisions that need a parent are up top in Start Here; this is your connection and safety health at a glance.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _ControlMetric(
+                label: 'Needs review',
+                value: '$attentionCount',
+                tone: attentionCount == 0 ? palette.success : palette.warning,
+              ),
+              _ControlMetric(
+                label: 'Children',
+                value: '$childCount',
+                tone: palette.ink,
+              ),
+              _ControlMetric(
+                label: 'Family spaces',
+                value: '$familySpaceCount',
+                tone: palette.accent,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

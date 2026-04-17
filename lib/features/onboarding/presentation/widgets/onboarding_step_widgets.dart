@@ -467,6 +467,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
             TextField(
               controller: displayNameController,
               enabled: identity == null && !busy,
+              textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
                 labelText: 'Parent display name',
                 hintText: 'Lee & Emma',
@@ -913,6 +914,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                 TextField(
                   controller: nameController,
                   enabled: !busy,
+                  textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(
                     labelText: 'Name',
                     hintText: 'Emma',

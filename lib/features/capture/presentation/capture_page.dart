@@ -920,24 +920,24 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
     try {
       final result = await ref
           .read(videoShareCoordinatorProvider)
-          .shareLocalVideoToEligibleGroups(
+          .queueShareToEligibleGroups(
             identity: identity,
             videoId: video.id,
             profileId: profile.id,
             childDisplayName: profile.name,
           );
+      unawaited(
+        ref.read(offlineActionProcessorProvider).flush().catchError((_) => 0),
+      );
       if (!mounted) {
         return;
       }
       await HapticFeedback.mediumImpact();
-      final shared = result.sharedGroupCount;
-      final queued = result.queuedGroupCount;
+      final count = result.queuedGroupCount;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            queued == 0
-                ? 'Shared "${video.title}" with $shared family space${shared == 1 ? '' : 's'}'
-                : 'Shared to $shared family space${shared == 1 ? '' : 's'}, queued $queued more',
+            'Sharing "${video.title}" to $count family space${count == 1 ? '' : 's'}…',
           ),
         ),
       );
