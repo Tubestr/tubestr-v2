@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/nostr/nostr_key_format.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../services/mdk/mdk_service.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
@@ -48,7 +50,12 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        AppSpacing.md,
+        hPad,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         FrostCard(
           child: Column(
@@ -58,14 +65,14 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 context.l10n.parentOpenFamilySpace,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentOpenFamilySpaceDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               _ActionTile(
                 icon: Icons.qr_code_rounded,
                 color: palette.accent,
@@ -75,7 +82,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 palette: palette,
                 onTap: identity == null || busy ? null : onCreateInvite,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               _ActionTile(
                 icon: Icons.qr_code_scanner_rounded,
                 color: palette.accentSecondary,
@@ -85,7 +92,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                 palette: palette,
                 onTap: identity == null || busy ? null : onScanAndProcessInvite,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               _ActionTile(
                 icon: Icons.content_paste_rounded,
                 color: palette.ink,
@@ -105,14 +112,14 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FutureBuilder<ParentZoneMdkDebugState>(
           future: mdkDebugFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const FrostCard(
                 child: Padding(
-                  padding: EdgeInsets.all(8),
+                  padding: EdgeInsets.all(AppSpacing.sm),
                   child: Center(child: CircularProgressIndicator()),
                 ),
               );
@@ -132,7 +139,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                       context.l10n.parentNoFamiliesTitle,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       context.l10n.parentNoFamiliesDetail,
                       style: Theme.of(context).textTheme.bodySmall,
@@ -153,20 +160,22 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                           children: [
                             Icon(
                               Icons.mark_email_unread_rounded,
-                              size: 18,
+                              size: AppIconSize.md,
                               color: palette.warning,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             Text(
                               context.l10n.parentPendingWelcomes,
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpacing.md),
                         for (final welcome in data.pendingWelcomes)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.sm,
+                            ),
                             child: Row(
                               children: [
                                 Expanded(
@@ -192,7 +201,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                 ],
                 if (data.groups.isNotEmpty)
                   FrostCard(
@@ -203,17 +212,20 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                           children: [
                             Icon(
                               Icons.group_rounded,
-                              size: 18,
+                              size: AppIconSize.md,
                               color: palette.success,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             Text(
                               context.l10n.parentActiveFamilySpaces,
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                             const Spacer(),
                             IconButton(
-                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              icon: const Icon(
+                                Icons.refresh_rounded,
+                                size: AppIconSize.md,
+                              ),
                               onPressed: () {
                                 HapticFeedback.selectionClick();
                                 onRefreshMdkState();
@@ -223,7 +235,9 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                         ),
                         for (final group in data.groups)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.sm,
+                            ),
                             child: Row(
                               children: [
                                 Container(
@@ -234,7 +248,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                                     color: palette.success,
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: AppSpacing.md),
                                 Expanded(
                                   child: _ActiveGroupDetails(group: group),
                                 ),
@@ -284,7 +298,7 @@ class _PendingWelcomeDetails extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           context.l10n.parentPendingWelcomeDetail(
             inviterLabel,
@@ -323,7 +337,7 @@ class _ActiveGroupDetails extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           familyLabel == null || familyLabel.isEmpty
               ? adminPubkey == null
@@ -384,10 +398,10 @@ void _showPasteInviteSheet(
       return SafeArea(
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-            20,
+            AppSpacing.xl,
             0,
-            20,
-            MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+            AppSpacing.xl,
+            MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.xxl,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -397,12 +411,12 @@ void _showPasteInviteSheet(
                 context.l10n.parentPasteInviteTitle,
                 style: Theme.of(sheetContext).textTheme.titleLarge,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 context.l10n.parentPasteInvitePrompt,
                 style: Theme.of(sheetContext).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               TextField(
                 controller: controller,
                 autofocus: true,
@@ -413,7 +427,7 @@ void _showPasteInviteSheet(
                   hintText: 'tubestr://family-invite?...',
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -465,11 +479,11 @@ class _ActionTile extends StatelessWidget {
           ? palette.panel.withValues(alpha: 0.42)
           : palette.panel.withValues(alpha: 0.72),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.lgAll,
         side: BorderSide(color: palette.panelBorder),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.lgAll,
         onTap: onTap == null
             ? null
             : () {
@@ -477,7 +491,10 @@ class _ActionTile extends StatelessWidget {
                 onTap!();
               },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.lg,
+          ),
           child: Row(
             children: [
               Container(
@@ -485,19 +502,19 @@ class _ActionTile extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppRadii.lgAll,
                 ),
                 child: busy
                     ? Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(AppSpacing.md),
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: color,
                         ),
                       )
-                    : Icon(icon, color: color, size: 22),
+                    : Icon(icon, color: color, size: AppIconSize.xl),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,14 +523,14 @@ class _ActionTile extends StatelessWidget {
                       title,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: onTap == null ? Colors.grey : null,
+                        color: onTap == null ? palette.mutedInk : null,
                       ),
                     ),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: onTap == null
-                            ? Colors.grey
+                            ? palette.mutedInk
                             : Theme.of(context).textTheme.bodySmall?.color,
                       ),
                     ),
@@ -521,7 +538,11 @@ class _ActionTile extends StatelessWidget {
                 ),
               ),
               if (onTap != null)
-                Icon(Icons.chevron_right_rounded, color: color, size: 20),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: color,
+                  size: AppIconSize.lg,
+                ),
             ],
           ),
         ),

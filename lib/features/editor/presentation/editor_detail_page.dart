@@ -13,6 +13,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../domain/editor_source.dart';
 import '../../../domain/models/content_scan_summary.dart';
@@ -544,7 +546,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(context.l10n.editorLoadTrackFailed(track.label)),
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: ref.read(activePaletteProvider).danger,
       ),
     );
   }
@@ -585,7 +587,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_exportErrorMessage(error)),
-          backgroundColor: Colors.red.shade700,
+          backgroundColor: ref.read(activePaletteProvider).danger,
         ),
       );
     } finally {
@@ -659,15 +661,25 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
         final palette = ref.read(activePaletteProvider);
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: const Color(0xFF15111C),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.white24),
+                color: palette.mediaSurfaceStrong,
+                borderRadius: AppRadii.cardAll,
+                border: Border.all(color: palette.mediaBorder),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.xl,
+                  AppSpacing.xl,
+                  AppSpacing.xl,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,36 +698,36 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                             color: palette.accent,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
                             context.l10n.editorRemixSavedTitle,
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
+                              color: palette.mediaInk,
+                              fontSize: AppTextSize.title,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.md),
                     Text(
                       result.warning == null
                           ? context.l10n.editorExportSaved
                           : context.l10n.editorExportWarning(result.warning!),
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(color: palette.mediaMutedInk),
                     ),
                     if (scan != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.md,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(16),
+                          color: palette.mediaSurfaceSubtle,
+                          borderRadius: AppRadii.lgAll,
                         ),
                         child: Row(
                           children: [
@@ -724,24 +736,24 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                                   ? Icons.shield_outlined
                                   : Icons.verified_rounded,
                               color: scan.needsReview
-                                  ? Colors.amber.shade300
+                                  ? palette.warning
                                   : palette.success,
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: AppSpacing.md),
                             Expanded(
                               child: Text(
                                 scan.summary,
-                                style: const TextStyle(color: Colors.white70),
+                                style: TextStyle(color: palette.mediaMutedInk),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+                      spacing: AppSpacing.md,
+                      runSpacing: AppSpacing.md,
                       children: [
                         FilledButton.tonalIcon(
                           onPressed: exportedVideo == null
@@ -1074,15 +1086,17 @@ class _MinimalHeader extends StatelessWidget {
     return Row(
       children: [
         _FrostedCircleButton(
+          palette: palette,
           onTap: () => Navigator.of(context).pop(),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_rounded,
-            color: Colors.white,
-            size: 22,
+            color: palette.mediaInk,
+            size: AppIconSize.xl,
           ),
         ),
         const Spacer(),
         _FrostedPillButton(
+          palette: palette,
           onTap: isExporting ? null : onExport,
           accentGradient: LinearGradient(
             colors: [
@@ -1091,18 +1105,18 @@ class _MinimalHeader extends StatelessWidget {
             ],
           ),
           icon: isExporting
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
+              ? SizedBox(
+                  width: AppIconSize.md,
+                  height: AppIconSize.md,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(palette.mediaInk),
                   ),
                 )
-              : const Icon(
+              : Icon(
                   Icons.file_upload_outlined,
-                  color: Colors.white,
-                  size: 20,
+                  color: palette.mediaInk,
+                  size: AppIconSize.lg,
                 ),
           label: isExporting
               ? context.l10n.editorActionExporting
@@ -1114,8 +1128,13 @@ class _MinimalHeader extends StatelessWidget {
 }
 
 class _FrostedCircleButton extends StatelessWidget {
-  const _FrostedCircleButton({required this.child, this.onTap});
+  const _FrostedCircleButton({
+    required this.palette,
+    required this.child,
+    this.onTap,
+  });
 
+  final KidPalette palette;
   final Widget child;
   final VoidCallback? onTap;
 
@@ -1124,16 +1143,16 @@ class _FrostedCircleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: AppRadii.xxlAll,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.35),
+              color: palette.mediaSurface,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              border: Border.all(color: palette.mediaBorder),
             ),
             child: Center(child: child),
           ),
@@ -1145,12 +1164,14 @@ class _FrostedCircleButton extends StatelessWidget {
 
 class _FrostedPillButton extends StatelessWidget {
   const _FrostedPillButton({
+    required this.palette,
     required this.icon,
     required this.label,
     this.onTap,
     this.accentGradient,
   });
 
+  final KidPalette palette;
   final Widget icon;
   final String label;
   final VoidCallback? onTap;
@@ -1161,31 +1182,29 @@ class _FrostedPillButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: AppRadii.xxlAll,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             decoration: BoxDecoration(
               gradient: accentGradient,
-              color: accentGradient == null
-                  ? Colors.black.withValues(alpha: 0.35)
-                  : null,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              color: accentGradient == null ? palette.mediaSurface : null,
+              borderRadius: AppRadii.xxlAll,
+              border: Border.all(color: palette.mediaBorder),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 icon,
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: palette.mediaInk,
                     fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                    fontSize: AppTextSize.body,
                   ),
                 ),
               ],
@@ -1314,14 +1333,12 @@ class _SideToolButton extends StatelessWidget {
                                 end: Alignment.bottomRight,
                               )
                             : null,
-                        color: isActive
-                            ? null
-                            : Colors.black.withValues(alpha: 0.35),
+                        color: isActive ? null : palette.mediaSurface,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: isActive
-                              ? Colors.white.withValues(alpha: 0.3)
-                              : Colors.white.withValues(alpha: 0.1),
+                              ? palette.mediaBorderStrong
+                              : palette.mediaBorder,
                         ),
                         boxShadow: isActive
                             ? [
@@ -1334,7 +1351,7 @@ class _SideToolButton extends StatelessWidget {
                       ),
                       child: Icon(
                         _iconFor(tool),
-                        color: Colors.white,
+                        color: palette.mediaInk,
                         size: iconSize,
                       ),
                     ),
@@ -1342,16 +1359,14 @@ class _SideToolButton extends StatelessWidget {
                 ),
               ),
               if (!isCompact) ...[
-                const SizedBox(height: 5),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: isActive ? 1.0 : 0.7),
+                    color: isActive ? palette.mediaInk : palette.mediaMutedInk,
                     fontSize: labelSize,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    shadows: const [
-                      Shadow(blurRadius: 6, color: Colors.black54),
-                    ],
+                    shadows: [Shadow(blurRadius: 6, color: palette.mediaScrim)],
                   ),
                 ),
               ],
@@ -1418,45 +1433,50 @@ class _TimelineBar extends StatelessWidget {
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
       height: isTrimActive ? 96 : 54,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
       child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadii.lg),
+        ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.45),
+              color: palette.mediaSurface,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+                top: Radius.circular(AppRadii.lg),
               ),
-              border: Border(
-                top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              ),
+              border: Border(top: BorderSide(color: palette.mediaBorder)),
             ),
             child: Column(
               children: [
                 if (isTrimActive) ...[
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      0,
+                    ),
                     child: Row(
                       children: [
                         Text(
                           _formatDuration(normalizedTrim.trimRange.start),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
+                          style: TextStyle(
+                            color: palette.mediaMutedInk,
+                            fontSize: AppTextSize.caption,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3,
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.xs,
                           ),
                           decoration: BoxDecoration(
                             color: palette.accent.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppRadii.mdAll,
                           ),
                           child: Text(
                             context.l10n.editorTrimKeepDuration(
@@ -1466,7 +1486,7 @@ class _TimelineBar extends StatelessWidget {
                             ),
                             style: TextStyle(
                               color: palette.accentSecondary,
-                              fontSize: 11,
+                              fontSize: AppTextSize.caption,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1474,9 +1494,9 @@ class _TimelineBar extends StatelessWidget {
                         const Spacer(),
                         Text(
                           _formatDuration(normalizedTrim.trimRange.end),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
+                          style: TextStyle(
+                            color: palette.mediaMutedInk,
+                            fontSize: AppTextSize.caption,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1490,10 +1510,8 @@ class _TimelineBar extends StatelessWidget {
                           enabledThumbRadius: 8,
                         ),
                         activeTrackColor: palette.accent,
-                        inactiveTrackColor: Colors.white.withValues(
-                          alpha: 0.15,
-                        ),
-                        thumbColor: Colors.white,
+                        inactiveTrackColor: palette.mediaSurfaceSubtle,
+                        thumbColor: palette.mediaInk,
                         overlayColor: palette.accent.withValues(alpha: 0.2),
                       ),
                       child: RangeSlider(
@@ -1551,27 +1569,32 @@ class _TimelineStripContent extends StatelessWidget {
         return Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm,
+              ),
               child: Row(
                 children: List.generate(8, (index) {
                   return Expanded(
                     child: Padding(
-                      padding: EdgeInsets.only(right: index == 7 ? 0 : 3),
+                      padding: EdgeInsets.only(
+                        right: index == 7 ? 0 : AppSpacing.xs,
+                      ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppRadii.xsAll,
                         child: SizedBox(
                           height: 36,
                           child: hasThumb
                               ? MediaThumbnailFrame(
                                   file: thumbFile!,
-                                  borderRadius: BorderRadius.circular(6),
-                                  background: const LinearGradient(
+                                  borderRadius: AppRadii.xsAll,
+                                  background: LinearGradient(
                                     colors: [
-                                      Color(0xFF16111D),
-                                      Color(0xFF0C0A11),
+                                      palette.mediaSurfaceStrong,
+                                      palette.mediaSurface,
                                     ],
                                   ),
-                                  padding: const EdgeInsets.all(2),
+                                  padding: const EdgeInsets.all(AppSpacing.xs),
                                 )
                               : DecoratedBox(
                                   decoration: BoxDecoration(
@@ -1600,13 +1623,10 @@ class _TimelineStripContent extends StatelessWidget {
               child: Container(
                 width: 2.5,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(2),
+                  color: palette.mediaInk,
+                  borderRadius: AppRadii.pillAll,
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 4,
-                    ),
+                    BoxShadow(color: palette.mediaScrim, blurRadius: 4),
                   ],
                 ),
               ),
@@ -1676,7 +1696,7 @@ class _ActiveToolOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: AppRadii.xlAll,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
@@ -1688,9 +1708,9 @@ class _ActiveToolOverlay extends StatelessWidget {
                 : (isTablet ? 260 : 210),
           ),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            color: palette.mediaSurfaceStrong,
+            borderRadius: AppRadii.xlAll,
+            border: Border.all(color: palette.mediaBorder),
           ),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
@@ -1763,7 +1783,12 @@ class _CompactEffectsTool extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1781,7 +1806,7 @@ class _CompactEffectsTool extends StatelessWidget {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 160),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
+                        horizontal: AppSpacing.lg,
                         vertical: 7,
                       ),
                       decoration: BoxDecoration(
@@ -1793,16 +1818,14 @@ class _CompactEffectsTool extends StatelessWidget {
                                 ],
                               )
                             : null,
-                        color: selected
-                            ? null
-                            : Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(18),
+                        color: selected ? null : palette.mediaSurfaceSubtle,
+                        borderRadius: AppRadii.xlAll,
                       ),
                       child: Text(
                         _localizedFilterPresetLabel(preset.id, context),
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
+                          color: palette.mediaInk,
+                          fontSize: AppTextSize.label,
                           fontWeight: selected
                               ? FontWeight.w700
                               : FontWeight.w500,
@@ -1811,12 +1834,14 @@ class _CompactEffectsTool extends StatelessWidget {
                     ),
                   );
                 },
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.sm),
                 itemCount: EditorResourceCatalog.filterPresets.length,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             _CompactSlider(
+              palette: palette,
               label: context.l10n.editorBrightness,
               value: session.adjustments.brightness,
               min: -1,
@@ -1826,6 +1851,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
+              palette: palette,
               label: context.l10n.editorContrast,
               value: session.adjustments.contrast,
               min: 0.5,
@@ -1835,6 +1861,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
+              palette: palette,
               label: context.l10n.editorSaturation,
               value: session.adjustments.saturation,
               min: 0,
@@ -1844,6 +1871,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
+              palette: palette,
               label: context.l10n.editorSharpness,
               value: session.adjustments.sharpness,
               min: 0,
@@ -1853,6 +1881,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
+              palette: palette,
               label: context.l10n.editorVignette,
               value: session.adjustments.vignette,
               min: 0,
@@ -1870,6 +1899,7 @@ class _CompactEffectsTool extends StatelessWidget {
 
 class _CompactSlider extends StatelessWidget {
   const _CompactSlider({
+    required this.palette,
     required this.label,
     required this.value,
     required this.min,
@@ -1877,6 +1907,7 @@ class _CompactSlider extends StatelessWidget {
     required this.onChanged,
   });
 
+  final KidPalette palette;
   final String label;
   final double value;
   final double min;
@@ -1893,7 +1924,10 @@ class _CompactSlider extends StatelessWidget {
             width: 72,
             child: Text(
               label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(
+                color: palette.mediaMutedInk,
+                fontSize: AppTextSize.label,
+              ),
             ),
           ),
           Expanded(
@@ -1901,9 +1935,9 @@ class _CompactSlider extends StatelessWidget {
               data: SliderThemeData(
                 trackHeight: 2,
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                activeTrackColor: Colors.white70,
-                inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
-                thumbColor: Colors.white,
+                activeTrackColor: palette.mediaMutedInk,
+                inactiveTrackColor: palette.mediaSurfaceSubtle,
+                thumbColor: palette.mediaInk,
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
               ),
               child: Slider(
@@ -1919,9 +1953,9 @@ class _CompactSlider extends StatelessWidget {
             child: Text(
               value.toStringAsFixed(1),
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 11,
+              style: TextStyle(
+                color: palette.mediaSubtleInk,
+                fontSize: AppTextSize.caption,
                 fontFeatures: [FontFeature.tabularFigures()],
               ),
             ),
@@ -1999,22 +2033,28 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
     ];
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _StickerToolHeader(
+            palette: widget.palette,
             controller: _searchController,
             onQueryChanged: (value) => setState(() => _query = value),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             height: 34,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final category = categories[index];
                 final isSelected = category.id == selectedCategory.id;
@@ -2027,10 +2067,10 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
               },
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           Expanded(
             child: visibleItems.length == 1
-                ? _StickerEmptyState(query: _query)
+                ? _StickerEmptyState(palette: widget.palette, query: _query)
                 : GridView.builder(
                     padding: EdgeInsets.zero,
                     gridDelegate:
@@ -2049,7 +2089,7 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
                           child: Icon(
                             Icons.photo_camera_front_rounded,
                             color: widget.palette.accentSecondary,
-                            size: 26,
+                            size: AppIconSize.xl,
                           ),
                         );
                       }
@@ -2071,13 +2111,17 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
                                 sticker.assetPath,
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, _, _) =>
-                                    const _StickerLoadErrorIcon(),
+                                    _StickerLoadErrorIcon(
+                                      palette: widget.palette,
+                                    ),
                               )
                             : Image.file(
                                 File(sticker.assetPath),
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, _, _) =>
-                                    const _StickerLoadErrorIcon(),
+                                    _StickerLoadErrorIcon(
+                                      palette: widget.palette,
+                                    ),
                               ),
                       );
                     },
@@ -2091,10 +2135,12 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
 
 class _StickerToolHeader extends StatelessWidget {
   const _StickerToolHeader({
+    required this.palette,
     required this.controller,
     required this.onQueryChanged,
   });
 
+  final KidPalette palette;
   final TextEditingController controller;
   final ValueChanged<String> onQueryChanged;
 
@@ -2106,22 +2152,22 @@ class _StickerToolHeader extends StatelessWidget {
         controller: controller,
         onChanged: onQueryChanged,
         textInputAction: TextInputAction.search,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
+        style: TextStyle(
+          color: palette.mediaInk,
+          fontSize: AppTextSize.body,
           fontWeight: FontWeight.w600,
         ),
         decoration: InputDecoration(
           hintText: context.l10n.editorSearchStickers,
           hintStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.45),
-            fontSize: 14,
+            color: palette.mediaSubtleInk,
+            fontSize: AppTextSize.body,
             fontWeight: FontWeight.w600,
           ),
           prefixIcon: Icon(
             Icons.search_rounded,
-            color: Colors.white.withValues(alpha: 0.55),
-            size: 20,
+            color: palette.mediaSubtleInk,
+            size: AppIconSize.lg,
           ),
           suffixIcon: controller.text.isEmpty
               ? null
@@ -2129,28 +2175,28 @@ class _StickerToolHeader extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   icon: Icon(
                     Icons.close_rounded,
-                    color: Colors.white.withValues(alpha: 0.65),
-                    size: 18,
+                    color: palette.mediaMutedInk,
+                    size: AppIconSize.md,
                   ),
                   onPressed: () {
                     controller.clear();
                     onQueryChanged('');
                   },
                 ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.08),
+          fillColor: palette.mediaSurfaceSubtle,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+            borderRadius: AppRadii.smAll,
+            borderSide: BorderSide(color: palette.mediaBorder),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+            borderRadius: AppRadii.smAll,
+            borderSide: BorderSide(color: palette.mediaBorder),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+            borderRadius: AppRadii.smAll,
+            borderSide: BorderSide(color: palette.mediaBorderStrong),
           ),
         ),
       ),
@@ -2179,24 +2225,24 @@ class _StickerCategoryChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
         height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected
               ? palette.accent.withValues(alpha: 0.28)
-              : Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
+              : palette.mediaSurfaceSubtle,
+          borderRadius: AppRadii.smAll,
           border: Border.all(
             color: isSelected
                 ? palette.accentSecondary.withValues(alpha: 0.55)
-                : Colors.white.withValues(alpha: 0.08),
+                : palette.mediaBorder,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.7),
-            fontSize: 12,
+            color: isSelected ? palette.mediaInk : palette.mediaMutedInk,
+            fontSize: AppTextSize.label,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
@@ -2225,11 +2271,11 @@ class _StickerTile extends StatelessWidget {
       onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          color: palette.mediaSurfaceSubtle,
+          borderRadius: AppRadii.smAll,
+          border: Border.all(color: palette.mediaBorder),
         ),
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(AppSpacing.sm),
         child: child,
       ),
     );
@@ -2237,21 +2283,24 @@ class _StickerTile extends StatelessWidget {
 }
 
 class _StickerLoadErrorIcon extends StatelessWidget {
-  const _StickerLoadErrorIcon();
+  const _StickerLoadErrorIcon({required this.palette});
+
+  final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
     return Icon(
       Icons.image_not_supported_outlined,
-      color: Colors.white.withValues(alpha: 0.45),
-      size: 24,
+      color: palette.mediaSubtleInk,
+      size: AppIconSize.xl,
     );
   }
 }
 
 class _StickerEmptyState extends StatelessWidget {
-  const _StickerEmptyState({required this.query});
+  const _StickerEmptyState({required this.palette, required this.query});
 
+  final KidPalette palette;
   final String query;
 
   @override
@@ -2262,8 +2311,8 @@ class _StickerEmptyState extends StatelessWidget {
             ? context.l10n.editorNoStickersHereYet
             : context.l10n.editorNoMatchingStickers,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.55),
-          fontSize: 13,
+          color: palette.mediaSubtleInk,
+          fontSize: AppTextSize.label,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -2629,22 +2678,28 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
         .toList(growable: false);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _AudioToolHeader(
+            palette: widget.palette,
             controller: _searchController,
             onQueryChanged: (value) => setState(() => _query = value),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             height: 34,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final category = categories[index];
                 final isSelected = category.id == selectedCategory.id;
@@ -2657,14 +2712,15 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
               },
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           Expanded(
             child: tracks.isEmpty
-                ? _AudioEmptyState(query: _query)
+                ? _AudioEmptyState(palette: widget.palette, query: _query)
                 : ListView.separated(
                     padding: EdgeInsets.zero,
                     itemCount: tracks.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, index) {
                       final track = tracks[index];
                       return _AudioTrackRow(
@@ -2685,13 +2741,13 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
                   ),
           ),
           if (selection != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.volume_up_rounded,
-                  color: Colors.white54,
-                  size: 18,
+                  color: widget.palette.mediaSubtleInk,
+                  size: AppIconSize.md,
                 ),
                 Expanded(
                   child: SliderTheme(
@@ -2701,8 +2757,8 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
                         enabledThumbRadius: 6,
                       ),
                       activeTrackColor: widget.palette.accentSecondary,
-                      inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
-                      thumbColor: Colors.white,
+                      inactiveTrackColor: widget.palette.mediaSurfaceSubtle,
+                      thumbColor: widget.palette.mediaInk,
                       overlayShape: const RoundSliderOverlayShape(
                         overlayRadius: 12,
                       ),
@@ -2717,18 +2773,18 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
                   onTap: widget.onMusicRemoved,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: widget.palette.mediaSurfaceSubtle,
+                      borderRadius: AppRadii.smAll,
                     ),
                     child: Text(
                       context.l10n.actionRemove,
                       style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
+                        color: widget.palette.mediaMutedInk,
+                        fontSize: AppTextSize.label,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2745,10 +2801,12 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
 
 class _AudioToolHeader extends StatelessWidget {
   const _AudioToolHeader({
+    required this.palette,
     required this.controller,
     required this.onQueryChanged,
   });
 
+  final KidPalette palette;
   final TextEditingController controller;
   final ValueChanged<String> onQueryChanged;
 
@@ -2760,22 +2818,22 @@ class _AudioToolHeader extends StatelessWidget {
         controller: controller,
         onChanged: onQueryChanged,
         textInputAction: TextInputAction.search,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
+        style: TextStyle(
+          color: palette.mediaInk,
+          fontSize: AppTextSize.body,
           fontWeight: FontWeight.w600,
         ),
         decoration: InputDecoration(
           hintText: context.l10n.editorSearchMusic,
           hintStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.45),
-            fontSize: 14,
+            color: palette.mediaSubtleInk,
+            fontSize: AppTextSize.body,
             fontWeight: FontWeight.w600,
           ),
           prefixIcon: Icon(
             Icons.search_rounded,
-            color: Colors.white.withValues(alpha: 0.55),
-            size: 20,
+            color: palette.mediaSubtleInk,
+            size: AppIconSize.lg,
           ),
           suffixIcon: controller.text.isEmpty
               ? null
@@ -2783,28 +2841,28 @@ class _AudioToolHeader extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   icon: Icon(
                     Icons.close_rounded,
-                    color: Colors.white.withValues(alpha: 0.65),
-                    size: 18,
+                    color: palette.mediaMutedInk,
+                    size: AppIconSize.md,
                   ),
                   onPressed: () {
                     controller.clear();
                     onQueryChanged('');
                   },
                 ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.08),
+          fillColor: palette.mediaSurfaceSubtle,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+            borderRadius: AppRadii.smAll,
+            borderSide: BorderSide(color: palette.mediaBorder),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+            borderRadius: AppRadii.smAll,
+            borderSide: BorderSide(color: palette.mediaBorder),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+            borderRadius: AppRadii.smAll,
+            borderSide: BorderSide(color: palette.mediaBorderStrong),
           ),
         ),
       ),
@@ -2846,19 +2904,20 @@ class _AudioTrackRow extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
         constraints: const BoxConstraints(minHeight: 56),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           gradient: isSelected
               ? LinearGradient(
                   colors: [palette.accent, palette.accentSecondary],
                 )
               : null,
-          color: isSelected ? null : Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? null : palette.mediaSurfaceSubtle,
+          borderRadius: AppRadii.smAll,
           border: Border.all(
-            color: isSelected
-                ? Colors.white.withValues(alpha: 0.24)
-                : Colors.white.withValues(alpha: 0.07),
+            color: isSelected ? palette.mediaBorderStrong : palette.mediaBorder,
           ),
         ),
         child: Row(
@@ -2870,30 +2929,28 @@ class _AudioTrackRow extends StatelessWidget {
                 height: 34,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(
-                    alpha: isSelected ? 0.16 : 0.2,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
+                  color: palette.mediaSurface,
+                  borderRadius: AppRadii.smAll,
                 ),
                 child: isDownloading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: palette.mediaInk,
                         ),
                       )
                     : Icon(
                         isPreviewing
                             ? Icons.stop_rounded
                             : Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 20,
+                        color: palette.mediaInk,
+                        size: AppIconSize.lg,
                       ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2903,21 +2960,21 @@ class _AudioTrackRow extends StatelessWidget {
                     track.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
+                    style: TextStyle(
+                      color: palette.mediaInk,
+                      fontSize: AppTextSize.label,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   if (creator != null && creator.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       creator,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.68),
-                        fontSize: 11,
+                        color: palette.mediaMutedInk,
+                        fontSize: AppTextSize.caption,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2925,28 +2982,35 @@ class _AudioTrackRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Container(
               constraints: const BoxConstraints(maxWidth: 86),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: isSelected ? 0.16 : 0.18),
-                borderRadius: BorderRadius.circular(8),
+                color: palette.mediaSurface,
+                borderRadius: AppRadii.smAll,
               ),
               child: Text(
                 isDownloading ? context.l10n.editorMusicLoading : status,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.78),
-                  fontSize: 10,
+                  color: palette.mediaMutedInk,
+                  fontSize: AppTextSize.micro,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
-              const Icon(Icons.check_rounded, color: Colors.white, size: 16),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                Icons.check_rounded,
+                color: palette.mediaInk,
+                size: AppIconSize.sm,
+              ),
             ],
           ],
         ),
@@ -2956,8 +3020,9 @@ class _AudioTrackRow extends StatelessWidget {
 }
 
 class _AudioEmptyState extends StatelessWidget {
-  const _AudioEmptyState({required this.query});
+  const _AudioEmptyState({required this.palette, required this.query});
 
+  final KidPalette palette;
   final String query;
 
   @override
@@ -2968,8 +3033,8 @@ class _AudioEmptyState extends StatelessWidget {
             ? context.l10n.editorNoMusicHereYet
             : context.l10n.editorNoMatchingMusic,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.55),
-          fontSize: 13,
+          color: palette.mediaSubtleInk,
+          fontSize: AppTextSize.label,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -3211,7 +3276,12 @@ class _CompactTextToolState extends State<_CompactTextTool> {
     final selected = _selectedText;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -3224,30 +3294,30 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                       ? Text(
                           context.l10n.editorTapText,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 13,
+                            color: widget.palette.mediaMutedInk,
+                            fontSize: AppTextSize.label,
                             fontWeight: FontWeight.w500,
                           ),
                         )
                       : TextField(
                           controller: _controller,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
+                          style: TextStyle(
+                            color: widget.palette.mediaInk,
+                            fontSize: AppTextSize.body,
                           ),
                           decoration: InputDecoration(
                             hintText: context.l10n.editorTypeSomething,
                             hintStyle: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.35),
+                              color: widget.palette.mediaSubtleInk,
                             ),
                             filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.08),
+                            fillColor: widget.palette.mediaSurfaceSubtle,
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
+                              horizontal: AppSpacing.lg,
+                              vertical: AppSpacing.md,
                             ),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: AppRadii.lgAll,
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -3257,7 +3327,7 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                           ),
                         ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 _AddTextButton(
                   palette: widget.palette,
                   onTap: widget.onAddTextOverlay,
@@ -3265,7 +3335,7 @@ class _CompactTextToolState extends State<_CompactTextTool> {
               ],
             ),
             if (selected != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -3279,8 +3349,8 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                         ),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm,
                           ),
                           decoration: BoxDecoration(
                             gradient: selected.fontFamily == family
@@ -3293,23 +3363,23 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                                 : null,
                             color: selected.fontFamily == family
                                 ? null
-                                : Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                                : widget.palette.mediaSurfaceSubtle,
+                            borderRadius: AppRadii.mdAll,
                           ),
                           child: Text(
                             'Aa',
                             style: TextStyle(
                               fontFamily: family,
-                              color: Colors.white,
-                              fontSize: 13,
+                              color: widget.palette.mediaInk,
+                              fontSize: AppTextSize.label,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.xs),
                     ],
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xs),
                     for (final color in _EditorDetailPageState._textColors) ...[
                       GestureDetector(
                         onTap: () => widget.onTextChanged(
@@ -3324,24 +3394,27 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: selected.textColorValue == color.toARGB32()
-                                  ? Colors.white
+                                  ? widget.palette.mediaInk
                                   : Colors.transparent,
                               width: 2,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xs),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Size',
-                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                    style: TextStyle(
+                      color: widget.palette.mediaSubtleInk,
+                      fontSize: AppTextSize.caption,
+                    ),
                   ),
                   Expanded(
                     child: SliderTheme(
@@ -3350,11 +3423,9 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                         thumbShape: const RoundSliderThumbShape(
                           enabledThumbRadius: 5,
                         ),
-                        activeTrackColor: Colors.white70,
-                        inactiveTrackColor: Colors.white.withValues(
-                          alpha: 0.15,
-                        ),
-                        thumbColor: Colors.white,
+                        activeTrackColor: widget.palette.mediaMutedInk,
+                        inactiveTrackColor: widget.palette.mediaSurfaceSubtle,
+                        thumbColor: widget.palette.mediaInk,
                         overlayShape: const RoundSliderOverlayShape(
                           overlayRadius: 10,
                         ),
@@ -3392,24 +3463,28 @@ class _AddTextButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [palette.accent, palette.accentSecondary],
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.mdAll,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 4),
+            Icon(
+              Icons.add_rounded,
+              color: palette.onAccent,
+              size: AppIconSize.md,
+            ),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               context.l10n.editorAddText,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
+                color: palette.onAccent,
+                fontSize: AppTextSize.label,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -3611,7 +3686,7 @@ class _PreviewPane extends StatelessWidget {
                       ),
                       child: const Icon(
                         Icons.play_arrow_rounded,
-                        size: 36,
+                        size: AppIconSize.empty,
                         color: Colors.white,
                       ),
                     ),
@@ -3693,7 +3768,7 @@ class _StickerOverlay extends StatelessWidget {
                   width: stickerSize,
                   height: stickerSize,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: AppRadii.xlAll,
                     border: selected
                         ? Border.all(color: Colors.white, width: 2)
                         : null,
@@ -3705,7 +3780,7 @@ class _StickerOverlay extends StatelessWidget {
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: AppRadii.xlAll,
                     child: isBundledAsset
                         ? Image.asset(stickerPath, fit: BoxFit.contain)
                         : Image.file(File(stickerPath), fit: BoxFit.contain),
@@ -3775,12 +3850,12 @@ class _TextOverlay extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md,
                     ),
                     decoration: selected
                         ? BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: AppRadii.lgAll,
                             border: Border.all(color: Colors.white, width: 2),
                           )
                         : null,
@@ -3840,7 +3915,11 @@ class _OverlayDeleteBadge extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white, width: 1.5),
         ),
-        child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+        child: const Icon(
+          Icons.close_rounded,
+          size: AppIconSize.sm,
+          color: Colors.white,
+        ),
       ),
     );
   }

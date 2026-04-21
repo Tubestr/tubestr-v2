@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/storage/app_database.dart';
+import '../../../../core/theme/radii.dart';
+import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/parent_identity.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
@@ -21,9 +23,11 @@ class OnboardingCenteredStep extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 24),
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight - AppSpacing.xxl,
+            ),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 680),
@@ -54,13 +58,16 @@ class OnboardingProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xxxl,
+        vertical: AppSpacing.sm,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (label != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Text(
                 label!,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -79,7 +86,7 @@ class OnboardingProgressBar extends StatelessWidget {
                   curve: AppMotion.easeOutQuint,
                   height: 4,
                   margin: EdgeInsets.only(
-                    right: index < totalSteps - 1 ? 4 : 0,
+                    right: index < totalSteps - 1 ? AppSpacing.xs : 0,
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(2),
@@ -117,61 +124,64 @@ class OnboardingIntroSlides extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onSkip;
 
-  List<_OnboardingIntroSlideData> _buildSlides(AppLocalizations l10n) => [
+  List<_OnboardingIntroSlideData> _buildSlides(
+    AppLocalizations l10n,
+    Brightness brightness,
+  ) => [
     _OnboardingIntroSlideData(
       icon: Icons.family_restroom_rounded,
       title: l10n.onboardingIntroTitle,
       subtitle: l10n.onboardingIntroSubtitle,
       stepLabel: null,
-      colors: const [Color(0xFFE8794E), Color(0xFFF9B45E)],
+      palette: ThemeDescriptor.campfire.paletteFor(brightness),
     ),
     _OnboardingIntroSlideData(
       icon: Icons.key_rounded,
       title: l10n.onboardingParentKeyTitle,
       subtitle: l10n.onboardingParentKeySubtitle,
       stepLabel: l10n.onboardingStepOne,
-      colors: const [Color(0xFF6E63A8), Color(0xFFE2C76C)],
+      palette: ThemeDescriptor.starlight.paletteFor(brightness),
     ),
     _OnboardingIntroSlideData(
       icon: Icons.child_care_rounded,
       title: l10n.onboardingKidsTitle,
       subtitle: l10n.onboardingKidsSubtitle,
       stepLabel: l10n.onboardingStepTwo,
-      colors: const [Color(0xFF3FAE6F), Color(0xFF7A684A)],
+      palette: ThemeDescriptor.treehouse.paletteFor(brightness),
     ),
     _OnboardingIntroSlideData(
       icon: Icons.videocam_rounded,
       title: l10n.onboardingCreateTitle,
       subtitle: l10n.onboardingCreateSubtitle,
       stepLabel: l10n.onboardingStepThree,
-      colors: const [Color(0xFF9C7AA8), Color(0xFFF2A7B7)],
+      palette: ThemeDescriptor.blanketFort.paletteFor(brightness),
     ),
     _OnboardingIntroSlideData(
       icon: Icons.shield_rounded,
       title: l10n.onboardingApproveTitle,
       subtitle: l10n.onboardingApproveSubtitle,
       stepLabel: l10n.onboardingStepFour,
-      colors: const [Color(0xFF4A90D9), Color(0xFF67B8A7)],
+      palette: palette,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final slides = _buildSlides(context.l10n);
+    final slides = _buildSlides(context.l10n, Theme.of(context).brightness);
     return Column(
       children: [
         Align(
           alignment: Alignment.topLeft,
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: TextButton(
               style: TextButton.styleFrom(
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                foregroundColor: Colors.white,
+                backgroundColor: palette.mediaSurfaceSubtle,
+                foregroundColor: palette.mediaInk,
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
                 ),
               ),
               onPressed: onSkip,
@@ -186,6 +196,7 @@ class OnboardingIntroSlides extends StatelessWidget {
             onPageChanged: onPageChanged,
             itemBuilder: (context, index) {
               final slide = slides[index];
+              final foreground = slide.palette.onAccent;
               final isActive = index == page;
               return AnimatedScale(
                 duration: AppMotion.duration(context, AppMotion.stateChange),
@@ -204,11 +215,16 @@ class OnboardingIntroSlides extends StatelessWidget {
                     ),
                     opacity: isActive ? 1 : 0.55,
                     child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 32),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xxxl,
+                      ),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(32),
+                        borderRadius: AppRadii.cardAll,
                         gradient: LinearGradient(
-                          colors: slide.colors,
+                          colors: [
+                            slide.palette.accent,
+                            slide.palette.accentSecondary,
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -219,24 +235,24 @@ class OnboardingIntroSlides extends StatelessWidget {
                           if (slide.stepLabel != null) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 5,
+                                horizontal: AppSpacing.lg,
+                                vertical: AppSpacing.xs,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(999),
+                                color: foreground.withValues(alpha: 0.18),
+                                borderRadius: AppRadii.pillAll,
                               ),
                               child: Text(
                                 slide.stepLabel!,
-                                style: const TextStyle(
-                                  fontSize: 13,
+                                style: TextStyle(
+                                  fontSize: AppTextSize.label,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color: foreground,
                                   letterSpacing: 0.6,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.lg),
                           ],
                           AnimatedScale(
                             duration: AppMotion.duration(
@@ -250,39 +266,39 @@ class OnboardingIntroSlides extends StatelessWidget {
                               height: 76,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: foreground.withValues(alpha: 0.18),
                               ),
                               child: Icon(
                                 slide.icon,
-                                size: 38,
-                                color: Colors.white,
+                                size: AppIconSize.empty,
+                                color: foreground,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.xxl),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xxl,
+                            ),
                             child: Text(
                               slide.title,
                               style: TextStyle(
-                                fontSize: MediaQuery.sizeOf(context).width < 400
-                                    ? 26.0
-                                    : 30.0,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: foreground,
                               ),
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 28),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xxxl,
+                            ),
                             child: Text(
                               slide.subtitle,
                               style: TextStyle(
-                                fontSize: 16,
                                 height: 1.4,
-                                color: Colors.white.withValues(alpha: 0.92),
+                                color: foreground.withValues(alpha: 0.86),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -296,7 +312,7 @@ class OnboardingIntroSlides extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(slides.length, (index) {
@@ -304,11 +320,11 @@ class OnboardingIntroSlides extends StatelessWidget {
             return AnimatedContainer(
               duration: AppMotion.duration(context, AppMotion.stateChange),
               curve: AppMotion.easeOutQuint,
-              width: active ? 24 : 8,
-              height: 8,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: active ? AppSpacing.xxl : AppSpacing.sm,
+              height: AppSpacing.sm,
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.xsAll,
                 color: active
                     ? palette.accent
                     : palette.accent.withValues(alpha: 0.25),
@@ -316,9 +332,9 @@ class OnboardingIntroSlides extends StatelessWidget {
             );
           }),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
           child: SizedBox(
             width: double.infinity,
             height: 52,
@@ -332,7 +348,7 @@ class OnboardingIntroSlides extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxxl),
       ],
     );
   }
@@ -354,7 +370,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return OnboardingCenteredStep(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -364,7 +380,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               context.l10n.onboardingRoleSelectSubtitle,
               style: Theme.of(
@@ -382,7 +398,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
                 label: Text(context.l10n.onboardingCreateNewAccount),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -433,11 +449,11 @@ class OnboardingParentKeyStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return OnboardingCenteredStep(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Container(
               width: 72,
               height: 72,
@@ -445,9 +461,13 @@ class OnboardingParentKeyStep extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: palette.accent.withValues(alpha: 0.12),
               ),
-              child: Icon(Icons.key_rounded, size: 36, color: palette.accent),
+              child: Icon(
+                Icons.key_rounded,
+                size: AppIconSize.empty,
+                color: palette.accent,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             Text(
               context.l10n.onboardingParentKeyTitle,
               style: Theme.of(
@@ -455,7 +475,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               context.l10n.onboardingParentKeyHelp,
               style: Theme.of(
@@ -463,7 +483,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             TextField(
               controller: displayNameController,
               enabled: identity == null && !busy,
@@ -474,7 +494,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
               ),
             ),
             if (identity == null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.lg),
               TextField(
                 controller: birthYearController,
                 enabled: !busy,
@@ -489,12 +509,12 @@ class OnboardingParentKeyStep extends StatelessWidget {
                   hintText: context.l10n.onboardingBirthYearHint,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: BoxDecoration(
-                  color: palette.panel.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(18),
+                  color: palette.surfaceSubtle,
+                  borderRadius: AppRadii.xlAll,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,12 +533,12 @@ class OnboardingParentKeyStep extends StatelessWidget {
                             onTap: busy
                                 ? null
                                 : () => onConsentChanged(!consentAccepted),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: AppRadii.smAll,
                             child: Padding(
                               padding: const EdgeInsets.only(
-                                top: 10,
-                                bottom: 10,
-                                right: 8,
+                                top: AppSpacing.md,
+                                bottom: AppSpacing.md,
+                                right: AppSpacing.sm,
                               ),
                               child: Text(
                                 'I am 18 or older and I agree to the Tubestr privacy policy on behalf of any children whose profiles I create.',
@@ -545,7 +565,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                 ),
               ),
               if (eligibilityMessage != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   eligibilityMessage!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -555,13 +575,13 @@ class OnboardingParentKeyStep extends StatelessWidget {
                 ),
               ],
             ],
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxxl),
             if (identity != null) ...[
               OnboardingParentPublicKeyCard(
                 identity: identity!,
                 palette: palette,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               PrivateKeyExportCard(
                 secret: identity!.nsec,
                 title: context.l10n.onboardingBackupKeyCardTitle,
@@ -569,13 +589,13 @@ class OnboardingParentKeyStep extends StatelessWidget {
                     'Save this before you continue. It is the recovery path for your parent account.',
                 shareText: _parentBackupShareText(identity!),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: BoxDecoration(
                   color: palette.warning.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: AppRadii.xlAll,
                 ),
                 child: Text(
                   context.l10n.onboardingPrivateKeyHelp,
@@ -584,7 +604,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                   ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -598,7 +618,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                 Column(
                   children: [
                     CircularProgressIndicator(),
-                    SizedBox(height: 16),
+                    SizedBox(height: AppSpacing.lg),
                     Text(context.l10n.onboardingPreparingKey),
                   ],
                 )
@@ -612,7 +632,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                   ),
                 ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
           ],
         ),
       ),
@@ -640,7 +660,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return OnboardingCenteredStep(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -657,7 +677,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
                 color: palette.accent,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             Text(
               context.l10n.onboardingWelcomeBackTitle,
               style: Theme.of(
@@ -665,7 +685,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               context.l10n.onboardingRestoreKeySubtitle,
               style: Theme.of(
@@ -673,7 +693,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             TextField(
               controller: restoreController,
               enabled: !busy,
@@ -684,10 +704,10 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
                 hintText: 'nsec1...',
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.md,
               alignment: WrapAlignment.center,
               children: [
                 OutlinedButton.icon(
@@ -733,7 +753,7 @@ class OnboardingRecoveryStep extends StatelessWidget {
 
     return OnboardingCenteredStep(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -756,7 +776,7 @@ class OnboardingRecoveryStep extends StatelessWidget {
                       ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             Text(
               busy
                   ? context.l10n.onboardingRestoringParentAccount
@@ -768,7 +788,7 @@ class OnboardingRecoveryStep extends StatelessWidget {
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             Text(
               message ??
                   'We are checking your parent backup and preparing this device.',
@@ -777,16 +797,16 @@ class OnboardingRecoveryStep extends StatelessWidget {
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             if (succeeded == true)
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
                 ),
                 decoration: BoxDecoration(
                   color: palette.success.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: AppRadii.pillAll,
                 ),
                 child: Text(
                   context.l10n.onboardingParentKeyRecovered,
@@ -796,10 +816,10 @@ class OnboardingRecoveryStep extends StatelessWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.md,
               alignment: WrapAlignment.center,
               children: [
                 if (onTryAgain != null)
@@ -849,7 +869,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
       child: ListView(
         children: [
           const SizedBox(height: 40),
@@ -859,22 +879,22 @@ class OnboardingChildProfilesStep extends StatelessWidget {
               context,
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Add a profile for each child. They\'ll each get their own themed space to watch and create videos.',
             style: Theme.of(
               context,
             ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           if (profiles.isNotEmpty) ...[
             for (final profile in profiles)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: FrostCard(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.md,
                   ),
                   child: Row(
                     children: [
@@ -888,7 +908,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                           ).paletteFor(Theme.of(context).brightness).accent,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Text(
                         profile.name,
                         style: Theme.of(context).textTheme.titleMedium,
@@ -906,7 +926,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
           FrostCard(
             child: Column(
@@ -916,7 +936,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                   context.l10n.onboardingAddChildProfile,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: nameController,
                   enabled: !busy,
@@ -926,12 +946,12 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                     hintText: context.l10n.onboardingChildNameHint,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   context.l10n.onboardingTheme,
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SegmentedButton<ThemeDescriptor>(
@@ -941,7 +961,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                           value: themeOption,
                           label: Text(
                             context.l10n.themeLabel(themeOption),
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: AppTextSize.label),
                           ),
                         ),
                     ],
@@ -951,7 +971,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                         : (selection) => onThemeChanged(selection.first),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.lg),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
@@ -963,7 +983,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -999,7 +1019,7 @@ class OnboardingPermissionsStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return OnboardingCenteredStep(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1016,14 +1036,14 @@ class OnboardingPermissionsStep extends StatelessWidget {
                 color: palette.accent,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             Text(
               context.l10n.onboardingOneLastThing,
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               context.l10n.onboardingAppPermissionsDetail,
               textAlign: TextAlign.center,
@@ -1031,7 +1051,7 @@ class OnboardingPermissionsStep extends StatelessWidget {
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             FrostCard(
               child: Column(
                 children: [
@@ -1041,7 +1061,7 @@ class OnboardingPermissionsStep extends StatelessWidget {
                     detail: context.l10n.onboardingCameraPermissionDetail,
                     palette: palette,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   OnboardingPermissionRow(
                     icon: Icons.mic_rounded,
                     title: context.l10n.onboardingMicrophone,
@@ -1052,13 +1072,13 @@ class OnboardingPermissionsStep extends StatelessWidget {
               ),
             ),
             if (error != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
                   color: palette.warning.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadii.lgAll,
                   border: Border.all(
                     color: palette.warning.withValues(alpha: 0.28),
                   ),
@@ -1068,13 +1088,13 @@ class OnboardingPermissionsStep extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: palette.ink,
-                    fontSize: 13,
+                    fontSize: AppTextSize.label,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -1082,8 +1102,8 @@ class OnboardingPermissionsStep extends StatelessWidget {
                 onPressed: busy ? null : onAllow,
                 icon: busy
                     ? const SizedBox(
-                        width: 18,
-                        height: 18,
+                        width: AppIconSize.md,
+                        height: AppIconSize.md,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check_circle_outline_rounded),
@@ -1094,7 +1114,7 @@ class OnboardingPermissionsStep extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextButton(
               onPressed: busy ? null : onSkip,
               child: Text(context.l10n.actionSkipForNow),
@@ -1130,11 +1150,11 @@ class OnboardingPermissionRow extends StatelessWidget {
           height: 40,
           decoration: BoxDecoration(
             color: palette.accent.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadii.mdAll,
           ),
           child: Icon(icon, color: palette.accent),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1145,7 +1165,7 @@ class OnboardingPermissionRow extends StatelessWidget {
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 detail,
                 style: Theme.of(
@@ -1172,15 +1192,19 @@ class OnboardingCompleteStep extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.verified_rounded, size: 72, color: palette.success),
-            const SizedBox(height: 24),
+            Icon(
+              Icons.verified_rounded,
+              size: AppIconSize.billboard,
+              color: palette.success,
+            ),
+            const SizedBox(height: AppSpacing.xxl),
             Text(
               context.l10n.onboardingCompleteTitle,
               style: Theme.of(
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               context.l10n.onboardingCompleteSubtitle,
               style: Theme.of(
@@ -1216,23 +1240,23 @@ class OnboardingParentPublicKeyCard extends StatelessWidget {
               Icon(
                 Icons.verified_user_rounded,
                 color: palette.success,
-                size: 20,
+                size: AppIconSize.lg,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Text(
                 context.l10n.onboardingParentPublicKey,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           SelectableText(
             identity.npub,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           OutlinedButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: identity.npub));
@@ -1243,7 +1267,7 @@ class OnboardingParentPublicKeyCard extends StatelessWidget {
                 SnackBar(content: Text(context.l10n.publicKeyCopied)),
               );
             },
-            icon: const Icon(Icons.copy_rounded, size: 16),
+            icon: const Icon(Icons.copy_rounded, size: AppIconSize.sm),
             label: Text(context.l10n.actionCopy),
           ),
         ],
@@ -1257,7 +1281,7 @@ class _OnboardingIntroSlideData {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.colors,
+    required this.palette,
     this.stepLabel,
   });
 
@@ -1265,7 +1289,7 @@ class _OnboardingIntroSlideData {
   final String title;
   final String subtitle;
   final String? stepLabel;
-  final List<Color> colors;
+  final KidPalette palette;
 }
 
 String _parentBackupShareText(ParentIdentity identity) {

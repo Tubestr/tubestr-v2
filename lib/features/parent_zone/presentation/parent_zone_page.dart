@@ -10,6 +10,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/nostr/nostr_key_format.dart';
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/marmot/invite_transport_models.dart';
 import '../../../domain/models/parent_identity.dart';
@@ -408,10 +410,10 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         return SafeArea(
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-              20,
+              AppSpacing.xl,
               0,
-              20,
-              MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+              AppSpacing.xl,
+              MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.xxl,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -426,10 +428,10 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                 const SizedBox(height: 20),
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: AppRadii.xlAll,
                     ),
                     child: SizedBox(
                       width: qrSize,
@@ -1396,54 +1398,45 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       palette.panel,
     );
     final panelBorder = palette.panelBorder;
-    final textTheme = GoogleFonts.nunitoTextTheme(base.textTheme).copyWith(
-      displaySmall: GoogleFonts.nunito(
-        fontSize: 34,
+    final parentText = GoogleFonts.nunitoTextTheme(base.textTheme);
+    final textTheme = parentText.copyWith(
+      displaySmall: parentText.displaySmall?.copyWith(
         fontWeight: FontWeight.w800,
         color: palette.ink,
       ),
-      headlineMedium: GoogleFonts.nunito(
-        fontSize: 28,
+      headlineMedium: parentText.headlineMedium?.copyWith(
         fontWeight: FontWeight.w800,
         color: palette.ink,
       ),
-      titleLarge: GoogleFonts.nunito(
-        fontSize: 22,
+      titleLarge: parentText.titleLarge?.copyWith(
         fontWeight: FontWeight.w800,
         color: palette.ink,
       ),
-      titleMedium: GoogleFonts.nunito(
-        fontSize: 17,
+      titleMedium: parentText.titleMedium?.copyWith(
         fontWeight: FontWeight.w800,
         color: palette.ink,
       ),
-      titleSmall: GoogleFonts.nunito(
-        fontSize: 15,
+      titleSmall: parentText.titleSmall?.copyWith(
         fontWeight: FontWeight.w800,
         color: palette.ink,
       ),
-      bodyLarge: GoogleFonts.nunito(
-        fontSize: 16,
+      bodyLarge: parentText.bodyLarge?.copyWith(
         fontWeight: FontWeight.w600,
         color: palette.ink,
       ),
-      bodyMedium: GoogleFonts.nunito(
-        fontSize: 14,
+      bodyMedium: parentText.bodyMedium?.copyWith(
         fontWeight: FontWeight.w600,
         color: palette.ink,
       ),
-      bodySmall: GoogleFonts.nunito(
-        fontSize: 13,
+      bodySmall: parentText.bodySmall?.copyWith(
         fontWeight: FontWeight.w600,
         color: palette.mutedInk,
       ),
-      labelLarge: GoogleFonts.nunito(
-        fontSize: 14,
+      labelLarge: parentText.labelLarge?.copyWith(
         fontWeight: FontWeight.w800,
-        color: base.colorScheme.onPrimary,
+        color: palette.onAccent,
       ),
-      labelMedium: GoogleFonts.nunito(
-        fontSize: 12,
+      labelMedium: parentText.labelMedium?.copyWith(
         fontWeight: FontWeight.w800,
         color: palette.mutedInk,
       ),
@@ -1456,22 +1449,22 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         color: panel,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: AppRadii.xxlAll,
           side: BorderSide(color: panelBorder),
         ),
       ),
       inputDecorationTheme: base.inputDecorationTheme.copyWith(
-        fillColor: palette.panel.withValues(alpha: 0.88),
+        fillColor: palette.surfaceRaised,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: AppRadii.xlAll,
           borderSide: BorderSide(color: panelBorder),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: AppRadii.xlAll,
           borderSide: BorderSide(color: panelBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: AppRadii.xlAll,
           borderSide: BorderSide(color: palette.ink.withValues(alpha: 0.3)),
         ),
       ),
@@ -1479,21 +1472,23 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: palette.accent,
-          foregroundColor: base.colorScheme.onPrimary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+          foregroundColor: palette.onAccent,
+          shape: RoundedRectangleBorder(borderRadius: AppRadii.xlAll),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: palette.ink,
           side: BorderSide(color: panelBorder),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+          shape: RoundedRectangleBorder(borderRadius: AppRadii.xlAll),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         ),
       ),
     );
@@ -1609,7 +1604,12 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.xl,
+                    AppSpacing.xl,
+                    AppSpacing.sm,
+                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1621,7 +1621,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                           setState(() => _sidebarOpen = true);
                         },
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: AppSpacing.lg),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1643,7 +1643,9 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                  ),
                   child: Divider(
                     height: 1,
                     color: palette.ink.withValues(alpha: 0.08),
@@ -1695,7 +1697,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                   await HapticFeedback.selectionClick();
                   setState(() => _sidebarOpen = false);
                 },
-                child: ColoredBox(color: Colors.black.withValues(alpha: 0.28)),
+                child: ColoredBox(color: palette.ink.withValues(alpha: 0.28)),
               ),
             ),
           Builder(
@@ -1731,7 +1733,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
           if (_isResettingApp)
             Positioned.fill(
               child: ColoredBox(
-                color: Colors.black.withValues(alpha: 0.28),
+                color: palette.ink.withValues(alpha: 0.28),
                 child: const Center(child: CircularProgressIndicator()),
               ),
             ),
@@ -1778,7 +1780,7 @@ class _ParentZoneBackground extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     palette.accent.withValues(alpha: 0.08),
-                    Colors.transparent,
+                    palette.accent.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -1821,9 +1823,9 @@ class _ParentHeaderButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: theme.colorScheme.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.lgAll,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadii.lgAll,
           onTap: onPressed,
           child: SizedBox(
             width: 46,
@@ -2062,10 +2064,10 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 8,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          left: AppSpacing.xl,
+          right: AppSpacing.xl,
+          top: AppSpacing.sm,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl,
         ),
         child: FutureBuilder<_GroupModerationSnapshot>(
           future: _snapshotFuture,
@@ -2117,10 +2119,10 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: palette.panel.withValues(alpha: 0.76),
-                      borderRadius: BorderRadius.circular(18),
+                      color: palette.surfaceDefault,
+                      borderRadius: AppRadii.xlAll,
                       border: Border.all(color: palette.panelBorder),
                     ),
                     child: Column(
@@ -2157,10 +2159,10 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: palette.panel.withValues(alpha: 0.76),
-                      borderRadius: BorderRadius.circular(18),
+                      color: palette.surfaceDefault,
+                      borderRadius: AppRadii.xlAll,
                       border: Border.all(color: palette.panelBorder),
                     ),
                     child: Column(
@@ -2199,10 +2201,10 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: palette.panel.withValues(alpha: 0.76),
-                      borderRadius: BorderRadius.circular(18),
+                      color: palette.surfaceDefault,
+                      borderRadius: AppRadii.xlAll,
                       border: Border.all(color: palette.panelBorder),
                     ),
                     child: Column(
@@ -2327,7 +2329,7 @@ class _MemberTile extends ConsumerWidget {
     final displayKey = formatPublicKeyLabel(memberPublicKeyHex);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2337,7 +2339,7 @@ class _MemberTile extends ConsumerWidget {
             decoration: BoxDecoration(
               color: (isCurrentIdentity ? palette.success : palette.accent)
                   .withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadii.mdAll,
             ),
             child: Icon(
               isCurrentIdentity
@@ -2414,10 +2416,13 @@ class _AdminBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: palette.accent.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppRadii.xsAll,
       ),
       child: Text(
         context.l10n.parentAdmin,
@@ -2449,7 +2454,7 @@ class _ModerationVideoRow extends StatelessWidget {
     final tone = deleted ? palette.warning : palette.accentSecondary;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2458,7 +2463,7 @@ class _ModerationVideoRow extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: tone.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadii.mdAll,
             ),
             child: Icon(
               deleted

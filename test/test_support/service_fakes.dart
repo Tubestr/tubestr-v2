@@ -50,6 +50,8 @@ class FakeBlossomClient extends BlossomClient {
   final List<String?> uploadAuthHeaders = [];
   final Set<String> failingUploadServers = <String>{};
   final Set<String> failingDeleteServers = <String>{};
+  List<int>? downloadResult;
+  final List<String> downloadedHashes = [];
 
   @override
   Future<List<int>> downloadBlob({
@@ -57,10 +59,11 @@ class FakeBlossomClient extends BlossomClient {
     required List<String> servers,
   }) async {
     attempts.add(List<String>.from(servers));
+    downloadedHashes.add(hash);
     if (servers.contains(unavailableServer)) {
       throw StateError('preferred server unavailable');
     }
-    return List<int>.from('ciphertext-$hash'.codeUnits);
+    return downloadResult ?? List<int>.from('ciphertext-$hash'.codeUnits);
   }
 
   @override
@@ -145,6 +148,21 @@ class FakeMdkService extends MdkService {
   String? lastCreateGroupName;
   String? lastCreateGroupDescription;
   List<String> lastCreateGroupWithWelcomesMemberKeyPackageEventJsons = const [];
+
+  // updateGroupAdmins
+  MdkGroupUpdate? updatedGroupAdminsResult;
+  List<String>? lastUpdatedAdminPubkeys;
+  String? lastUpdatedAdminsGroupId;
+
+  // selfDemote
+  MdkGroupUpdate? selfDemoteResult;
+  String? lastSelfDemoteGroupId;
+  bool throwOnSelfDemote = false;
+  String selfDemoteThrowMessage = 'last active admin';
+
+  // leaveGroup
+  MdkGroupUpdate? leaveGroupResult;
+  String? lastLeaveGroupId;
 
   @override
   Future<void> ensureInitialized() async {}
@@ -294,6 +312,46 @@ class FakeMdkService extends MdkService {
         MdkGroupUpdate(
           wrapperEventJson: '{"id":"commit"}',
           wrapperEventIdHex: 'commit',
+          mlsGroupIdHex: mlsGroupIdHex,
+        );
+  }
+
+  @override
+  Future<MdkGroupUpdate> updateGroupAdmins({
+    required String mlsGroupIdHex,
+    required List<String> adminPubkeysHex,
+  }) async {
+    lastUpdatedAdminsGroupId = mlsGroupIdHex;
+    lastUpdatedAdminPubkeys = List<String>.from(adminPubkeysHex);
+    return updatedGroupAdminsResult ??
+        MdkGroupUpdate(
+          wrapperEventJson: '{"id":"admin-update"}',
+          wrapperEventIdHex: 'admin-update',
+          mlsGroupIdHex: mlsGroupIdHex,
+        );
+  }
+
+  @override
+  Future<MdkGroupUpdate> selfDemote({required String mlsGroupIdHex}) async {
+    lastSelfDemoteGroupId = mlsGroupIdHex;
+    if (throwOnSelfDemote) {
+      throw StateError(selfDemoteThrowMessage);
+    }
+    return selfDemoteResult ??
+        MdkGroupUpdate(
+          wrapperEventJson: '{"id":"demote"}',
+          wrapperEventIdHex: 'demote',
+          mlsGroupIdHex: mlsGroupIdHex,
+        );
+  }
+
+  @override
+  Future<MdkGroupUpdate> leaveGroup({required String mlsGroupIdHex}) async {
+    lastLeaveGroupId = mlsGroupIdHex;
+    return leaveGroupResult ??
+        MdkGroupUpdate(
+          wrapperEventJson: '{"id":"leave"}',
+          wrapperEventIdHex: 'leave',
           mlsGroupIdHex: mlsGroupIdHex,
         );
   }

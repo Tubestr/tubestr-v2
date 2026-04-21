@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 
+import '../../core/theme/radii.dart';
+import '../../core/theme/spacing.dart';
 import '../../l10n/l10n.dart';
 import 'fill_camera_preview.dart';
 
@@ -211,41 +213,44 @@ class _QrScannerSheetState extends State<QrScannerSheet>
     final controller = _controller;
     final error = _errorMessage;
     final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return SafeArea(
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.75,
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               widget.title ?? l10n.scanQrTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: AppRadii.cardAll,
                   child: ColoredBox(
-                    color: Colors.black,
+                    color: colorScheme.inverseSurface,
                     child: error != null
                         ? Center(
                             child: Padding(
-                              padding: const EdgeInsets.all(24),
+                              padding: const EdgeInsets.all(AppSpacing.xxl),
                               child: Text(
                                 error,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  color: colorScheme.onInverseSurface,
+                                ),
                               ),
                             ),
                           )
                         : (controller == null ||
                               !controller.value.isInitialized)
-                        ? const Center(
+                        ? Center(
                             child: CircularProgressIndicator(
-                              color: Colors.white,
+                              color: colorScheme.onInverseSurface,
                             ),
                           )
                         : FillCameraPreview(controller: controller),
@@ -254,7 +259,12 @@ class _QrScannerSheetState extends State<QrScannerSheet>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                0,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
               child: Text(
                 widget.instructions ?? l10n.scanQrInstructions,
                 style: Theme.of(context).textTheme.bodyMedium,

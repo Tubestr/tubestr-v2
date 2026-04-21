@@ -21,14 +21,19 @@ class MediaThumbnailFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient:
               background ??
-              const LinearGradient(
-                colors: [Color(0xFF15111C), Color(0xFF0C0A11)],
+              LinearGradient(
+                colors: [
+                  colorScheme.inverseSurface,
+                  colorScheme.inverseSurface.withValues(alpha: 0.72),
+                ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

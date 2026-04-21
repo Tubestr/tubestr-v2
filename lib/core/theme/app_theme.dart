@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'radii.dart';
+import 'spacing.dart';
 import 'theme_descriptor.dart';
 
 ThemeData buildAppTheme(
@@ -8,7 +10,6 @@ ThemeData buildAppTheme(
   Brightness brightness = Brightness.light,
 }) {
   final palette = descriptor.paletteFor(brightness);
-  final onAccent = _onColorFor(palette.accent);
   final scheme =
       ColorScheme.fromSeed(
         seedColor: palette.accent,
@@ -18,8 +19,8 @@ ThemeData buildAppTheme(
         secondary: palette.accentSecondary,
         surface: palette.panel,
         error: palette.danger,
-        onPrimary: onAccent,
-        onSecondary: _onColorFor(palette.accentSecondary),
+        onPrimary: palette.onAccent,
+        onSecondary: palette.onAccentSecondary,
         onSurface: palette.ink,
       );
 
@@ -64,12 +65,12 @@ ThemeData buildAppTheme(
       color: palette.panel,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: AppRadii.cardAll,
         side: BorderSide(color: palette.panelBorder),
       ),
     ),
     chipTheme: ChipThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.xxlAll),
       selectedColor: palette.accent.withValues(alpha: 0.18),
       side: BorderSide(color: palette.panelBorder),
       labelStyle: baseText.labelLarge?.copyWith(
@@ -78,7 +79,7 @@ ThemeData buildAppTheme(
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: palette.panel.withValues(alpha: 0.86),
+      backgroundColor: palette.surfaceRaised,
       indicatorColor: palette.accent.withValues(alpha: 0.16),
       labelTextStyle: WidgetStatePropertyAll(
         baseText.labelMedium?.copyWith(
@@ -90,28 +91,49 @@ ThemeData buildAppTheme(
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: palette.accent,
-        foregroundColor: onAccent,
+        foregroundColor: palette.onAccent,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.xxlAll),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: palette.ink,
+        side: BorderSide(color: palette.panelBorder),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.xxlAll),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: palette.panel.withValues(alpha: 0.72),
+      fillColor: palette.surfaceSubtle,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadii.xxlAll,
         borderSide: BorderSide(color: palette.panelBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadii.xxlAll,
         borderSide: BorderSide(color: palette.panelBorder),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadii.xxlAll,
         borderSide: BorderSide(color: palette.accent, width: 1.5),
       ),
     ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: palette.ink,
+      contentTextStyle: baseText.bodyMedium?.copyWith(color: palette.panel),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.xlAll),
+      insetPadding: const EdgeInsets.all(AppSpacing.lg),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: palette.surfaceRaised,
+      modalBackgroundColor: palette.surfaceRaised,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadii.xxl),
+        ),
+        side: BorderSide(color: palette.panelBorder),
+      ),
+    ),
   );
-}
-
-Color _onColorFor(Color color) {
-  return color.computeLuminance() > 0.48 ? Colors.black : Colors.white;
 }

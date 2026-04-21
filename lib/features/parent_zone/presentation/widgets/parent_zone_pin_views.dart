@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../shared_ui/components/pin_widgets.dart';
@@ -25,15 +27,15 @@ class ParentZonePinSetupView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final hPad = screenWidth < 600 ? 20.0 : 32.0;
+    final hPad = screenWidth < 600 ? AppSpacing.xl : AppSpacing.xxxl;
 
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.only(
           left: hPad,
           right: hPad,
-          top: 32,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+          top: AppSpacing.xxxl,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxxl,
         ),
         child: Center(
           child: FrostCard(
@@ -46,29 +48,29 @@ class ParentZonePinSetupView extends StatelessWidget {
                   height: 52,
                   decoration: BoxDecoration(
                     color: palette.accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppRadii.lgAll,
                   ),
                   child: Icon(
                     Icons.shield_rounded,
-                    size: 28,
+                    size: AppIconSize.display,
                     color: palette.accent,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   context.l10n.parentCreatePinTitle,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   context.l10n.parentPinCreateDetail,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 TextField(
                   obscureText: true,
                   keyboardType: TextInputType.number,
@@ -80,7 +82,7 @@ class ParentZonePinSetupView extends StatelessWidget {
                   ),
                   onChanged: onNewPinChanged,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   obscureText: true,
                   keyboardType: TextInputType.number,
@@ -93,20 +95,23 @@ class ParentZonePinSetupView extends StatelessWidget {
                   onChanged: onConfirmPinChanged,
                 ),
                 if (pinError != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     pinError!,
-                    style: TextStyle(color: palette.danger, fontSize: 13),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: palette.danger,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 Text(
                   context.l10n.parentPinUpdateLater,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -142,11 +147,14 @@ class ParentZonePinEntryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final hPad = screenWidth < 600 ? 20.0 : 32.0;
+    final hPad = screenWidth < 600 ? AppSpacing.xl : AppSpacing.xxxl;
 
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 32),
+        padding: EdgeInsets.symmetric(
+          horizontal: hPad,
+          vertical: AppSpacing.xxxl,
+        ),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
@@ -160,44 +168,47 @@ class ParentZonePinEntryView extends StatelessWidget {
                     height: 52,
                     decoration: BoxDecoration(
                       color: palette.accent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppRadii.lgAll,
                     ),
                     child: Icon(
                       Icons.shield_rounded,
-                      size: 28,
+                      size: AppIconSize.display,
                       color: palette.accent,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   Text(
                     context.l10n.parentUnlockTitle,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     context.l10n.parentPinUnlockDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xxl),
                   Align(
                     alignment: Alignment.center,
                     child: PinDots(filled: pinEntry.length),
                   ),
                   if (pinError != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.md),
                     Align(
                       alignment: Alignment.center,
                       child: Text(
                         pinError!,
-                        style: TextStyle(color: palette.danger, fontSize: 13),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: palette.danger,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xxl),
                   PinKeypad(onDigit: onDigit, onDelete: onDelete),
                 ],
               ),

@@ -13,6 +13,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/di/providers.dart';
 import '../../../services/media/video_probe_service.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/content_scan_summary.dart';
 import '../../../shared_ui/components/fill_camera_preview.dart';
@@ -495,52 +497,58 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         else
           Positioned.fill(
             child: ColoredBox(
-              color: Colors.black,
+              color: palette.mediaScrim,
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 320),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xxl,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (_errorMessage == null)
-                          const CircularProgressIndicator(color: Colors.white38)
+                          CircularProgressIndicator(
+                            color: palette.mediaSubtleInk,
+                          )
                         else
-                          const Icon(
+                          Icon(
                             Icons.videocam_off_rounded,
-                            color: Colors.white70,
-                            size: 36,
+                            color: palette.mediaMutedInk,
+                            size: AppIconSize.empty,
                           ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: AppSpacing.xl),
                         Text(
                           _errorMessage == null
                               ? context.l10n.captureOpeningCamera
                               : context.l10n.captureCameraNeedsAttention,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
+                          style: TextStyle(
+                            color: palette.mediaInk,
+                            fontSize: AppTextSize.title,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                         Text(
                           _errorMessage ??
                               context.l10n.captureGettingReadyDetail,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
+                          style: TextStyle(
+                            color: palette.mediaMutedInk,
+                            fontSize: AppTextSize.body,
                           ),
                         ),
                         if (_errorMessage != null) ...[
-                          const SizedBox(height: 18),
+                          const SizedBox(height: AppSpacing.xl),
                           OutlinedButton(
                             onPressed: _retryOpeningCamera,
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white54),
+                              foregroundColor: palette.mediaInk,
+                              side: BorderSide(
+                                color: palette.mediaBorderStrong,
+                              ),
                             ),
                             child: Text(context.l10n.actionTryAgain),
                           ),
@@ -555,56 +563,56 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
 
         // Header overlay
         Positioned(
-          top: topPad + 12,
-          left: 16,
-          right: 16,
+          top: topPad + AppSpacing.md,
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
           child: Row(
             children: [
               // Zoom badge
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(16),
+                  color: palette.mediaSurface,
+                  borderRadius: AppRadii.lgAll,
                 ),
                 child: Text(
                   '${_currentZoom.toStringAsFixed(1)}x',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
+                  style: TextStyle(
+                    color: palette.mediaInk,
+                    fontSize: AppTextSize.label,
                     fontWeight: FontWeight.w600,
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
               if (!_recordsAudio) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(16),
+                    color: palette.mediaSurface,
+                    borderRadius: AppRadii.lgAll,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.mic_off_rounded,
-                        color: Colors.white,
-                        size: 14,
+                        color: palette.mediaInk,
+                        size: AppIconSize.xs,
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         context.l10n.captureMicSilent,
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
+                          color: palette.mediaInk,
+                          fontSize: AppTextSize.label,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -618,12 +626,14 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                 icon: isTorch
                     ? Icons.flash_on_rounded
                     : Icons.flash_off_rounded,
+                palette: palette,
                 onTap: _toggleTorch,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               // Camera flip
               _CaptureCircleBtn(
                 icon: Icons.cameraswitch_rounded,
+                palette: palette,
                 onTap: _flipCamera,
               ),
             ],
@@ -640,14 +650,14 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
               // Recording indicator
               if (_isRecording)
                 Container(
-                  margin: const EdgeInsets.only(bottom: 20),
+                  margin: const EdgeInsets.only(bottom: AppSpacing.xl),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(20),
+                    color: palette.mediaSurfaceStrong,
+                    borderRadius: AppRadii.xlAll,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -655,17 +665,17 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                       Container(
                         width: 10,
                         height: 10,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.red,
+                          color: palette.danger,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         '${(_recordingSeconds ~/ 60).toString().padLeft(2, '0')}:${(_recordingSeconds % 60).toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                        style: TextStyle(
+                          color: palette.mediaInk,
+                          fontSize: AppTextSize.bodyLarge,
                           fontWeight: FontWeight.w600,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
@@ -690,16 +700,16 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 6),
+                      border: Border.all(color: palette.mediaInk, width: 6),
                     ),
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(AppSpacing.sm),
                     child: AnimatedContainer(
                       duration: stateChangeDuration,
                       curve: AppMotion.easeOutQuint,
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: palette.danger,
                         borderRadius: BorderRadius.circular(
-                          _isRecording ? 8 : 30,
+                          _isRecording ? AppRadii.sm : AppRadii.card,
                         ),
                       ),
                     ),
@@ -719,15 +729,15 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
           right: 0,
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.md,
+              ),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                color: palette.surfaceStrong,
+                borderRadius: AppRadii.xxlAll,
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                  ),
+                  BoxShadow(color: palette.inkSubtle, blurRadius: 12),
                 ],
               ),
               child: Row(
@@ -736,12 +746,15 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                   Icon(
                     Icons.check_circle_rounded,
                     color: palette.success,
-                    size: 20,
+                    size: AppIconSize.lg,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(
                     context.l10n.captureVideoSaved,
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: palette.ink,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -753,8 +766,8 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         if (_errorMessage != null || _noticeMessage != null)
           Positioned(
             top: topPad + 60,
-            left: 24,
-            right: 24,
+            left: AppSpacing.xxl,
+            right: AppSpacing.xxl,
             child: GestureDetector(
               onTap: () {
                 if (_errorMessage != null) {
@@ -767,16 +780,14 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 440),
                   child: Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: _errorMessage != null
-                          ? const Color(0xCC4B2B2E)
-                          : const Color(0xCC163B3B),
-                      borderRadius: BorderRadius.circular(18),
+                      color: palette.mediaSurfaceStrong,
+                      borderRadius: AppRadii.xlAll,
                       border: Border.all(
                         color: _errorMessage != null
-                            ? const Color(0x66F3B0A4)
-                            : const Color(0x665FE1D1),
+                            ? palette.dangerVibrant
+                            : palette.accentSecondaryVibrant,
                       ),
                     ),
                     child: Row(
@@ -789,18 +800,18 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                                 ? Icons.info_outline_rounded
                                 : Icons.mic_off_rounded,
                             color: _errorMessage != null
-                                ? const Color(0xFFFFD5C7)
-                                : const Color(0xFFC8FFF7),
-                            size: 18,
+                                ? palette.danger
+                                : palette.accentSecondary,
+                            size: AppIconSize.md,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
                             _errorMessage ?? _noticeMessage!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
+                            style: TextStyle(
+                              color: palette.mediaInk,
+                              fontSize: AppTextSize.label,
                               height: 1.3,
                             ),
                           ),
@@ -817,9 +828,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         if (_isSaving)
           Positioned.fill(
             child: ColoredBox(
-              color: Colors.black.withValues(alpha: 0.5),
+              color: palette.mediaScrim,
               child: Center(
                 child: _CaptureWorkflowOverlay(
+                  palette: palette,
                   state:
                       _workflowState ??
                       _CaptureWorkflowState(
@@ -834,8 +846,8 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
 
         if (_workflowState != null && !_isSaving && _lastSavedVideo != null)
           Positioned(
-            left: 16,
-            right: 16,
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
             bottom: bottomPad + 90,
             child: _CaptureNextStepCard(
               palette: palette,
@@ -1067,8 +1079,9 @@ class _CaptureWorkflowState {
 }
 
 class _CaptureWorkflowOverlay extends StatelessWidget {
-  const _CaptureWorkflowOverlay({required this.state});
+  const _CaptureWorkflowOverlay({required this.palette, required this.state});
 
+  final KidPalette palette;
   final _CaptureWorkflowState state;
 
   @override
@@ -1078,12 +1091,15 @@ class _CaptureWorkflowOverlay extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 340),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.white24),
+          color: palette.mediaSurfaceStrong,
+          borderRadius: AppRadii.cardAll,
+          border: Border.all(color: palette.mediaBorder),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xxl,
+            vertical: AppSpacing.xl,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1092,57 +1108,62 @@ class _CaptureWorkflowOverlay extends StatelessWidget {
                 child: Icon(
                   _iconForStage(state.stage),
                   key: ValueKey(state.stage),
-                  size: 28,
-                  color: Colors.white,
+                  size: AppIconSize.display,
+                  color: palette.mediaInk,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.xl),
               AnimatedSwitcher(
                 duration: AppMotion.duration(context, AppMotion.stateChange),
                 child: Text(
                   state.headline,
                   key: ValueKey(state.headline),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
+                  style: TextStyle(
+                    color: palette.mediaInk,
+                    fontSize: AppTextSize.title,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               AnimatedSwitcher(
                 duration: AppMotion.duration(context, AppMotion.stateChange),
                 child: Text(
                   state.detail,
                   key: ValueKey(state.detail),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  style: TextStyle(
+                    color: palette.mediaMutedInk,
+                    fontSize: AppTextSize.body,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: _CaptureWorkflowStage.values
                     .map(
                       (stage) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
                         child: AnimatedContainer(
                           duration: AppMotion.duration(
                             context,
                             AppMotion.stateChange,
                           ),
                           curve: AppMotion.easeOutQuint,
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(AppSpacing.sm),
                           decoration: BoxDecoration(
                             color: _isStageComplete(stage)
-                                ? Colors.white.withValues(alpha: 0.12)
+                                ? palette.mediaSurfaceSubtle
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: AppRadii.lgAll,
                             border: Border.all(
                               color: _isStageComplete(stage)
-                                  ? Colors.white24
-                                  : Colors.white10,
+                                  ? palette.mediaBorder
+                                  : palette.mediaSurfaceSubtle,
                             ),
                           ),
                           child: AnimatedScale(
@@ -1155,10 +1176,10 @@ class _CaptureWorkflowOverlay extends StatelessWidget {
                                 : 1,
                             child: Icon(
                               _iconForStage(stage),
-                              size: 18,
+                              size: AppIconSize.md,
                               color: _isStageComplete(stage)
-                                  ? Colors.white
-                                  : Colors.white38,
+                                  ? palette.mediaInk
+                                  : palette.mediaSubtleInk,
                             ),
                           ),
                         ),
@@ -1231,12 +1252,17 @@ class _CaptureNextStepCard extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 460),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white24),
+              color: palette.mediaSurfaceStrong,
+              borderRadius: AppRadii.cardAll,
+              border: Border.all(color: palette.mediaBorder),
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.xl,
+                AppSpacing.xl,
+                AppSpacing.lg,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -1253,7 +1279,7 @@ class _CaptureNextStepCard extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: palette.accent.withValues(alpha: 0.18),
+                          color: palette.accentMuted,
                         ),
                         child: Icon(
                           state.canShare
@@ -1262,25 +1288,25 @@ class _CaptureNextStepCard extends StatelessWidget {
                           color: palette.accent,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               state.headline,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: palette.mediaInk,
                                 fontWeight: FontWeight.w800,
-                                fontSize: 17,
+                                fontSize: AppTextSize.bodyLarge,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppSpacing.xs),
                             Text(
                               state.detail,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
+                              style: TextStyle(
+                                color: palette.mediaMutedInk,
+                                fontSize: AppTextSize.label,
                               ),
                             ),
                           ],
@@ -1288,17 +1314,17 @@ class _CaptureNextStepCard extends StatelessWidget {
                       ),
                       IconButton(
                         onPressed: onDismiss,
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.close_rounded,
-                          color: Colors.white70,
+                          color: palette.mediaMutedInk,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.lg),
                   Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.md,
                     children: [
                       FilledButton.tonalIcon(
                         onPressed: onOpenPlayer,
@@ -1342,9 +1368,14 @@ class _CaptureNextStepCard extends StatelessWidget {
 }
 
 class _CaptureCircleBtn extends StatelessWidget {
-  const _CaptureCircleBtn({required this.icon, required this.onTap});
+  const _CaptureCircleBtn({
+    required this.icon,
+    required this.palette,
+    required this.onTap,
+  });
 
   final IconData icon;
+  final KidPalette palette;
   final VoidCallback onTap;
 
   @override
@@ -1359,9 +1390,9 @@ class _CaptureCircleBtn extends StatelessWidget {
         height: 44,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.4),
+          color: palette.mediaSurface,
         ),
-        child: Icon(icon, color: Colors.white, size: 22),
+        child: Icon(icon, color: palette.mediaInk, size: AppIconSize.xl),
       ),
     );
   }

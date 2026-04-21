@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants.dart';
 import '../../../../core/di/providers.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
+import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../services/safety/safety_hq_service.dart';
@@ -41,10 +44,15 @@ class ParentZoneNetworkSection extends ConsumerWidget {
     final palette = ref.watch(activePaletteProvider);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final hPad = screenWidth < 600 ? 12.0 : 20.0;
+    final hPad = screenWidth < 600 ? AppSpacing.md : AppSpacing.xl;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        AppSpacing.md,
+        hPad,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         Consumer(
           builder: (context, ref, _) {
@@ -58,7 +66,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     context.l10n.parentConnectionHealth,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     queuedActions.isEmpty
                         ? context.l10n.parentConnectionHealthy
@@ -67,7 +75,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   _InlineStatus(
                     icon: queuedActions.isEmpty
                         ? Icons.cloud_done_rounded
@@ -84,7 +92,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                         ? context.l10n.parentNoRetriesNeeded
                         : context.l10n.parentRetryWaitingDetail,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   FilledButton.tonal(
                     onPressed: queuedActions.isEmpty
                         ? null
@@ -98,7 +106,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         Consumer(
           builder: (context, ref, _) {
             final relayListAsync = ref.watch(relayListProvider);
@@ -112,14 +120,14 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     context.l10n.parentRelayAccess,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     context.l10n.parentRelayAccessDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   for (final relay in urls)
                     _ServerRow(
                       icon: Icons.circle,
@@ -135,7 +143,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       context.l10n.parentNoCustomRelays,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   TextField(
                     controller: relayController,
                     decoration: InputDecoration(
@@ -143,10 +151,10 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       hintText: 'wss://relay.example.com',
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.md,
                     children: [
                       FilledButton.tonal(
                         onPressed: () {
@@ -172,7 +180,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     ],
                   ),
                   if (relayList?.updatedAt != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       context.l10n.parentLastPublished(
                         _formatTimestamp(relayList!.updatedAt!, context.l10n),
@@ -187,7 +195,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         Consumer(
           builder: (context, ref, _) {
             final blossomAsync = ref.watch(blossomServerListProvider);
@@ -203,14 +211,14 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     context.l10n.parentMediaServers,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     context.l10n.parentMediaServersDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   for (final server in servers)
                     _ServerRow(
                       icon: Icons.cloud_done_rounded,
@@ -223,7 +231,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                             }
                           : null,
                     ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   TextField(
                     controller: blossomController,
                     decoration: InputDecoration(
@@ -231,10 +239,10 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       hintText: 'https://blossom.example',
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.md,
                     children: [
                       FilledButton.tonal(
                         onPressed: () {
@@ -246,7 +254,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     ],
                   ),
                   if (list?.updatedAt != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       context.l10n.parentLastPublished(
                         _formatTimestamp(list!.updatedAt!, context.l10n),
@@ -261,7 +269,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         Consumer(
           builder: (context, ref, _) {
             final safetyStatus = ref.watch(safetyHqStatusProvider);
@@ -273,16 +281,17 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     context.l10n.parentSafetyHq,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     context.l10n.parentSafetyHqDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   safetyStatus.when(
-                    data: (status) => _SafetyStatusBody(status: status),
+                    data: (status) =>
+                        _SafetyStatusBody(status: status, palette: palette),
                     loading: () => const LinearProgressIndicator(minHeight: 2),
                     error: (error, _) => Text(
                       context.l10n.parentSafetyHqRefreshPending,
@@ -291,7 +300,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                       ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   FilledButton.tonal(
                     onPressed: () async {
                       await onProvisionSafetyHq();
@@ -310,7 +319,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,32 +328,32 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                 context.l10n.parentHowSafetyWorks,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentSafetyWorksDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               _ReportingExplainerRow(
                 icon: Icons.phone_android_rounded,
                 title: context.l10n.parentSafetyLevelOneTitle,
                 detail: context.l10n.parentSafetyLevelOneDetail,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               _ReportingExplainerRow(
                 icon: Icons.family_restroom_rounded,
                 title: context.l10n.parentSafetyLevelTwoTitle,
                 detail: context.l10n.parentSafetyLevelTwoDetail,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               _ReportingExplainerRow(
                 icon: Icons.groups_rounded,
                 title: context.l10n.parentSafetyLevelThreeTitle,
                 detail: context.l10n.parentSafetyLevelThreeDetail,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               _ReportingExplainerRow(
                 icon: Icons.cloud_upload_rounded,
                 title: context.l10n.parentSafetyBud09Title,
@@ -359,13 +368,14 @@ class ParentZoneNetworkSection extends ConsumerWidget {
 }
 
 class _SafetyStatusBody extends StatelessWidget {
-  const _SafetyStatusBody({required this.status});
+  const _SafetyStatusBody({required this.status, required this.palette});
 
   final SafetyHqStatus status;
+  final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    final palette = Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final label = _safetyStatusLabel(status, l10n);
     final detail = _safetyStatusDetail(status, l10n);
@@ -378,7 +388,7 @@ class _SafetyStatusBody extends StatelessWidget {
               : status.isProvisioning
               ? Icons.sync_rounded
               : Icons.shield_outlined,
-          color: status.isJoined ? Colors.green : Colors.orange,
+          color: status.isJoined ? palette.success : palette.warning,
           title: l10n.parentStatus(label),
           detail: status.lastSyncAt == null
               ? detail
@@ -388,14 +398,14 @@ class _SafetyStatusBody extends StatelessWidget {
                 ),
         ),
         if (status.groupId != null && status.groupId!.isNotEmpty) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           Text(
             context.l10n.parentLocalGroupId,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: palette.onSurface.withValues(alpha: 0.6),
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(status.groupId!, style: Theme.of(context).textTheme.bodySmall),
         ],
       ],
@@ -445,8 +455,8 @@ class _ReportingExplainerRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 10),
+        Icon(icon, size: AppIconSize.md),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +467,7 @@ class _ReportingExplainerRow extends StatelessWidget {
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpacing.xs),
               Text(detail, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
@@ -490,11 +500,11 @@ class _InlineStatus extends StatelessWidget {
           height: 38,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadii.mdAll,
           ),
-          child: Icon(icon, size: 20, color: color),
+          child: Icon(icon, size: AppIconSize.lg, color: color),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,7 +515,7 @@ class _InlineStatus extends StatelessWidget {
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: AppSpacing.xs),
               Text(detail, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
@@ -551,17 +561,17 @@ class _ServerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 8),
+          Icon(icon, size: AppIconSize.xs, color: color),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(value, style: Theme.of(context).textTheme.bodySmall),
           ),
           if (onRemove != null)
             IconButton(
-              icon: const Icon(Icons.close_rounded, size: 18),
+              icon: const Icon(Icons.close_rounded, size: AppIconSize.md),
               onPressed: () async {
                 await onRemove!();
               },

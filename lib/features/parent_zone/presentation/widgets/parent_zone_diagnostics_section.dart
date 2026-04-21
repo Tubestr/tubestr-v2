@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../../core/di/providers.dart';
+import '../../../../core/theme/radii.dart';
+import '../../../../core/theme/spacing.dart';
 import '../models/launch_diagnostics.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../l10n/l10n.dart';
@@ -53,10 +55,15 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
         launchSnapshot.hasIssues;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final hPad = screenWidth < 600 ? 12.0 : 20.0;
+    final hPad = screenWidth < 600 ? AppSpacing.md : AppSpacing.xl;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        AppSpacing.md,
+        hPad,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         FrostCard(
           child: Column(
@@ -66,7 +73,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 context.l10n.parentDiagnosticsCurrentState,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               _InlineStatus(
                 icon: diagnostics.refreshInFlight
                     ? Icons.sync_rounded
@@ -91,14 +98,14 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                   diagnostics.trackedGroupNostrIds.length,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 context.l10n.parentDiagnosticsLastRefresh(
                   _formatTimestamp(context, diagnostics.lastRefreshCompletedAt),
                 ),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentDiagnosticsStats(
                   diagnostics.refreshRequestCount,
@@ -111,7 +118,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
               if (diagnostics.lastRefreshError != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   context.l10n.parentDiagnosticsLastError(
                     '${diagnostics.lastRefreshError}',
@@ -121,10 +128,10 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                   ).textTheme.bodySmall?.copyWith(color: palette.danger),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
                 children: [
                   FilledButton(
                     onPressed: () async {
@@ -163,7 +170,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +179,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 context.l10n.parentDiagnosticsAppBuild,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               packageInfoAsync.when(
                 data: (packageInfo) => _InlineStatus(
                   icon: Icons.info_outline_rounded,
@@ -198,7 +205,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,7 +214,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 context.l10n.parentDiagnosticsLaunchTriage,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               _InlineStatus(
                 icon: launchSnapshot.hasIssues
                     ? Icons.error_outline_rounded
@@ -230,10 +237,10 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     : context.l10n.parentDiagnosticsClear,
               ),
               if (launchSnapshot.actionsByType.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 for (final count in launchSnapshot.actionsByType)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                     child: Text(
                       '${count.label}: ${count.count}',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -243,7 +250,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,7 +259,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 context.l10n.parentDiagnosticsActiveSubscriptions,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               if (diagnostics.activeSubscriptions.isEmpty)
                 Text(
                   context.l10n.parentDiagnosticsNoActiveSubscriptions,
@@ -263,7 +270,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
               else
                 for (final subscription in diagnostics.activeSubscriptions)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Text(
                       subscription.describe(),
                       style: Theme.of(context).textTheme.bodySmall,
@@ -272,7 +279,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +288,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 context.l10n.parentDiagnosticsDeliveryIssues,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               if (!launchSnapshot.hasIssues)
                 Text(
                   context.l10n.parentDiagnosticsNoRetriesWaiting,
@@ -295,10 +302,10 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     context.l10n.parentDiagnosticsShares,
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   for (final entry in launchSnapshot.shareIssues)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: Text(
                         '${entry.title} · ${describeShareStatus(entry.status, context.l10n)}${entry.error == null || entry.error!.isEmpty ? '' : ' · ${entry.error}'}',
                         style: Theme.of(context).textTheme.bodySmall,
@@ -307,7 +314,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 ],
                 if (launchSnapshot.reportIssues.isNotEmpty) ...[
                   if (launchSnapshot.shareIssues.isNotEmpty)
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                   Text(
                     context.l10n.parentDiagnosticsReportsSection,
                     style: Theme.of(context).textTheme.titleSmall,
@@ -315,7 +322,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                   const SizedBox(height: 8),
                   for (final report in launchSnapshot.reportIssues)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: Text(
                         '${describeReportReason(report.reason, context.l10n)} · ${describeReportStatus(report.status, context.l10n)}',
                         style: Theme.of(context).textTheme.bodySmall,
@@ -325,15 +332,15 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 if (launchSnapshot.downloadIssues.isNotEmpty) ...[
                   if (launchSnapshot.shareIssues.isNotEmpty ||
                       launchSnapshot.reportIssues.isNotEmpty)
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                   Text(
                     context.l10n.parentDiagnosticsRemoteDownloadsSection,
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   for (final share in launchSnapshot.downloadIssues)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: Text(
                         '${share.title} · ${summarizeDownloadError(share.downloadError, context.l10n)}',
                         style: Theme.of(context).textTheme.bodySmall,
@@ -344,7 +351,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +360,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                 context.l10n.parentDiagnosticsRecentHistory,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               if (recentHistory.isEmpty)
                 Text(
                   context.l10n.parentDiagnosticsNoHistory,
@@ -364,7 +371,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
               else
                 for (final entry in recentHistory)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Text(
                       entry.describe(),
                       style: Theme.of(context).textTheme.bodySmall,
@@ -412,24 +419,24 @@ class _InlineStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadii.xlAll,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: AppIconSize.empty,
+            height: AppIconSize.empty,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadii.mdAll,
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: AppIconSize.lg),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,7 +447,7 @@ class _InlineStatus extends StatelessWidget {
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(detail, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),

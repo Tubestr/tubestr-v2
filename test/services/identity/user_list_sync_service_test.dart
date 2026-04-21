@@ -321,4 +321,62 @@ void main() {
       expect(queued.first.type, OfflineActionType.publishMuteList);
     });
   });
+
+  group('replayMuteListPublish', () {
+    test('publishes entries from valid payload', () async {
+      final payload = <String, dynamic>{
+        'entries_json': '[{"pubkey_hex":"creator-1","reason":"spam"}]',
+      };
+
+      await service.replayMuteListPublish(identity: identity, payload: payload);
+
+      expect(nostr.publishedMuteListEntries, hasLength(1));
+      expect(
+        nostr.publishedMuteListEntries.single.single.pubkeyHex,
+        'creator-1',
+      );
+    });
+
+    test('silently returns when entries_json absent', () async {
+      await service.replayMuteListPublish(
+        identity: identity,
+        payload: <String, dynamic>{},
+      );
+
+      expect(nostr.publishedMuteListEntries, isEmpty);
+    });
+
+    test('silently returns when entries_json empty', () async {
+      await service.replayMuteListPublish(
+        identity: identity,
+        payload: <String, dynamic>{'entries_json': ''},
+      );
+
+      expect(nostr.publishedMuteListEntries, isEmpty);
+    });
+
+    test('silently returns when entries_json is empty array', () async {
+      await service.replayMuteListPublish(
+        identity: identity,
+        payload: <String, dynamic>{'entries_json': '[]'},
+      );
+
+      expect(nostr.publishedMuteListEntries, isEmpty);
+    });
+
+    test('does not re-queue on failure', () async {
+      nostr.throwOnPublishMuteList = true;
+      final payload = <String, dynamic>{
+        'entries_json': '[{"pubkey_hex":"creator-1"}]',
+      };
+
+      await expectLater(
+        service.replayMuteListPublish(identity: identity, payload: payload),
+        throwsA(isA<StateError>()),
+      );
+
+      final queued = await offlineStore.load();
+      expect(queued, isEmpty);
+    });
+  });
 }

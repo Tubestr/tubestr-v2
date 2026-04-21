@@ -160,4 +160,72 @@ class KidPalette {
   final Color success;
   final Color warning;
   final Color danger;
+
+  Color get onAccent => accent.computeLuminance() > 0.48
+      ? const Color(0xFF24160F)
+      : const Color(0xFFFFFBF7);
+
+  Color get onAccentSecondary => accentSecondary.computeLuminance() > 0.48
+      ? const Color(0xFF24160F)
+      : const Color(0xFFFFFBF7);
+
+  // Surface levels — panel with varying translucency
+  Color get surfaceOverlay => panel.withValues(alpha: 0.28);
+  Color get surfaceMuted => panel.withValues(alpha: 0.48);
+  Color get surfaceSubtle => panel.withValues(alpha: 0.72);
+  Color get surfaceDefault => panel.withValues(alpha: 0.76);
+  Color get surfaceRaised => panel.withValues(alpha: 0.88);
+  Color get surfaceStrong => panel.withValues(alpha: 0.96);
+
+  // Accent tints — accent color at varying intensities
+  Color get accentHint => accent.withValues(alpha: 0.04);
+  Color get accentFaint => accent.withValues(alpha: 0.08);
+  Color get accentSubtle => accent.withValues(alpha: 0.12);
+  Color get accentMuted => accent.withValues(alpha: 0.18);
+  Color get accentMedium => accent.withValues(alpha: 0.25);
+  Color get accentStrong => accent.withValues(alpha: 0.5);
+  Color get accentVibrant => accent.withValues(alpha: 0.7);
+
+  // Secondary accent tints
+  Color get accentSecondarySubtle => accentSecondary.withValues(alpha: 0.12);
+  Color get accentSecondaryMuted => accentSecondary.withValues(alpha: 0.18);
+  Color get accentSecondaryMedium => accentSecondary.withValues(alpha: 0.25);
+  Color get accentSecondaryVibrant => accentSecondary.withValues(alpha: 0.7);
+
+  // Ink opacity levels
+  Color get inkFaint => ink.withValues(alpha: 0.08);
+  Color get inkSubtle => ink.withValues(alpha: 0.15);
+
+  // Interactive states
+  Color get surfacePressed => accent.withValues(alpha: 0.14);
+  Color get surfaceSelected => accent.withValues(alpha: 0.16);
+
+  // Semantic color tints
+  Color get dangerSubtle => danger.withValues(alpha: 0.12);
+  Color get dangerMuted => danger.withValues(alpha: 0.20);
+  Color get dangerVibrant => danger.withValues(alpha: 0.7);
+  Color get warningSubtle => warning.withValues(alpha: 0.12);
+  Color get warningMuted => warning.withValues(alpha: 0.20);
+  Color get successSubtle => success.withValues(alpha: 0.12);
+
+  Color get mediaSurface => const Color(0xFF000000).withValues(alpha: 0.48);
+  Color get mediaSurfaceStrong =>
+      const Color(0xFF000000).withValues(alpha: 0.72);
+  Color get mediaSurfaceSubtle =>
+      const Color(0xFFFFFFFF).withValues(alpha: 0.10);
+  Color get mediaSurfaceSelected =>
+      const Color(0xFFFFFFFF).withValues(alpha: 0.22);
+  Color get mediaBorder => const Color(0xFFFFFFFF).withValues(alpha: 0.16);
+  Color get mediaBorderStrong =>
+      const Color(0xFFFFFFFF).withValues(alpha: 0.34);
+  Color get mediaInk => const Color(0xFFFFFFFF);
+  Color get mediaMutedInk => const Color(0xFFFFFFFF).withValues(alpha: 0.72);
+  Color get mediaSubtleInk => const Color(0xFFFFFFFF).withValues(alpha: 0.52);
+  Color get mediaScrim => const Color(0xFF000000).withValues(alpha: 0.52);
+
+  Color reportAccentForLevel(int level) => switch (level) {
+    1 => accentSecondary,
+    2 => warning,
+    _ => danger,
+  };
 }

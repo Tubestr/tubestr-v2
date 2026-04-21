@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/router/deep_link_service.dart';
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../l10n/l10n.dart';
 import '../../../services/sync/sync_coordinator.dart';
@@ -227,27 +229,29 @@ class _CustomTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          palette.accent.withValues(alpha: 0.04),
-          palette.panel.withValues(alpha: 0.96),
-        ),
+        color: Color.alphaBlend(palette.accentHint, palette.surfaceStrong),
         border: Border(top: BorderSide(color: palette.panelBorder, width: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: palette.ink.withValues(alpha: 0.08),
+            color: palette.inkFaint,
             blurRadius: 18,
             offset: const Offset(0, -4),
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding + 8),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        bottomPadding + AppSpacing.sm,
+      ),
       child: Row(
         children: [
           for (var i = 0; i < _tabs.length; i++) ...[
             if (i == 3) ...[
               // Visual separator before parent tab
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                 child: Container(
                   width: 1,
                   height: 28,
@@ -309,53 +313,58 @@ class _TabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final inactiveColor = switch (kind) {
       _TabKind.capture => palette.mutedInk,
-      _TabKind.control => palette.ink.withValues(alpha: 0.78),
+      _TabKind.control => palette.mutedInk,
       _TabKind.standard => palette.mutedInk,
     };
     final activeBackground = switch (kind) {
-      _TabKind.capture => palette.accent.withValues(alpha: 0.18),
+      _TabKind.capture => palette.accentMuted,
       _TabKind.control => palette.accent,
-      _TabKind.standard => palette.accent.withValues(alpha: 0.14),
+      _TabKind.standard => palette.surfacePressed,
     };
     final color = isActive
         ? switch (kind) {
             _TabKind.capture => palette.accent,
-            _TabKind.control => Theme.of(context).colorScheme.onPrimary,
+            _TabKind.control => palette.onAccent,
             _TabKind.standard => palette.ink,
           }
         : inactiveColor;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       child: Semantics(
         label: label,
         button: true,
         selected: isActive,
         child: Material(
-          color: Colors.transparent,
+          color: palette.panel.withValues(alpha: 0),
           child: InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppRadii.xlAll,
             onTap: onTap,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
               constraints: const BoxConstraints(minHeight: 58),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.sm,
+                horizontal: AppSpacing.xs,
+              ),
               decoration: BoxDecoration(
-                color: isActive ? activeBackground : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                color: isActive
+                    ? activeBackground
+                    : palette.panel.withValues(alpha: 0),
+                borderRadius: AppRadii.xlAll,
                 border: Border.all(
-                  color: isActive ? palette.panelBorder : Colors.transparent,
+                  color: isActive
+                      ? palette.panelBorder
+                      : palette.panelBorder.withValues(alpha: 0),
                   width: 1.0,
                 ),
                 boxShadow: isActive
                     ? [
                         BoxShadow(
-                          color:
-                              (kind == _TabKind.capture
-                                      ? palette.accent
-                                      : palette.ink)
-                                  .withValues(alpha: 0.08),
+                          color: kind == _TabKind.capture
+                              ? palette.accentFaint
+                              : palette.inkFaint,
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -369,15 +378,17 @@ class _TabButton extends StatelessWidget {
                   Icon(
                     icon,
                     color: color,
-                    size: kind == _TabKind.control ? 21 : 23,
+                    size: kind == _TabKind.control
+                        ? AppIconSize.lg
+                        : AppIconSize.xl,
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTextSize.caption,
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                       color: color,
                       letterSpacing: 0.1,

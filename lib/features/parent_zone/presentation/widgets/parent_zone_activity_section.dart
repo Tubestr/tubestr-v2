@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
 import '../../../../core/storage/app_database.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/share_history_entry.dart';
 import '../models/launch_diagnostics.dart';
@@ -29,10 +31,15 @@ class ParentZoneActivitySection extends ConsumerWidget {
         .toList(growable: false);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final hPad = screenWidth < 600 ? 12.0 : 20.0;
+    final hPad = screenWidth < 600 ? AppSpacing.md : AppSpacing.xl;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        AppSpacing.md,
+        hPad,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         FrostCard(
           child: Column(
@@ -42,7 +49,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
                 context.l10n.parentActivityRecentShares,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               if (shareHistory.isEmpty)
                 Text(
                   context.l10n.parentActivityEmpty,
@@ -56,7 +63,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         LayoutBuilder(
           builder: (context, constraints) {
             final cards = [
@@ -68,7 +75,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
                       context.l10n.parentActivityFamilyFeedback,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     if (inboundReports.isEmpty)
                       Text(
                         context.l10n.parentActivityNoIncoming,
@@ -90,7 +97,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
                       context.l10n.parentActivityOutbound,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     if (outboundReports.isEmpty)
                       Text(
                         context.l10n.parentActivityNoReports,
@@ -100,7 +107,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
                       )
                     else
                       for (final report in outboundReports.take(5))
-                        _OutboundReportRow(report: report),
+                        _OutboundReportRow(report: report, palette: palette),
                   ],
                 ),
               ),
@@ -112,7 +119,7 @@ class ParentZoneActivitySection extends ConsumerWidget {
                       context.l10n.parentActivityModeration,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     if (moderationLogs.isEmpty)
                       Text(
                         context.l10n.parentActivityNoModeration,
@@ -134,16 +141,17 @@ class ParentZoneActivitySection extends ConsumerWidget {
                 children: [
                   for (var i = 0; i < cards.length; i++) ...[
                     cards[i],
-                    if (i != cards.length - 1) const SizedBox(height: 12),
+                    if (i != cards.length - 1)
+                      const SizedBox(height: AppSpacing.md),
                   ],
                 ],
               );
             }
 
-            final cardWidth = (constraints.maxWidth - 12) / 2;
+            final cardWidth = (constraints.maxWidth - AppSpacing.md) / 2;
             return Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.md,
               children: [
                 for (final card in cards)
                   SizedBox(width: cardWidth, child: card),
@@ -163,22 +171,23 @@ class _ShareHistoryRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = ref.watch(activePaletteProvider);
     final color = switch (entry.status) {
-      'sent' => Colors.green,
-      'queued' => Colors.orange,
-      _ => Colors.blueGrey,
+      'sent' => palette.success,
+      'queued' => palette.warning,
+      _ => palette.mutedInk,
     };
     final group = ref
         .watch(mdkGroupSummaryProvider(entry.mlsGroupId))
         .valueOrNull;
     final groupLabel = group?.name ?? 'Family connection';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.send_rounded, size: 18, color: color),
-          const SizedBox(width: 10),
+          Icon(Icons.send_rounded, size: AppIconSize.md, color: color),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,26 +198,26 @@ class _ShareHistoryRow extends ConsumerWidget {
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   '${entry.childDisplayName} · ${describeShareStatus(entry.status, context.l10n)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   groupLabel,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.blueGrey.shade700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                 ),
                 if (entry.error case final error? when error.isNotEmpty)
                   Text(
                     error,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.orange.shade800,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: palette.warning),
                   ),
               ],
             ),
@@ -246,19 +255,22 @@ class _InboundReportRow extends StatelessWidget {
       },
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
           color: palette.panel.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: AppRadii.xlAll,
           border: Border.all(color: palette.panelBorder),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(feelingEmoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 12),
+            Text(
+              feelingEmoji,
+              style: const TextStyle(fontSize: AppIconSize.xl),
+            ),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,12 +281,12 @@ class _InboundReportRow extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     helperText,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     '$destinationLabel · ${_formatTimestamp(report.createdAt)}',
                     style: Theme.of(
@@ -292,9 +304,10 @@ class _InboundReportRow extends StatelessWidget {
 }
 
 class _OutboundReportRow extends StatelessWidget {
-  const _OutboundReportRow({required this.report});
+  const _OutboundReportRow({required this.report, required this.palette});
 
   final Report report;
+  final KidPalette palette;
 
   @override
   Widget build(BuildContext context) {
@@ -305,16 +318,16 @@ class _OutboundReportRow extends StatelessWidget {
     final isLocal = report.recipientType == 'local';
     final isLocalParent = report.recipientType == 'local_parent';
     final statusColor = switch (report.status) {
-      'delivered' when isLocal => Colors.blue,
-      'delivered' when isLocalParent => Colors.amber.shade700,
-      'delivered' => Colors.green,
-      'queued_safety' => Colors.orange,
-      'pending_blob_hash' => Colors.amber,
-      'failed' => Colors.red,
-      _ => Colors.blueGrey,
+      'delivered' when isLocal => palette.accentSecondary,
+      'delivered' when isLocalParent => palette.warning,
+      'delivered' => palette.success,
+      'queued_safety' => palette.warning,
+      'pending_blob_hash' => palette.warning,
+      'failed' => palette.danger,
+      _ => palette.mutedInk,
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -327,7 +340,7 @@ class _OutboundReportRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,7 +351,7 @@ class _OutboundReportRow extends StatelessWidget {
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   '${describeReportStatus(report.status, context.l10n)} · ${_formatTimestamp(report.createdAt)}',
                   style: Theme.of(context).textTheme.bodySmall,
@@ -381,12 +394,12 @@ class _ModerationLogRow extends StatelessWidget {
       _ => log.actionType,
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.gavel_rounded, size: 18),
-          const SizedBox(width: 10),
+          const Icon(Icons.gavel_rounded, size: AppIconSize.md),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,7 +410,7 @@ class _ModerationLogRow extends StatelessWidget {
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   log.createdAt.toLocal().toString(),
                   style: Theme.of(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
+import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../shared_ui/components/nook_decorations.dart';
@@ -95,7 +96,7 @@ class OnboardingBootstrapStatusCard extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
           child: FrostCard(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -107,9 +108,13 @@ class OnboardingBootstrapStatusCard extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: palette.accent.withValues(alpha: 0.12),
                   ),
-                  child: Icon(icon, size: 36, color: palette.accent),
+                  child: Icon(
+                    icon,
+                    size: AppIconSize.empty,
+                    color: palette.accent,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -117,7 +122,7 @@ class OnboardingBootstrapStatusCard extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   message,
                   style: Theme.of(
@@ -125,7 +130,7 @@ class OnboardingBootstrapStatusCard extends StatelessWidget {
                   ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 child,
               ],
             ),

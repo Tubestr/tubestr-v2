@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/content_scan_summary.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
@@ -45,7 +47,12 @@ class ParentZoneChildrenSection extends ConsumerWidget {
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        AppSpacing.md,
+        hPad,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         FrostCard(
           child: Column(
@@ -55,7 +62,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                 context.l10n.parentApprovalQueueTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 pendingVideos.isEmpty
                     ? context.l10n.parentApprovalEmptySubtitle
@@ -64,7 +71,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.lg),
               if (pendingVideos.isEmpty)
                 _EmptyPanel(
                   icon: Icons.verified_rounded,
@@ -77,7 +84,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
               else
                 for (final video in pendingVideos.take(8))
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: Builder(
                       builder: (context) {
                         final scan = _parseScan(video.scanResults);
@@ -105,7 +112,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,14 +121,14 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                 context.l10n.parentChildrenTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentChildrenDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.lg),
               if (profiles.isEmpty)
                 _EmptyPanel(
                   icon: Icons.people_outline_rounded,
@@ -147,28 +154,28 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                 context.l10n.onboardingAddChildProfile,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentChooseChildTheme,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: context.l10n.parentChildName,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
                     for (final descriptor in ThemeDescriptor.values)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
                         child: ChoiceChip(
                           label: Text(context.l10n.themeLabel(descriptor)),
                           selected: descriptor == childTheme,
@@ -181,7 +188,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               FilledButton.icon(
                 onPressed: onSaveChild,
                 icon: const Icon(Icons.person_add_rounded),
@@ -190,7 +197,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,14 +206,14 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                 context.l10n.parentApprovalTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentApprovalDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               SwitchListTile.adaptive(
                 value: approvalRequired,
                 contentPadding: EdgeInsets.zero,
@@ -283,10 +290,10 @@ class _ApprovalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.76),
-        borderRadius: BorderRadius.circular(18),
+        color: palette.surfaceDefault,
+        borderRadius: AppRadii.xlAll,
         border: Border.all(color: palette.panelBorder),
       ),
       child: Column(
@@ -298,13 +305,13 @@ class _ApprovalCard extends StatelessWidget {
               context,
             ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(summary, style: Theme.of(context).textTheme.bodySmall),
           if (riskLevel != null || flags.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               children: [
                 if (riskLevel != null)
                   _ScanChip(
@@ -320,10 +327,10 @@ class _ApprovalCard extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
             children: [
               FilledButton.tonal(
                 onPressed: onApprove,
@@ -357,7 +364,7 @@ class _ChildRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         children: [
           Container(
@@ -365,7 +372,7 @@ class _ChildRow extends StatelessWidget {
             height: 12,
             decoration: BoxDecoration(shape: BoxShape.circle, color: color),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,10 +416,10 @@ class _EmptyPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.74),
-        borderRadius: BorderRadius.circular(18),
+        color: palette.surfaceSubtle,
+        borderRadius: AppRadii.xlAll,
         border: Border.all(color: palette.panelBorder),
       ),
       child: Row(
@@ -423,11 +430,11 @@ class _EmptyPanel extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadii.mdAll,
             ),
-            child: Icon(icon, size: 20, color: color),
+            child: Icon(icon, size: AppIconSize.lg, color: color),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,7 +445,7 @@ class _EmptyPanel extends StatelessWidget {
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: AppSpacing.xs),
                 Text(detail, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
@@ -463,10 +470,13 @@ class _ScanChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: outlined ? Colors.transparent : color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadii.pillAll,
         border: Border.all(color: color.withValues(alpha: 0.45)),
       ),
       child: Text(

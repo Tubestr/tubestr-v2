@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants.dart';
 import '../../../../core/di/providers.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../models/parent_zone_models.dart';
@@ -42,7 +44,12 @@ class ParentZoneDashboardSection extends ConsumerWidget {
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        AppSpacing.md,
+        hPad,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         _StartHereCard(
           palette: palette,
@@ -56,7 +63,7 @@ class ParentZoneDashboardSection extends ConsumerWidget {
           onOpenFamilySpaces: () =>
               onSelectSection(ParentZoneSection.familySpaces),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         _ControlRoomCard(
           palette: palette,
           attentionCount: attentionCount,
@@ -64,7 +71,7 @@ class ParentZoneDashboardSection extends ConsumerWidget {
           familySpaceCount: groupSummaries.length,
           needsFamilySpace: needsFamilySpace,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +80,7 @@ class ParentZoneDashboardSection extends ConsumerWidget {
                 context.l10n.parentDashboardFamilyHealth,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               _SummaryRow(
                 icon: identity != null
                     ? Icons.check_circle_rounded
@@ -150,7 +157,7 @@ class _StartHereCard extends StatelessWidget {
             context.l10n.parentStartHere,
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           if (needsFamilySpace)
             _AttentionRow(
               icon: Icons.group_add_rounded,
@@ -246,7 +253,7 @@ class _ControlRoomCard extends StatelessWidget {
             context.l10n.parentControlRoom,
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             needsFamilySpace
                 ? context.l10n.parentDashboardControlRoomFirstStep
@@ -257,10 +264,10 @@ class _ControlRoomCard extends StatelessWidget {
               context,
             ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.xl),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
             children: [
               _ControlMetric(
                 label: context.l10n.parentDashboardNeedsReview,
@@ -299,10 +306,13 @@ class _ControlMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.lgAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,7 +324,7 @@ class _ControlMetric extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpacing.xs),
           Text(label, style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
@@ -342,7 +352,7 @@ class _AttentionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -351,11 +361,11 @@ class _AttentionRow extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadii.mdAll,
             ),
-            child: Icon(icon, size: 20, color: color),
+            child: Icon(icon, size: AppIconSize.lg, color: color),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,10 +376,10 @@ class _AttentionRow extends StatelessWidget {
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: AppSpacing.xs),
                 Text(detail, style: Theme.of(context).textTheme.bodySmall),
                 if (actionLabel != null && onTap != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   OutlinedButton(
                     onPressed: () {
                       HapticFeedback.selectionClick();
@@ -403,11 +413,11 @@ class _SummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
+          Icon(icon, size: AppIconSize.md, color: color),
+          const SizedBox(width: AppSpacing.md),
           Text(label),
           const Spacer(),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),

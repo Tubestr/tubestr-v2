@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
 import '../../core/storage/app_database.dart';
+import '../../core/theme/radii.dart';
+import '../../core/theme/spacing.dart';
 import '../../core/theme/theme_descriptor.dart';
 import '../../l10n/l10n.dart';
 import 'feed_metric_pill.dart';
@@ -37,7 +39,8 @@ class LocalVideoFeedRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        separatorBuilder: (context, index) =>
+            const SizedBox(width: AppSpacing.md),
         itemBuilder: (context, i) => LocalVideoTile(
           video: items[i],
           palette: palette,
@@ -90,38 +93,34 @@ class LocalVideoTile extends ConsumerWidget {
                 children: [
                   Positioned.fill(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: AppRadii.xlAll,
                       child: hasThumb
                           ? MediaThumbnailFrame(
                               file: thumbFile!,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: AppRadii.xlAll,
                               background: LinearGradient(
                                 colors: [
-                                  palette.accent.withValues(alpha: 0.18),
-                                  palette.accentSecondary.withValues(
-                                    alpha: 0.16,
-                                  ),
-                                  const Color(0xFF120F18),
+                                  palette.accentMuted,
+                                  palette.accentSecondaryMuted,
+                                  palette.mediaSurfaceStrong,
                                 ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                               ),
-                              padding: const EdgeInsets.all(6),
+                              padding: const EdgeInsets.all(AppSpacing.xs),
                             )
                           : Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    palette.accent.withValues(alpha: 0.25),
-                                    palette.accentSecondary.withValues(
-                                      alpha: 0.25,
-                                    ),
+                                    palette.accentMedium,
+                                    palette.accentSecondaryMedium,
                                   ],
                                 ),
                               ),
                               child: Icon(
                                 Icons.play_arrow_rounded,
-                                size: 36,
+                                size: AppIconSize.empty,
                                 color: palette.accent,
                               ),
                             ),
@@ -129,22 +128,22 @@ class LocalVideoTile extends ConsumerWidget {
                   ),
                   if (isPending)
                     Positioned(
-                      top: 6,
-                      left: 6,
+                      top: AppSpacing.xs,
+                      left: AppSpacing.xs,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
                         ),
                         decoration: BoxDecoration(
                           color: palette.warning,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: AppRadii.xsAll,
                         ),
                         child: Text(
                           context.l10n.approvalPending,
                           style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.white,
+                            fontSize: AppTextSize.micro,
+                            color: palette.ink,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -152,28 +151,26 @@ class LocalVideoTile extends ConsumerWidget {
                     ),
                   if (video.liked)
                     Positioned(
-                      top: 6,
-                      right: 6,
+                      top: AppSpacing.xs,
+                      right: AppSpacing.xs,
                       child: Container(
                         width: 28,
                         height: 28,
                         decoration: BoxDecoration(
-                          color: const Color(
-                            0xFFFF6B7A,
-                          ).withValues(alpha: 0.92),
+                          color: palette.danger.withValues(alpha: 0.92),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.favorite_rounded,
-                          size: 16,
-                          color: Colors.white,
+                          size: AppIconSize.sm,
+                          color: palette.onAccent,
                         ),
                       ),
                     ),
                 ],
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               video.title,
               maxLines: 2,
@@ -181,17 +178,17 @@ class LocalVideoTile extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if (showReactions && (likeCount > 0 || reactions.isNotEmpty)) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.xs),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
                 children: [
                   if (likeCount > 0)
                     FeedMetricPill(
                       palette: palette,
                       label: '$likeCount',
                       icon: Icons.favorite_rounded,
-                      iconColor: const Color(0xFFFF6B7A),
+                      iconColor: palette.danger,
                     ),
                   for (final reaction in reactions.take(2))
                     FeedMetricPill(

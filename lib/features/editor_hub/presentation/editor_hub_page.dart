@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
@@ -35,7 +37,12 @@ class EditorHubContent extends ConsumerWidget {
         children: [
           // Toolbar
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.sm,
+              AppSpacing.md,
+              0,
+            ),
             child: Row(
               children: [const Spacer(), const ProfileSwitcherButton()],
             ),
@@ -51,7 +58,9 @@ class EditorHubContent extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,7 +70,7 @@ class EditorHubContent extends ConsumerWidget {
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         'We couldn\'t load your clips for editing just yet. Try switching profiles or come back in a moment.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -95,21 +104,31 @@ class _Body extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty && remoteShares.isEmpty) {
       return ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.md,
+          AppSpacing.xl,
+          AppSpacing.bottomSafe,
+        ),
         children: [
           _StudioHero(palette: palette),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
           _EmptyState(palette: palette),
         ],
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.md,
+        AppSpacing.xl,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         _HasClipsHeader(items: items, palette: palette),
         if (items.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           LocalVideoFeedRow(
             items: items,
             palette: palette,
@@ -125,7 +144,7 @@ class _Body extends StatelessWidget {
           ),
         ],
         if (remoteShares.isNotEmpty) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           _SharedVideosSection(items: remoteShares, palette: palette),
         ],
       ],
@@ -183,14 +202,14 @@ class _StudioHero extends ConsumerWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           context.l10n.editorHubEmptyDetail,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         Row(
           children: [
             Expanded(
@@ -203,7 +222,7 @@ class _StudioHero extends ConsumerWidget {
                 label: Text(context.l10n.editorHubCaptureFirst),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: null,
@@ -213,7 +232,7 @@ class _StudioHero extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         const Divider(),
       ],
     );
@@ -234,33 +253,33 @@ class _EmptyState extends ConsumerWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: palette.accent.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(18),
+            color: palette.surfacePressed,
+            borderRadius: AppRadii.xlAll,
           ),
           child: Icon(
             Icons.auto_awesome_rounded,
             color: palette.accent,
-            size: 28,
+            size: AppIconSize.display,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         Text(
           context.l10n.editorHubNothingToRemix,
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           context.l10n.editorHubRecordFirstDetail,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         Wrap(
-          spacing: 10,
-          runSpacing: 10,
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
           children: [
             _StudioPill(
               icon: Icons.cut_rounded,
@@ -279,7 +298,7 @@ class _EmptyState extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.xl),
         FilledButton.icon(
           onPressed: () =>
               ref.read(appShellTabIndexProvider.notifier).state = 1,
@@ -305,17 +324,20 @@ class _StudioPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
       decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(16),
+        color: palette.surfaceDefault,
+        borderRadius: AppRadii.lgAll,
         border: Border.all(color: palette.panelBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: palette.accent),
-          const SizedBox(width: 8),
+          Icon(icon, size: AppIconSize.sm, color: palette.accent),
+          const SizedBox(width: AppSpacing.sm),
           Text(
             label,
             style: Theme.of(
@@ -350,7 +372,7 @@ class _SharedVideosSection extends StatelessWidget {
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         for (final entry in grouped.entries) ...[
           _SharedGroupHeader(
             mlsGroupId: entry.key,
@@ -362,14 +384,15 @@ class _SharedVideosSection extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: entry.value.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(width: AppSpacing.md),
               itemBuilder: (context, index) {
                 final item = entry.value[index];
                 return _SharedVideoTile(item: item, palette: palette);
               },
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ],
     );
@@ -394,7 +417,7 @@ class _SharedGroupHeader extends ConsumerWidget {
         .valueOrNull;
     final label = groupSummary?.name ?? fallbackChildName;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Text(
         context.l10n.editorHubFromLabel(label),
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -446,22 +469,25 @@ class _SharedVideoTile extends ConsumerWidget {
               width: double.infinity,
               height: 128,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: AppRadii.xlAll,
                 child: hasThumb
                     ? MediaThumbnailFrame(
                         file: thumbnailFile!,
-                        borderRadius: BorderRadius.circular(20),
-                        background: const LinearGradient(
-                          colors: [Color(0xFF16111D), Color(0xFF0C0A11)],
+                        borderRadius: AppRadii.xlAll,
+                        background: LinearGradient(
+                          colors: [
+                            palette.mediaSurfaceStrong,
+                            palette.mediaScrim,
+                          ],
                         ),
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(AppSpacing.xs),
                       )
                     : Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              palette.accentSecondary.withValues(alpha: 0.28),
-                              palette.accent.withValues(alpha: 0.20),
+                              palette.accentSecondaryMedium,
+                              palette.accentMuted,
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -471,13 +497,13 @@ class _SharedVideoTile extends ConsumerWidget {
                           item.isDownloaded
                               ? Icons.play_circle_fill_rounded
                               : Icons.cloud_download_rounded,
-                          size: 36,
+                          size: AppIconSize.empty,
                           color: palette.accent,
                         ),
                       ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               item.title,
               maxLines: 2,

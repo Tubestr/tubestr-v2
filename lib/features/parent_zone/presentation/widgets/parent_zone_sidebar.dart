@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../models/parent_zone_models.dart';
 import '../../../../l10n/app_localizations_x.dart';
@@ -36,10 +38,10 @@ class ParentZoneSidebar extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(
-              20,
-              MediaQuery.of(context).padding.top + 16,
-              20,
-              20,
+              AppSpacing.xl,
+              MediaQuery.of(context).padding.top + AppSpacing.lg,
+              AppSpacing.xl,
+              AppSpacing.xl,
             ),
             decoration: BoxDecoration(
               color: headerColor,
@@ -53,38 +55,38 @@ class ParentZoneSidebar extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: palette.ink.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppRadii.lgAll,
                   ),
                   child: Icon(
                     Icons.shield_rounded,
-                    size: 24,
+                    size: AppIconSize.xl,
                     color: palette.ink,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   context.l10n.parentZoneTitle,
                   style: TextStyle(
                     color: palette.ink,
-                    fontSize: 20,
+                    fontSize: AppTextSize.title,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   parentLabel,
                   style: TextStyle(
                     color: palette.ink,
-                    fontSize: 14,
+                    fontSize: AppTextSize.body,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   accountHint,
                   style: TextStyle(
                     color: palette.mutedInk,
-                    fontSize: 12,
+                    fontSize: AppTextSize.label,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -93,7 +95,7 @@ class ParentZoneSidebar extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
               children: [
                 for (final section in ParentZoneSection.values)
                   _NavItem(
@@ -106,10 +108,18 @@ class ParentZoneSidebar extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.sm,
+              AppSpacing.xl,
+              AppSpacing.lg,
+            ),
             child: Text(
               '${AppConstants.appName} v2.0',
-              style: TextStyle(fontSize: 12, color: palette.mutedInk),
+              style: TextStyle(
+                fontSize: AppTextSize.label,
+                color: palette.mutedInk,
+              ),
             ),
           ),
         ],
@@ -134,20 +144,26 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         child: Material(
           color: isActive
               ? palette.ink.withValues(alpha: 0.08)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+              : palette.panel.withValues(alpha: 0),
+          borderRadius: AppRadii.lgAll,
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppRadii.lgAll,
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.lg,
+              ),
               child: Row(
                 children: [
                   AnimatedScale(
@@ -156,11 +172,11 @@ class _NavItem extends StatelessWidget {
                     scale: isActive ? 1.05 : 1,
                     child: Icon(
                       section.icon,
-                      size: 20,
+                      size: AppIconSize.lg,
                       color: isActive ? palette.ink : palette.mutedInk,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: AppSpacing.lg),
                   AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOutCubic,

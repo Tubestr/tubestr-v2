@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/radii.dart';
+import '../../core/theme/spacing.dart';
 import '../../core/theme/theme_descriptor.dart';
 
 /// Small pill used in feed tiles to surface metrics like like counts or
@@ -21,18 +23,25 @@ class FeedMetricPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(999),
+        color: palette.surfaceSubtle,
+        borderRadius: AppRadii.pillAll,
         border: Border.all(color: palette.panelBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: iconColor ?? palette.accent),
-            const SizedBox(width: 4),
+            Icon(
+              icon,
+              size: AppIconSize.xs,
+              color: iconColor ?? palette.accent,
+            ),
+            const SizedBox(width: AppSpacing.xs),
           ],
           Text(
             label,

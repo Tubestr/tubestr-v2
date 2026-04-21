@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/radii.dart';
+import '../../core/theme/spacing.dart';
+
 /// Four dots that fill in as digits are entered.
 class PinDots extends StatelessWidget {
   const PinDots({super.key, required this.filled, this.total = 4});
@@ -18,12 +21,12 @@ class PinDots extends StatelessWidget {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
-          width: 18,
-          height: 18,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: AppIconSize.md,
+          height: AppIconSize.md,
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isFilled ? accent : Colors.transparent,
+            color: isFilled ? accent : accent.withValues(alpha: 0),
             border: Border.all(
               color: isFilled ? accent : accent.withValues(alpha: 0.3),
               width: 2,
@@ -65,8 +68,8 @@ class PinKeypad extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
+        mainAxisSpacing: AppSpacing.md,
+        crossAxisSpacing: AppSpacing.md,
         childAspectRatio: 1.6,
       ),
       itemCount: _keys.length,
@@ -85,7 +88,9 @@ class PinKeypad extends StatelessWidget {
           onTap: () => onDigit(key),
           child: Text(
             key,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
         );
       },
@@ -105,9 +110,9 @@ class _KeypadButton extends StatelessWidget {
       color: Theme.of(
         context,
       ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: AppRadii.xlAll,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadii.xlAll,
         onTap: () {
           HapticFeedback.lightImpact();
           onTap();

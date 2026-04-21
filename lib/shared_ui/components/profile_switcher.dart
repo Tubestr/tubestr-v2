@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/theme/spacing.dart';
 import '../../l10n/l10n.dart';
 import 'settings_sheet.dart';
 
@@ -40,7 +41,7 @@ class ProfileSwitcherButton extends ConsumerWidget {
                 backgroundColor: palette.accent.withValues(alpha: 0.15),
                 child: Icon(
                   Icons.person_rounded,
-                  size: 18,
+                  size: AppIconSize.md,
                   color: palette.accent,
                 ),
               ),
@@ -55,14 +56,21 @@ class ProfileSwitcherButton extends ConsumerWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: palette.accent, width: 1),
                 ),
-                child: Icon(Icons.settings, size: 10, color: palette.accent),
+                child: Icon(
+                  Icons.settings,
+                  size: AppIconSize.xs,
+                  color: palette.accent,
+                ),
               ),
             ),
           ],
         ),
         label: Text(
           profileName,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: AppTextSize.body,
+          ),
         ),
         onPressed: () => showSettingsSheet(context),
       ),

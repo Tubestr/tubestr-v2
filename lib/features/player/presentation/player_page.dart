@@ -10,6 +10,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/remote_share_projection.dart';
@@ -539,7 +541,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               top: -70,
               right: -40,
               child: _BackdropBlob(
-                color: palette.accent.withValues(alpha: 0.18),
+                color: palette.accentMuted,
                 size: isWide ? 280 : 220,
               ),
             ),
@@ -547,7 +549,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               bottom: 150,
               left: -60,
               child: _BackdropBlob(
-                color: palette.accentSecondary.withValues(alpha: 0.16),
+                color: palette.accentSecondaryMuted,
                 size: isWide ? 320 : 240,
               ),
             ),
@@ -577,19 +579,19 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         height: playerSize.height,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: palette.panel.withValues(alpha: 0.96),
-                            borderRadius: BorderRadius.circular(28),
+                            color: palette.surfaceStrong,
+                            borderRadius: AppRadii.cardAll,
                             border: Border.all(color: palette.panelBorder),
                             boxShadow: [
                               BoxShadow(
-                                color: palette.accent.withValues(alpha: 0.12),
+                                color: palette.accentSubtle,
                                 blurRadius: 26,
                                 offset: const Offset(0, 14),
                               ),
                             ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(26),
+                            borderRadius: AppRadii.cardAll,
                             child: mediaPath != null
                                 ? Video(controller: _videoController)
                                 : Stack(
@@ -598,10 +600,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                       if (hasRemoteThumb)
                                         MediaThumbnailFrame(
                                           file: remoteThumbFile!,
-                                          borderRadius: BorderRadius.circular(
-                                            26,
+                                          borderRadius: AppRadii.cardAll,
+                                          padding: const EdgeInsets.all(
+                                            AppSpacing.md,
                                           ),
-                                          padding: const EdgeInsets.all(12),
                                         )
                                       else
                                         DecoratedBox(
@@ -645,7 +647,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                           ),
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 24,
+                                              horizontal: AppSpacing.xxl,
                                             ),
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
@@ -656,7 +658,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                             .play_circle_outline_rounded
                                                       : Icons
                                                             .cloud_download_rounded,
-                                                  size: 72,
+                                                  size: AppIconSize.billboard,
                                                   color: palette.accent,
                                                 ),
                                                 const SizedBox(height: 12),
@@ -665,7 +667,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color: palette.ink,
-                                                    fontSize: 18,
+                                                    fontSize: AppTextSize.title,
                                                     fontWeight: FontWeight.w700,
                                                   ),
                                                 ),
@@ -675,7 +677,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color: palette.mutedInk,
-                                                    fontSize: 14,
+                                                    fontSize: AppTextSize.body,
                                                     height: 1.35,
                                                   ),
                                                 ),
@@ -760,7 +762,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           colors: [palette.accent, palette.accentSecondary],
                         ),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.75),
+                          color: palette.onAccent.withValues(alpha: 0.75),
                           width: 4,
                         ),
                         boxShadow: [
@@ -771,10 +773,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.play_arrow_rounded,
-                        size: 44,
-                        color: Colors.white,
+                        size: AppIconSize.hero,
+                        color: palette.onAccent,
                       ),
                     ),
                   ),
@@ -788,7 +790,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 ignoring: !_showControls,
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                      0,
+                    ),
                     child: Row(
                       children: [
                         _PlayerChromeButton(
@@ -799,7 +806,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         const Spacer(),
                         if (video != null)
                           Padding(
-                            padding: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.only(
+                              right: AppSpacing.sm,
+                            ),
                             child: _PlayerChromeButton(
                               icon: Icons.auto_awesome_rounded,
                               palette: palette,
@@ -830,7 +839,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                   identity: identity,
                                 ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         _PlayerChromeButton(
                           icon: Icons.flag_outlined,
                           palette: palette,
@@ -952,10 +961,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       },
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
-                          12,
+                          AppSpacing.md,
                           0,
-                          12,
-                          mediaQuery.padding.bottom + 10,
+                          AppSpacing.md,
+                          mediaQuery.padding.bottom + AppSpacing.md,
                         ),
                         child: Center(
                           child: ConstrainedBox(
@@ -969,7 +978,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: palette.panel.withValues(alpha: 0.98),
-                                  borderRadius: BorderRadius.circular(28),
+                                  borderRadius: AppRadii.cardAll,
                                   border: Border.all(
                                     color: palette.panelBorder,
                                   ),
@@ -984,10 +993,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                   ],
                                 ),
                                 padding: const EdgeInsets.fromLTRB(
-                                  18,
-                                  10,
-                                  18,
-                                  14,
+                                  AppSpacing.xl,
+                                  AppSpacing.md,
+                                  AppSpacing.xl,
+                                  AppSpacing.lg,
                                 ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -998,19 +1007,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         color: palette.panelBorder.withValues(
                                           alpha: 0.32,
                                         ),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: AppRadii.smAll,
                                         child: InkWell(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
+                                          borderRadius: AppRadii.smAll,
                                           onTap: () => setState(
                                             () => _sheetExpanded =
                                                 !_sheetExpanded,
                                           ),
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
+                                              horizontal: AppSpacing.md,
+                                              vertical: AppSpacing.sm,
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
@@ -1021,7 +1028,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                             .keyboard_arrow_down_rounded
                                                       : Icons
                                                             .keyboard_arrow_up_rounded,
-                                                  size: 18,
+                                                  size: AppIconSize.md,
                                                   color: palette.ink,
                                                 ),
                                                 const SizedBox(width: 4),
@@ -1035,7 +1042,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                             .playerShowDetails,
                                                   style: TextStyle(
                                                     color: palette.ink,
-                                                    fontSize: 12,
+                                                    fontSize: AppTextSize.label,
                                                     fontWeight: FontWeight.w800,
                                                   ),
                                                 ),
@@ -1057,7 +1064,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         activeTrackColor: palette.accent,
                                         inactiveTrackColor: palette.panelBorder
                                             .withValues(alpha: 0.7),
-                                        thumbColor: Colors.white,
+                                        thumbColor: palette.panel,
                                         overlayColor: palette.accent.withValues(
                                           alpha: 0.18,
                                         ),
@@ -1075,7 +1082,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                           _formatDuration(_position),
                                           style: TextStyle(
                                             color: palette.mutedInk,
-                                            fontSize: 12,
+                                            fontSize: AppTextSize.label,
                                             fontFeatures: const [
                                               FontFeature.tabularFigures(),
                                             ],
@@ -1088,7 +1095,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                           onPressed: _rewind,
                                           icon: const Icon(
                                             Icons.skip_previous_rounded,
-                                            size: 26,
+                                            size: AppIconSize.xl,
                                           ),
                                           color: palette.ink,
                                           visualDensity: VisualDensity.compact,
@@ -1125,8 +1132,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                               _playing
                                                   ? Icons.pause_rounded
                                                   : Icons.play_arrow_rounded,
-                                              size: 28,
-                                              color: Colors.white,
+                                              size: AppIconSize.display,
+                                              color: palette.onAccent,
                                             ),
                                           ),
                                         ),
@@ -1135,7 +1142,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                           onPressed: () {},
                                           icon: const Icon(
                                             Icons.skip_next_rounded,
-                                            size: 26,
+                                            size: AppIconSize.xl,
                                           ),
                                           color: palette.panelBorder,
                                           visualDensity: VisualDensity.compact,
@@ -1153,7 +1160,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                           _formatDuration(_duration),
                                           style: TextStyle(
                                             color: palette.mutedInk,
-                                            fontSize: 12,
+                                            fontSize: AppTextSize.label,
                                             fontFeatures: const [
                                               FontFeature.tabularFigures(),
                                             ],
@@ -1210,20 +1217,25 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                         Container(
                                                           padding:
                                                               const EdgeInsets.symmetric(
-                                                                horizontal: 10,
-                                                                vertical: 6,
+                                                                horizontal:
+                                                                    AppSpacing
+                                                                        .md,
+                                                                vertical:
+                                                                    AppSpacing
+                                                                        .sm,
                                                               ),
-                                                          decoration: BoxDecoration(
-                                                            color: palette
-                                                                .accent
-                                                                .withValues(
-                                                                  alpha: 0.10,
-                                                                ),
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  999,
-                                                                ),
-                                                          ),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                                color: palette
+                                                                    .accent
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.10,
+                                                                    ),
+                                                                borderRadius:
+                                                                    AppRadii
+                                                                        .pillAll,
+                                                              ),
                                                           child: Text(
                                                             remoteShare == null
                                                                 ? context
@@ -1235,7 +1247,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                             style: TextStyle(
                                                               color: palette
                                                                   .accent,
-                                                              fontSize: 11,
+                                                              fontSize:
+                                                                  AppTextSize
+                                                                      .caption,
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w800,
@@ -1249,7 +1263,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                           title,
                                                           style: TextStyle(
                                                             color: palette.ink,
-                                                            fontSize: 18,
+                                                            fontSize:
+                                                                AppTextSize
+                                                                    .title,
                                                             fontWeight:
                                                                 FontWeight.w700,
                                                           ),
@@ -1267,7 +1283,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                             style: TextStyle(
                                                               color: palette
                                                                   .mutedInk,
-                                                              fontSize: 13,
+                                                              fontSize:
+                                                                  AppTextSize
+                                                                      .label,
                                                               height: 1.3,
                                                             ),
                                                           ),
@@ -1368,28 +1386,29 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                             .easeOutQuint,
                                                         padding:
                                                             const EdgeInsets.symmetric(
-                                                              horizontal: 12,
-                                                              vertical: 10,
+                                                              horizontal:
+                                                                  AppSpacing.md,
+                                                              vertical:
+                                                                  AppSpacing.md,
                                                             ),
                                                         decoration: BoxDecoration(
                                                           color: isLiked
-                                                              ? const Color(
-                                                                  0xFFFFE4E8,
-                                                                )
-                                                              : Colors.white
+                                                              ? palette.danger
                                                                     .withValues(
                                                                       alpha:
-                                                                          0.78,
-                                                                    ),
+                                                                          0.14,
+                                                                    )
+                                                              : palette
+                                                                    .surfaceRaised,
                                                           borderRadius:
-                                                              BorderRadius.circular(
-                                                                20,
-                                                              ),
+                                                              AppRadii.xlAll,
                                                           border: Border.all(
                                                             color: isLiked
-                                                                ? const Color(
-                                                                    0xFFFFC7D0,
-                                                                  )
+                                                                ? palette.danger
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.32,
+                                                                      )
                                                                 : palette
                                                                       .panelBorder,
                                                           ),
@@ -1402,21 +1421,22 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                                         .favorite_rounded
                                                                   : Icons
                                                                         .favorite_border_rounded,
-                                                              size: 28,
+                                                              size: AppIconSize
+                                                                  .display,
                                                               color: isLiked
-                                                                  ? const Color(
-                                                                      0xFFFF6B7A,
-                                                                    )
+                                                                  ? palette
+                                                                        .danger
                                                                   : palette
                                                                         .mutedInk,
                                                             ),
                                                             if (remoteShare !=
                                                                 null)
                                                               Padding(
-                                                                padding:
-                                                                    const EdgeInsets.only(
-                                                                      top: 4,
-                                                                    ),
+                                                                padding: const EdgeInsets.only(
+                                                                  top:
+                                                                      AppSpacing
+                                                                          .xs,
+                                                                ),
                                                                 child: Text(
                                                                   '$remoteLikeCount',
                                                                   style: TextStyle(
@@ -1734,9 +1754,7 @@ class _PlayerChromeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onTap != null;
     return Material(
-      color: enabled
-          ? palette.panel.withValues(alpha: 0.82)
-          : palette.panel.withValues(alpha: 0.48),
+      color: enabled ? palette.surfaceRaised : palette.surfaceMuted,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -1752,7 +1770,7 @@ class _PlayerChromeButton extends StatelessWidget {
           child: Icon(
             icon,
             color: enabled ? palette.ink : palette.mutedInk,
-            size: 22,
+            size: AppIconSize.xl,
           ),
         ),
       ),
@@ -1775,12 +1793,10 @@ class _SharePillButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onTap != null && !isBusy;
     return Material(
-      color: enabled
-          ? palette.panel.withValues(alpha: 0.92)
-          : palette.panel.withValues(alpha: 0.48),
-      borderRadius: BorderRadius.circular(24),
+      color: enabled ? palette.surfaceRaised : palette.surfaceMuted,
+      borderRadius: AppRadii.xxlAll,
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: AppRadii.xxlAll,
         onTap: enabled
             ? () {
                 HapticFeedback.selectionClick();
@@ -1788,16 +1804,19 @@ class _SharePillButton extends StatelessWidget {
               }
             : null,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.md,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 isBusy ? Icons.hourglass_top_rounded : Icons.ios_share_rounded,
                 color: enabled ? palette.ink : palette.mutedInk,
-                size: 20,
+                size: AppIconSize.lg,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Text(
                 isBusy
                     ? context.l10n.playerSharingAction
@@ -1805,7 +1824,7 @@ class _SharePillButton extends StatelessWidget {
                 style: TextStyle(
                   color: enabled ? palette.ink : palette.mutedInk,
                   fontWeight: FontWeight.w700,
-                  fontSize: 15,
+                  fontSize: AppTextSize.body,
                 ),
               ),
             ],
@@ -1844,7 +1863,7 @@ class _PlaybackMetricRow extends StatelessWidget {
               : context.l10n.playerWatchingSoFar,
           style: TextStyle(
             color: palette.mutedInk,
-            fontSize: 12,
+            fontSize: AppTextSize.label,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -1871,20 +1890,23 @@ class _MetricChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [palette.accent, palette.accentSecondary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadii.pillAll,
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
+        style: TextStyle(
+          color: palette.onAccent,
+          fontSize: AppTextSize.label,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -1920,7 +1942,7 @@ class _PlaybackLikeSummary extends ConsumerWidget {
               : context.l10n.playerLikeCount(likeCount),
           style: TextStyle(
             color: palette.ink,
-            fontSize: 14,
+            fontSize: AppTextSize.body,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1989,7 +2011,7 @@ class _ReactionSection extends StatelessWidget {
           title ?? context.l10n.playerReactions,
           style: TextStyle(
             color: palette.ink,
-            fontSize: 14,
+            fontSize: AppTextSize.body,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -2036,15 +2058,18 @@ class _ReactionChip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadii.pillAll,
         onTap: isDisabled ? null : onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
           decoration: BoxDecoration(
             color: isSelected
-                ? palette.accent.withValues(alpha: 0.16)
-                : palette.panel.withValues(alpha: 0.78),
-            borderRadius: BorderRadius.circular(999),
+                ? palette.surfaceSelected
+                : palette.surfaceDefault,
+            borderRadius: AppRadii.pillAll,
             border: Border.all(
               color: isSelected ? palette.accent : palette.panelBorder,
             ),
@@ -2052,13 +2077,16 @@ class _ReactionChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 17)),
+              Text(
+                emoji,
+                style: const TextStyle(fontSize: AppTextSize.bodyLarge),
+              ),
               const SizedBox(width: 6),
               Text(
                 '$count',
                 style: TextStyle(
                   color: palette.ink,
-                  fontSize: 12,
+                  fontSize: AppTextSize.label,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -2079,17 +2107,20 @@ class _NameChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(999),
+        color: palette.surfaceSubtle,
+        borderRadius: AppRadii.pillAll,
         border: Border.all(color: palette.panelBorder),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: palette.ink,
-          fontSize: 12,
+          fontSize: AppTextSize.label,
           fontWeight: FontWeight.w700,
         ),
       ),

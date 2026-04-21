@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/di/providers.dart';
+import '../../core/theme/radii.dart';
+import '../../core/theme/spacing.dart';
+import '../../core/theme/theme_descriptor.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n.dart';
 
@@ -109,18 +114,18 @@ class FeelingReportSubmission {
       '${feeling.localizedLabel(l10n)} · ${action.localizedTitle(l10n)}';
 }
 
-class FeelingReportSheet extends StatefulWidget {
+class FeelingReportSheet extends ConsumerStatefulWidget {
   const FeelingReportSheet({super.key, required this.onSubmit});
 
   final Future<void> Function(FeelingReportSubmission submission) onSubmit;
 
   @override
-  State<FeelingReportSheet> createState() => _FeelingReportSheetState();
+  ConsumerState<FeelingReportSheet> createState() => _FeelingReportSheetState();
 }
 
 enum _ReportStep { feeling, action, confirm }
 
-class _FeelingReportSheetState extends State<FeelingReportSheet> {
+class _FeelingReportSheetState extends ConsumerState<FeelingReportSheet> {
   _ReportStep _step = _ReportStep.feeling;
   ReportFeeling? _feeling;
   ReportActionOption? _action;
@@ -160,19 +165,28 @@ class _FeelingReportSheetState extends State<FeelingReportSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = ref.watch(activePaletteProvider);
     return SafeArea(
       child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadii.card),
+        ),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF251D38), Color(0xFF171121)],
+              colors: [palette.surfaceStrong, palette.surfaceRaised],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
+            border: Border(top: BorderSide(color: palette.panelBorder)),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.lg,
+              AppSpacing.xl,
+              AppSpacing.xxl,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -198,7 +212,7 @@ class _FeelingReportSheetState extends State<FeelingReportSheet> {
                         _step == _ReportStep.feeling
                             ? Icons.close_rounded
                             : Icons.arrow_back_rounded,
-                        color: Colors.white,
+                        color: palette.ink,
                       ),
                     ),
                     const Spacer(),
@@ -211,24 +225,25 @@ class _FeelingReportSheetState extends State<FeelingReportSheet> {
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           decoration: BoxDecoration(
                             color: active
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.25),
+                                ? palette.accent
+                                : palette.panelBorder,
                             shape: BoxShape.circle,
                           ),
                         );
                       }),
                     ),
                     const Spacer(),
-                    const SizedBox(width: 48),
+                    const SizedBox(width: AppSpacing.section),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   child: switch (_step) {
                     _ReportStep.feeling => _FeelingStep(
                       key: const ValueKey('feeling'),
                       theme: theme,
+                      palette: palette,
                       selected: _feeling,
                       onSelected: (feeling) async {
                         setState(() {
@@ -246,6 +261,7 @@ class _FeelingReportSheetState extends State<FeelingReportSheet> {
                     _ReportStep.action => _ActionStep(
                       key: const ValueKey('action'),
                       theme: theme,
+                      palette: palette,
                       feeling: _feeling!,
                       selected: _action,
                       options: _availableActions,
@@ -259,6 +275,7 @@ class _FeelingReportSheetState extends State<FeelingReportSheet> {
                     _ReportStep.confirm => _ConfirmStep(
                       key: const ValueKey('confirm'),
                       theme: theme,
+                      palette: palette,
                       feeling: _feeling!,
                       action: _action!,
                       submitting: _submitting,
@@ -279,11 +296,13 @@ class _FeelingStep extends StatelessWidget {
   const _FeelingStep({
     super.key,
     required this.theme,
+    required this.palette,
     required this.selected,
     required this.onSelected,
   });
 
   final ThemeData theme;
+  final KidPalette palette;
   final ReportFeeling? selected;
   final ValueChanged<ReportFeeling> onSelected;
 
@@ -293,28 +312,29 @@ class _FeelingStep extends StatelessWidget {
       key: key,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('🎬', style: TextStyle(fontSize: 56)),
-        const SizedBox(height: 12),
+        const Text('🎬', style: TextStyle(fontSize: AppTextSize.emojiDisplay)),
+        const SizedBox(height: AppSpacing.md),
         Text(
           context.l10n.reportFeelingPrompt,
           style: theme.textTheme.headlineSmall?.copyWith(
-            color: Colors.white,
+            color: palette.ink,
             fontWeight: FontWeight.w800,
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           childAspectRatio: 1.3,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
+          mainAxisSpacing: AppSpacing.md,
+          crossAxisSpacing: AppSpacing.md,
           children: [
             for (final feeling in ReportFeeling.values)
               _FeelingButton(
                 feeling: feeling,
+                palette: palette,
                 selected: selected == feeling,
                 onTap: () => onSelected(feeling),
               ),
@@ -329,6 +349,7 @@ class _ActionStep extends StatelessWidget {
   const _ActionStep({
     super.key,
     required this.theme,
+    required this.palette,
     required this.feeling,
     required this.selected,
     required this.options,
@@ -337,6 +358,7 @@ class _ActionStep extends StatelessWidget {
   });
 
   final ThemeData theme;
+  final KidPalette palette;
   final ReportFeeling feeling;
   final ReportActionOption? selected;
   final List<ReportActionOption> options;
@@ -353,34 +375,38 @@ class _ActionStep extends StatelessWidget {
         Center(
           child: Column(
             children: [
-              Text(feeling.emoji, style: const TextStyle(fontSize: 48)),
-              const SizedBox(height: 8),
+              Text(
+                feeling.emoji,
+                style: const TextStyle(fontSize: AppTextSize.emojiLarge),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 feeling.localizedLabel(context.l10n),
                 style: theme.textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
+                  color: palette.ink,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         Text(
           context.l10n.reportActionPrompt,
           style: theme.textTheme.titleLarge?.copyWith(
-            color: Colors.white,
+            color: palette.ink,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         for (final option in options)
           _ActionButton(
             option: option,
+            palette: palette,
             selected: selected == option,
             onTap: () => onSelected(option),
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
@@ -397,6 +423,7 @@ class _ConfirmStep extends StatelessWidget {
   const _ConfirmStep({
     super.key,
     required this.theme,
+    required this.palette,
     required this.feeling,
     required this.action,
     required this.submitting,
@@ -404,6 +431,7 @@ class _ConfirmStep extends StatelessWidget {
   });
 
   final ThemeData theme;
+  final KidPalette palette;
   final ReportFeeling feeling;
   final ReportActionOption action;
   final bool submitting;
@@ -415,57 +443,55 @@ class _ConfirmStep extends StatelessWidget {
       feeling: feeling,
       action: action,
     );
-    final accent = switch (submission.level) {
-      1 => const Color(0xFF78C3FF),
-      2 => const Color(0xFFFFB347),
-      _ => const Color(0xFFFF7B7B),
-    };
+    final accent = palette.reportAccentForLevel(submission.level);
     return Column(
       key: key,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(feeling.emoji, style: const TextStyle(fontSize: 64)),
-        const SizedBox(height: 12),
+        Text(
+          feeling.emoji,
+          style: const TextStyle(fontSize: AppTextSize.emojiHero),
+        ),
+        const SizedBox(height: AppSpacing.md),
         Text(
           context.l10n.reportConfirmPrompt,
           style: theme.textTheme.headlineSmall?.copyWith(
-            color: Colors.white,
+            color: palette.ink,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Text(
           submission.localizedLevelLabel(context.l10n),
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.86),
-          ),
+          style: theme.textTheme.titleMedium?.copyWith(color: palette.mutedInk),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
             color: accent.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: AppRadii.pillAll,
             border: Border.all(color: accent.withValues(alpha: 0.5)),
           ),
           child: Text(
             submission.localizedDestinationLabel(context.l10n),
             style: theme.textTheme.labelLarge?.copyWith(
-              color: Colors.white,
+              color: palette.ink,
               fontWeight: FontWeight.w700,
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Text(
           submission.localizedHelperText(context.l10n),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.7),
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
@@ -487,35 +513,35 @@ class _ConfirmStep extends StatelessWidget {
 class _FeelingButton extends StatelessWidget {
   const _FeelingButton({
     required this.feeling,
+    required this.palette,
     required this.selected,
     required this.onTap,
   });
 
   final ReportFeeling feeling;
+  final KidPalette palette;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? Colors.white.withValues(alpha: 0.22)
-          : Colors.white.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(20),
+      color: selected ? palette.surfacePressed : palette.surfaceSubtle,
+      borderRadius: AppRadii.xlAll,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadii.xlAll,
         onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(feeling.emoji, style: const TextStyle(fontSize: 32)),
-            const SizedBox(height: 6),
+            Text(
+              feeling.emoji,
+              style: const TextStyle(fontSize: AppTextSize.emoji),
+            ),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               feeling.localizedLabel(context.l10n),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(color: palette.ink, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -527,54 +553,52 @@ class _FeelingButton extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.option,
+    required this.palette,
     required this.selected,
     required this.onTap,
   });
 
   final ReportActionOption option;
+  final KidPalette palette;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final accent = switch (option.level) {
-      1 => const Color(0xFF78C3FF),
-      2 => const Color(0xFFFFB347),
-      _ => const Color(0xFFFF7B7B),
-    };
+    final accent = palette.reportAccentForLevel(option.level);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Material(
         color: selected
             ? accent.withValues(alpha: 0.22)
-            : Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
+            : palette.surfaceSubtle,
+        borderRadius: AppRadii.xlAll,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadii.xlAll,
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               children: [
                 Icon(option.icon, color: accent),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         option.localizedTitle(context.l10n),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: palette.ink,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         option.localizedSubtitle(context.l10n),
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 12,
+                          color: palette.mutedInk,
+                          fontSize: AppTextSize.label,
                         ),
                       ),
                     ],

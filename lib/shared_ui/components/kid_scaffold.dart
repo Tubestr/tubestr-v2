@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/theme/spacing.dart';
 
 class KidLayoutSpec {
   const KidLayoutSpec({
@@ -24,7 +25,7 @@ class KidLayoutSpec {
         isTablet: true,
         isLargeTablet: true,
         maxContentWidth: 1440,
-        comfortablePadding: 32,
+        comfortablePadding: AppSpacing.xxxl,
         feedGridColumns: 4,
       );
     }
@@ -33,7 +34,7 @@ class KidLayoutSpec {
         isTablet: true,
         isLargeTablet: false,
         maxContentWidth: 1200,
-        comfortablePadding: 28,
+        comfortablePadding: AppSpacing.xxl,
         feedGridColumns: 3,
       );
     }
@@ -41,7 +42,7 @@ class KidLayoutSpec {
       isTablet: false,
       isLargeTablet: false,
       maxContentWidth: 680,
-      comfortablePadding: 20,
+      comfortablePadding: AppSpacing.xl,
       feedGridColumns: 1,
     );
   }
@@ -118,7 +119,7 @@ class KidContentFrame extends StatelessWidget {
     super.key,
     required this.child,
     required this.maxWidth,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
     this.alignment = Alignment.topCenter,
   });
 
@@ -146,7 +147,7 @@ class FrostCard extends StatelessWidget {
   const FrostCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(AppSpacing.xl),
   });
 
   final Widget child;

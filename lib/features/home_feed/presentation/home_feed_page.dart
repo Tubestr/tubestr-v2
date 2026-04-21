@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants.dart';
 import '../../../core/di/providers.dart';
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../core/storage/app_database.dart';
@@ -50,7 +52,12 @@ class HomeFeedContent extends ConsumerWidget {
             children: [
               // Toolbar title + ProfileSwitcher
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  0,
+                ),
                 child: Row(
                   children: [
                     Text(
@@ -79,10 +86,10 @@ class HomeFeedContent extends ConsumerWidget {
                             return SingleChildScrollView(
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: const EdgeInsets.fromLTRB(
-                                20,
-                                16,
-                                20,
-                                100,
+                                AppSpacing.xl,
+                                AppSpacing.lg,
+                                AppSpacing.xl,
+                                AppSpacing.bottomSafe,
                               ),
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
@@ -99,7 +106,12 @@ class HomeFeedContent extends ConsumerWidget {
                           },
                         )
                       : ListView(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.xl,
+                            AppSpacing.lg,
+                            AppSpacing.xl,
+                            AppSpacing.bottomSafe,
+                          ),
                           children: [
                             // My Videos section — hero only shown for new users (empty state)
                             videos.when(
@@ -118,14 +130,14 @@ class HomeFeedContent extends ConsumerWidget {
                                 );
                               },
                               loading: () => const Padding(
-                                padding: EdgeInsets.all(32),
+                                padding: EdgeInsets.all(AppSpacing.xxxl),
                                 child: Center(
                                   child: CircularProgressIndicator(),
                                 ),
                               ),
                               error: (e, _) => Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                                  vertical: AppSpacing.sm,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,19 +469,16 @@ class _HomeSceneHero extends StatelessWidget {
     return Container(
       constraints: BoxConstraints(minHeight: compactTitle ? 196 : 208),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: AppRadii.cardAll,
         border: Border.all(color: palette.panelBorder, width: 1.2),
         gradient: LinearGradient(
-          colors: [
-            palette.panel.withValues(alpha: 0.76),
-            palette.panel.withValues(alpha: 0.28),
-          ],
+          colors: [palette.surfaceDefault, palette.surfaceOverlay],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: AppRadii.cardAll,
         child: Stack(
           children: [
             Positioned.fill(
@@ -494,7 +503,12 @@ class _HomeSceneHero extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.xl,
+                AppSpacing.xl,
+                AppSpacing.xl,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -548,18 +562,18 @@ class _FirstVideoPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            palette.accent.withValues(alpha: 0.12),
-            palette.accentSecondary.withValues(alpha: 0.10),
-            palette.panel.withValues(alpha: 0.88),
+            palette.accentSubtle,
+            palette.accentSecondarySubtle,
+            palette.surfaceRaised,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: AppRadii.cardAll,
         border: Border.all(color: palette.panelBorder),
       ),
       child: Column(
@@ -574,12 +588,12 @@ class _FirstVideoPanel extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
                       ),
                       decoration: BoxDecoration(
                         color: palette.accent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: AppRadii.pillAll,
                       ),
                       child: Text(
                         context.l10n.homeFirstSteps,
@@ -609,7 +623,7 @@ class _FirstVideoPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpacing.lg),
               Container(
                 width: 64,
                 height: 64,
@@ -620,15 +634,15 @@ class _FirstVideoPanel extends StatelessWidget {
                 child: Icon(
                   Icons.movie_creation_rounded,
                   color: palette.accent,
-                  size: 32,
+                  size: AppIconSize.display,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
               _FirstStepPill(label: context.l10n.tabCapture, palette: palette),
               _FirstStepPill(label: context.l10n.actionEdit, palette: palette),
@@ -653,10 +667,13 @@ class _FirstStepPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: palette.panel.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(999),
+        color: palette.surfaceRaised,
+        borderRadius: AppRadii.pillAll,
         border: Border.all(color: palette.panelBorder),
       ),
       child: Text(
@@ -687,17 +704,20 @@ class _MyVideosSection extends StatelessWidget {
         Row(
           children: [
             _SectionHeader(title: context.l10n.homeMyVideos),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
               decoration: BoxDecoration(
                 color: palette.accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadii.mdAll,
               ),
               child: Text(
                 '${items.length}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTextSize.label,
                   fontWeight: FontWeight.w700,
                   color: palette.accent,
                 ),
@@ -705,7 +725,7 @@ class _MyVideosSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         LocalVideoFeedRow(
           items: items.cast<LocalVideo>(),
           palette: palette,
@@ -735,7 +755,7 @@ class _AddFriendsCta extends ConsumerWidget {
         ref.read(appShellTabIndexProvider.notifier).state = 3;
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: palette.panelBorder)),
         ),
@@ -751,10 +771,10 @@ class _AddFriendsCta extends ConsumerWidget {
               child: Icon(
                 Icons.person_add_rounded,
                 color: palette.accent,
-                size: 22,
+                size: AppIconSize.xl,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -846,7 +866,7 @@ class _SharedGroupHeader extends ConsumerWidget {
         .valueOrNull;
     final label = groupSummary?.name ?? fallbackChildName;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Text(
         'From $label',
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -892,15 +912,18 @@ class _SharedVideoTile extends ConsumerWidget {
                 children: [
                   Positioned.fill(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: AppRadii.xxlAll,
                       child: hasThumb
                           ? MediaThumbnailFrame(
                               file: thumbnailFile!,
-                              borderRadius: BorderRadius.circular(20),
-                              background: const LinearGradient(
-                                colors: [Color(0xFF16111D), Color(0xFF0C0A11)],
+                              borderRadius: AppRadii.xlAll,
+                              background: LinearGradient(
+                                colors: [
+                                  palette.mediaSurfaceStrong,
+                                  palette.mediaScrim,
+                                ],
                               ),
-                              padding: const EdgeInsets.all(6),
+                              padding: const EdgeInsets.all(AppSpacing.sm),
                             )
                           : Container(
                               decoration: BoxDecoration(
@@ -919,15 +942,15 @@ class _SharedVideoTile extends ConsumerWidget {
                                 item.isDownloaded
                                     ? Icons.play_circle_fill_rounded
                                     : Icons.cloud_download_rounded,
-                                size: 42,
+                                size: AppIconSize.hero,
                                 color: palette.accent,
                               ),
                             ),
                     ),
                   ),
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: AppSpacing.sm,
+                    right: AppSpacing.sm,
                     child: _StatusBadge(
                       label: statusLabel,
                       color: item.isDownloaded
@@ -938,7 +961,7 @@ class _SharedVideoTile extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               item.title,
               maxLines: 2,
@@ -947,20 +970,20 @@ class _SharedVideoTile extends ConsumerWidget {
                 context,
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpacing.xs),
             _RemoteAttributionLine(item: item, palette: palette),
             if (likeCount > 0 || reactions.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.xs),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
                 children: [
                   if (likeCount > 0)
                     FeedMetricPill(
                       palette: palette,
                       label: context.l10n.homeLikeCount(likeCount),
                       icon: Icons.favorite_rounded,
-                      iconColor: const Color(0xFFFF6B7A),
+                      iconColor: palette.danger,
                     ),
                   for (final reaction in reactions.take(2))
                     FeedMetricPill(
@@ -1013,16 +1036,16 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(999),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
+      decoration: BoxDecoration(color: color, borderRadius: AppRadii.pillAll),
       child: Text(
         label,
-        style: const TextStyle(
-          fontSize: 10,
-          color: Colors.white,
+        style: TextStyle(
+          fontSize: AppTextSize.micro,
+          color: Theme.of(context).colorScheme.onPrimary,
           fontWeight: FontWeight.w700,
         ),
       ),

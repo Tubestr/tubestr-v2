@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/di/providers.dart';
+import '../../core/theme/radii.dart';
+import '../../core/theme/spacing.dart';
 import '../../l10n/l10n.dart';
 
 class PrivateKeyExportCard extends ConsumerStatefulWidget {
@@ -44,15 +46,19 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
         Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: AppIconSize.hero,
+              height: AppIconSize.hero,
               decoration: BoxDecoration(
                 color: palette.accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadii.mdAll,
               ),
-              child: Icon(Icons.key_rounded, color: palette.accent, size: 20),
+              child: Icon(
+                Icons.key_rounded,
+                color: palette.accent,
+                size: AppIconSize.lg,
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(
                 widget.title ?? l10n.privateKeyBackupTitle,
@@ -63,20 +69,20 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Text(
           widget.description ?? l10n.privateKeyBackupSubtitle,
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            color: palette.panel.withValues(alpha: 0.76),
-            borderRadius: BorderRadius.circular(18),
+            color: palette.surfaceDefault,
+            borderRadius: AppRadii.xlAll,
             border: Border.all(color: palette.panelBorder),
           ),
           child: SelectableText(
@@ -87,7 +93,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Row(
           children: [
             Expanded(
@@ -95,12 +101,12 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
                 onPressed: () => setState(() => _revealed = !_revealed),
                 icon: Icon(
                   _revealed ? Icons.visibility_off_rounded : Icons.visibility,
-                  size: 18,
+                  size: AppIconSize.md,
                 ),
                 label: Text(_revealed ? l10n.actionHide : l10n.actionReveal),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: FilledButton.tonalIcon(
                 onPressed: () async {
@@ -112,11 +118,11 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
                     SnackBar(content: Text(l10n.recoveryKeyCopied)),
                   );
                 },
-                icon: const Icon(Icons.copy_rounded, size: 18),
+                icon: const Icon(Icons.copy_rounded, size: AppIconSize.md),
                 label: Text(l10n.actionCopy),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () async {
@@ -124,19 +130,19 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
                     ShareParams(text: widget.shareText ?? widget.secret),
                   );
                 },
-                icon: const Icon(Icons.ios_share_rounded, size: 18),
+                icon: const Icon(Icons.ios_share_rounded, size: AppIconSize.md),
                 label: Text(l10n.actionShare),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             color: palette.danger.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadii.lgAll,
             border: Border.all(color: palette.danger.withValues(alpha: 0.2)),
           ),
           child: Text(

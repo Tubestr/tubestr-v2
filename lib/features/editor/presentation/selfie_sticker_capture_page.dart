@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/radii.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
 import '../../../services/editor/editor_sticker_library.dart';
 import '../../../services/editor/selfie_segmentation_service.dart';
@@ -207,7 +209,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
     final isReady = controller != null && controller.value.isInitialized;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: widget.palette.mediaScrim,
       body: SafeArea(
         child: Stack(
           children: [
@@ -219,21 +221,23 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                     )
                   : isReady
                   ? FillCameraPreview(controller: controller)
-                  : const ColoredBox(color: Colors.black),
+                  : ColoredBox(color: widget.palette.mediaScrim),
             ),
             Positioned(
-              top: 12,
-              left: 16,
-              right: 16,
+              top: AppSpacing.md,
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
               child: Row(
                 children: [
                   _CircleChromeButton(
+                    palette: widget.palette,
                     icon: Icons.close_rounded,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const Spacer(),
                   if (_previewStickerPng == null)
                     _CircleChromeButton(
+                      palette: widget.palette,
                       icon: Icons.cameraswitch_rounded,
                       onPressed: _switchCamera,
                     ),
@@ -242,20 +246,20 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
             ),
             if (_previewStickerPng == null)
               Positioned(
-                left: 24,
-                right: 24,
-                bottom: 42,
+                left: AppSpacing.xxl,
+                right: AppSpacing.xxl,
+                bottom: AppSpacing.section,
                 child: Column(
                   children: [
                     Text(
                       context.l10n.editorStickerPhotoTitle,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
+                        color: widget.palette.mediaInk,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.xl),
                     GestureDetector(
                       onTap: _isInitializing || _isProcessing
                           ? null
@@ -270,10 +274,10 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                             width: 4,
                           ),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: CircleAvatar(
                             radius: 34,
-                            backgroundColor: Colors.white,
+                            backgroundColor: widget.palette.mediaInk,
                           ),
                         ),
                       ),
@@ -283,20 +287,20 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
               )
             else
               Positioned(
-                left: 24,
-                right: 24,
-                bottom: 42,
+                left: AppSpacing.xxl,
+                right: AppSpacing.xxl,
+                bottom: AppSpacing.section,
                 child: Column(
                   children: [
                     Text(
                       context.l10n.editorStickerPreviewPrompt,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
+                        color: widget.palette.mediaInk,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.xl),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -311,12 +315,12 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                                 },
                           child: Text(context.l10n.editorActionRetake),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         FilledButton(
                           onPressed: _isProcessing ? null : _saveSticker,
                           style: FilledButton.styleFrom(
                             backgroundColor: widget.palette.accent,
-                            foregroundColor: Colors.white,
+                            foregroundColor: widget.palette.onAccent,
                           ),
                           child: Text(context.l10n.editorActionUseSticker),
                         ),
@@ -327,26 +331,26 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
               ),
             if (_errorMessage != null)
               Positioned(
-                left: 24,
-                right: 24,
+                left: AppSpacing.xxl,
+                right: AppSpacing.xxl,
                 top: 96,
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 420),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(18),
+                        color: widget.palette.mediaSurfaceStrong,
+                        borderRadius: AppRadii.xlAll,
                         border: Border.all(
-                          color: Colors.redAccent.withValues(alpha: 0.6),
+                          color: widget.palette.danger.withValues(alpha: 0.6),
                         ),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(AppSpacing.lg),
                         child: Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: widget.palette.mediaInk),
                         ),
                       ),
                     ),
@@ -354,10 +358,10 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                 ),
               ),
             if (_isInitializing || _isProcessing)
-              const Positioned.fill(
+              Positioned.fill(
                 child: ColoredBox(
-                  color: Color(0x33000000),
-                  child: Center(child: CircularProgressIndicator()),
+                  color: widget.palette.mediaScrim,
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
           ],
@@ -388,8 +392,13 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
 }
 
 class _CircleChromeButton extends StatelessWidget {
-  const _CircleChromeButton({required this.icon, required this.onPressed});
+  const _CircleChromeButton({
+    required this.palette,
+    required this.icon,
+    required this.onPressed,
+  });
 
+  final KidPalette palette;
   final IconData icon;
   final VoidCallback onPressed;
 
@@ -397,13 +406,13 @@ class _CircleChromeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.42),
+        color: palette.mediaSurface,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white24),
+        border: Border.all(color: palette.mediaBorder),
       ),
       child: IconButton(
         onPressed: onPressed,
-        icon: Icon(icon, color: Colors.white),
+        icon: Icon(icon, color: palette.mediaInk),
       ),
     );
   }
@@ -426,16 +435,16 @@ class _StickerPreview extends StatelessWidget {
               colors: [
                 palette.accent.withValues(alpha: 0.24),
                 palette.accentSecondary.withValues(alpha: 0.22),
-                Colors.black,
+                palette.mediaScrim,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
         ),
-        CustomPaint(painter: _CheckerPainter()),
+        CustomPaint(painter: _CheckerPainter(palette)),
         Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(AppSpacing.xxxl),
           child: Image.memory(pngBytes, fit: BoxFit.contain),
         ),
       ],
@@ -444,11 +453,15 @@ class _StickerPreview extends StatelessWidget {
 }
 
 class _CheckerPainter extends CustomPainter {
+  const _CheckerPainter(this.palette);
+
+  final KidPalette palette;
+
   @override
   void paint(Canvas canvas, Size size) {
-    const tile = 24.0;
-    final light = Paint()..color = const Color(0x22FFFFFF);
-    final dark = Paint()..color = const Color(0x12000000);
+    const tile = AppSpacing.xxl;
+    final light = Paint()..color = palette.panel.withValues(alpha: 0.14);
+    final dark = Paint()..color = palette.ink.withValues(alpha: 0.07);
 
     for (var y = 0.0; y < size.height; y += tile) {
       for (var x = 0.0; x < size.width; x += tile) {

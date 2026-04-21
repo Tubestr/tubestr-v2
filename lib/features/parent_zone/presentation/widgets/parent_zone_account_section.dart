@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/radii.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../shared_ui/components/private_key_export_card.dart';
 import '../../../../l10n/l10n.dart';
@@ -43,7 +45,12 @@ class ParentZoneAccountSection extends ConsumerWidget {
     final hPad = screenWidth < 600 ? 12.0 : 20.0;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 100),
+      padding: EdgeInsets.fromLTRB(
+        hPad,
+        AppSpacing.md,
+        hPad,
+        AppSpacing.bottomSafe,
+      ),
       children: [
         FrostCard(
           child: Column(
@@ -53,14 +60,14 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 context.l10n.parentProfilePinCardTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentDisplayNameDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: displayNameController,
                 decoration: InputDecoration(
@@ -68,10 +75,10 @@ class ParentZoneAccountSection extends ConsumerWidget {
                   hintText: context.l10n.parentDisplayNameHint,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
                 children: [
                   FilledButton.tonal(
                     onPressed: onSaveDisplayName,
@@ -90,14 +97,14 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 context.l10n.parentPinTitle,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentUpdatePinDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: pinManagementController,
                 obscureText: true,
@@ -108,7 +115,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
                   counterText: '',
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               FilledButton(
                 onPressed: onUpdatePin,
                 child: Text(context.l10n.parentUpdatePin),
@@ -116,7 +123,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,21 +132,21 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 context.l10n.parentDeleteAccountCardTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentDeleteAccountCardDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               _InlineInfo(
                 icon: Icons.delete_forever_rounded,
                 color: palette.danger,
                 title: context.l10n.parentPermanentServerDeletion,
                 detail: context.l10n.parentDeleteAccountDetail,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               FilledButton.tonal(
                 style: FilledButton.styleFrom(
                   foregroundColor: palette.danger,
@@ -159,7 +166,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,14 +175,14 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 context.l10n.parentIdentityBackupTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentIdentityBackupDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.lg),
               _InlineInfo(
                 icon: identity == null
                     ? Icons.error_outline_rounded
@@ -189,13 +196,13 @@ class ParentZoneAccountSection extends ConsumerWidget {
                     : context.l10n.parentPublicAddressReady,
               ),
               if (identity != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: palette.panel.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(16),
+                    color: palette.surfaceDefault,
+                    borderRadius: AppRadii.lgAll,
                     border: Border.all(color: palette.panelBorder),
                   ),
                   child: Column(
@@ -205,7 +212,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
                         context.l10n.parentAddressLabel,
                         style: Theme.of(context).textTheme.labelMedium,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.sm),
                       SelectableText(
                         identity.npub,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -215,7 +222,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 PrivateKeyExportCard(
                   secret: identity.nsec,
                   title: context.l10n.parentRecoveryKey,
@@ -229,7 +236,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,17 +245,17 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 context.l10n.parentPoliciesSupportTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentPoliciesSupportDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
                 children: [
                   OutlinedButton.icon(
                     onPressed: () async {
@@ -276,7 +283,7 @@ class ParentZoneAccountSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         FrostCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,21 +292,21 @@ class ParentZoneAccountSection extends ConsumerWidget {
                 context.l10n.parentResetDeviceTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.parentResetDeviceDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               _InlineInfo(
                 icon: Icons.warning_amber_rounded,
                 color: palette.danger,
                 title: context.l10n.parentCannotUndoDevice,
                 detail: context.l10n.parentResetDeviceWarning,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               FilledButton.tonal(
                 style: FilledButton.styleFrom(
                   foregroundColor: palette.danger,
@@ -341,11 +348,11 @@ class _InlineInfo extends StatelessWidget {
           height: 38,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadii.mdAll,
           ),
-          child: Icon(icon, size: 20, color: color),
+          child: Icon(icon, size: AppIconSize.lg, color: color),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +363,7 @@ class _InlineInfo extends StatelessWidget {
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: AppSpacing.xs),
               Text(detail, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),

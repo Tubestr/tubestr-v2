@@ -199,4 +199,115 @@ void main() {
       expect(report.recipientType, 'group');
     },
   );
+
+  test(
+    'flush with more actions than concurrency removes all (race regression)',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.upsertProfile(
+        id: 'child-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'avatar.png',
+      );
+      await database.setPrimaryGroupForProfile(
+        profileId: 'child-1',
+        mlsGroupId: 'family-group',
+      );
+
+      final store = OfflineActionStore(database: database);
+      final nostr = FakeNostrService()
+        ..blossomServers = const ['https://blossom.example'];
+      final mdk = FakeMdkService();
+      final blossom = FakeBlossomClient(unavailableServer: 'unused');
+      final profileService = ParentProfileService(
+        database: database,
+        nostrService: nostr,
+        offlineActionStore: store,
+      );
+      final processor = OfflineActionProcessor(
+        store: store,
+        identityService: FakeIdentityService(
+          identity: identity,
+          database: database,
+        ),
+        parentProfileService: profileService,
+        videoShareCoordinator: VideoShareCoordinator(
+          database: database,
+          videoApprovalService: VideoApprovalService(
+            database: database,
+            scanService: const ContentScanService(),
+            signalExtractionService: MediaSignalExtractionService(
+              extractSignals: (video) async => MediaSignalExtractionResult(
+                cvLabels: video.cvLabels,
+                faceCount: video.faceCount,
+                loudness: video.loudness,
+              ),
+            ),
+          ),
+          blossomClient: blossom,
+          mdkService: mdk,
+          nostrService: nostr,
+          offlineActionStore: store,
+          shareHistoryService: ShareHistoryService(database: database),
+          managedVideoUploadService: ManagedVideoUploadService(
+            database: database,
+          ),
+        ),
+        likeCoordinator: LikeCoordinator(
+          database: database,
+          mdkService: mdk,
+          nostrService: nostr,
+          offlineActionStore: store,
+        ),
+        reactionCoordinator: ReactionCoordinator(
+          database: database,
+          mdkService: mdk,
+          nostrService: nostr,
+          offlineActionStore: store,
+        ),
+        reportCoordinator: ReportCoordinator(
+          database: database,
+          mdkService: mdk,
+          nostrService: nostr,
+          offlineActionStore: store,
+          safetyHqService: SafetyHqService(
+            database: database,
+            mdkService: mdk,
+            nostrService: nostr,
+            dio: Dio(),
+          ),
+        ),
+        userListSyncService: UserListSyncService(
+          nostrService: nostr,
+          offlineActionStore: store,
+        ),
+        nostrService: nostr,
+      );
+
+      // Enqueue 8 likes (more than _flushConcurrency = 4) with distinct video
+      // IDs so the deduplication step leaves all 8 in place.
+      const actionCount = 8;
+      for (var i = 0; i < actionCount; i++) {
+        await store.enqueue(
+          type: OfflineActionType.sendLike,
+          payload: <String, dynamic>{
+            'video_id': 'remote-video-$i',
+            'child_profile_id': 'child-1',
+            'mls_group_id': 'family-group',
+          },
+        );
+      }
+
+      final flushed = await processor.flush();
+      final remaining = await store.load();
+
+      // Under the old (buggy) code, concurrent markSucceeded calls would
+      // clobber each other's writes, leaving orphaned actions in the store.
+      expect(flushed, actionCount);
+      expect(remaining, isEmpty);
+    },
+  );
 }
