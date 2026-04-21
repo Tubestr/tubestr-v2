@@ -10,6 +10,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mytube/core/constants.dart';
 import 'package:mytube/core/storage/app_database.dart';
 import 'package:mytube/domain/models/blossom_server_list.dart';
+import 'package:mytube/domain/models/mute_list.dart';
 import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/domain/models/relay_entry.dart';
 import 'package:mytube/services/blossom/blossom_client.dart';
@@ -450,6 +451,68 @@ class LoopbackNostrService implements NostrService {
     required Nip01Event giftWrapEvent,
   }) async {
     return giftWrapEvent.content;
+  }
+
+  @override
+  Future<MuteList> loadMuteList() async {
+    return const MuteList(entries: <MuteEntry>[]);
+  }
+
+  @override
+  Future<void> saveMuteList(MuteList list) async {}
+
+  @override
+  Future<PublishEventResult> publishMuteList({
+    required ParentIdentity identity,
+    required List<MuteEntry> entries,
+    List<String>? relays,
+  }) async {
+    if (failPublishes) {
+      throw StateError('Relay offline');
+    }
+    final createdAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final event = Nip01Event(
+      id: _bus.nextEventId(),
+      pubKey: identity.publicKeyHex,
+      createdAt: createdAt,
+      kind: MarmotKinds.muteList,
+      tags: entries
+          .map((entry) => <String>['p', entry.pubkeyHex])
+          .toList(growable: false),
+      content: '',
+      sig: 'sig-${identity.publicKeyHex}',
+    );
+    await _bus.publish(event);
+    return PublishEventResult(
+      eventId: event.id,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        createdAt * 1000,
+        isUtc: true,
+      ),
+    );
+  }
+
+  @override
+  Future<Nip01Event?> fetchMuteListEvent({
+    required String publicKeyHex,
+    List<String>? relays,
+  }) async {
+    final events = _bus.query(
+      Filter(authors: [publicKeyHex], kinds: [MarmotKinds.muteList], limit: 1),
+    );
+    return events.isEmpty ? null : events.first;
+  }
+
+  @override
+  Future<MuteList> parseMuteListEventFor({
+    required ParentIdentity identity,
+    required Nip01Event event,
+  }) async {
+    final entries = event.tags
+        .where((tag) => tag.isNotEmpty && tag.first == 'p' && tag.length > 1)
+        .map((tag) => MuteEntry(pubkeyHex: tag[1]))
+        .toList(growable: false);
+    return MuteList(entries: entries);
   }
 
   List<List<String>> _decodeTags(String tagsJson) {
@@ -1076,6 +1139,7 @@ class FamilyAppHarness {
       reactionCoordinator: reactionCoordinator,
       reportCoordinator: reportCoordinator,
       userListSyncService: userListSyncService,
+      nostrService: nostr,
     );
     return FamilyAppHarness._(
       identity: identity,

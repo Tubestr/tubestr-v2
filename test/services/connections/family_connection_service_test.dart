@@ -336,6 +336,9 @@ void main() {
         invitePayload: payload,
       );
 
+      // Simulate the MLS group existing after the first connection
+      mdk.groupSummariesResult = [mdk.createGroupResult!.group];
+
       await expectLater(
         service.connectFromInvite(identity: identity, invitePayload: payload),
         throwsA(isA<FamilyConnectionAlreadyPendingException>()),

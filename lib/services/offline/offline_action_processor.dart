@@ -62,7 +62,8 @@ class OfflineActionProcessor {
     }
 
     final limit = _flushConcurrency.clamp(1, actions.length);
-    var flushed = 0;
+    final succeededIds = <String>[];
+    final failedActions = <(String, Object)>[];
     var next = 0;
 
     Future<void> worker() async {
@@ -77,16 +78,24 @@ class OfflineActionProcessor {
             preloadedRelays: preloadedRelays,
             preloadedBlossomServers: preloadedBlossomServers,
           );
-          await _store.markSucceeded(action.id);
-          flushed += 1;
+          succeededIds.add(action.id);
         } catch (error) {
-          await _store.markFailed(actionId: action.id, error: error);
+          failedActions.add((action.id, error));
         }
       }
     }
 
     await Future.wait(List.generate(limit, (_) => worker()));
-    return flushed;
+
+    // Batch process results sequentially to avoid race conditions
+    for (final id in succeededIds) {
+      await _store.markSucceeded(id);
+    }
+    for (final (id, error) in failedActions) {
+      await _store.markFailed(actionId: id, error: error);
+    }
+
+    return succeededIds.length;
   }
 
   static const int _flushConcurrency = 4;

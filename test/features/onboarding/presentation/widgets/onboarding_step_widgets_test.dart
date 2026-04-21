@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytube/core/theme/theme_descriptor.dart';
 import 'package:mytube/features/onboarding/presentation/widgets/onboarding_step_widgets.dart';
+import 'package:mytube/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('age confirmation label toggles checkbox', (tester) async {
@@ -11,6 +12,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: StatefulBuilder(
             builder: (context, setState) {
