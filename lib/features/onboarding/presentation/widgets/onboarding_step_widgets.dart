@@ -388,7 +388,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: AppSpacing.section),
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -617,8 +617,8 @@ class OnboardingParentKeyStep extends StatelessWidget {
               if (busy)
                 Column(
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: AppSpacing.lg),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: AppSpacing.lg),
                     Text(context.l10n.onboardingPreparingKey),
                   ],
                 )
@@ -673,7 +673,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
               ),
               child: Icon(
                 Icons.restore_rounded,
-                size: 36,
+                size: AppIconSize.empty,
                 color: palette.accent,
               ),
             ),
@@ -771,7 +771,7 @@ class OnboardingRecoveryStep extends StatelessWidget {
                         succeeded == true
                             ? Icons.verified_rounded
                             : Icons.warning_amber_rounded,
-                        size: 42,
+                        size: AppIconSize.hero,
                         color: stateColor,
                       ),
               ),
@@ -872,7 +872,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
       child: ListView(
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: AppSpacing.section),
           Text(
             context.l10n.onboardingWhoFamily,
             style: Theme.of(
@@ -992,7 +992,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
               child: Text(context.l10n.onboardingComplete),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: AppSpacing.section),
         ],
       ),
     );
@@ -1032,7 +1032,7 @@ class OnboardingPermissionsStep extends StatelessWidget {
               ),
               child: Icon(
                 Icons.perm_camera_mic_rounded,
-                size: 40,
+                size: AppIconSize.hero,
                 color: palette.accent,
               ),
             ),

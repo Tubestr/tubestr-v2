@@ -151,7 +151,7 @@ class HomeFeedContent extends ConsumerWidget {
                                             fontWeight: FontWeight.w700,
                                           ),
                                     ),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: AppSpacing.sm),
                                     Text(
                                       context.l10n.homeLibraryError,
                                       style: Theme.of(context)
@@ -164,7 +164,7 @@ class HomeFeedContent extends ConsumerWidget {
                               ),
                             ),
 
-                            const SizedBox(height: 24),
+                            const SizedBox(height: AppSpacing.xxl),
 
                             // From Friends & Family
                             if (remoteShares.isNotEmpty) ...[
@@ -172,7 +172,7 @@ class HomeFeedContent extends ConsumerWidget {
                                 items: remoteShares,
                                 palette: palette,
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: AppSpacing.xxl),
                             ],
 
                             // Add Friends CTA
@@ -366,9 +366,9 @@ class _WelcomeEmptyState extends ConsumerWidget {
           detail: l10n.homeStartSubtitle,
           emphasizeMotion: true,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.lg),
         _FirstVideoPanel(palette: palette),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.lg),
 
         SizedBox(
           width: double.infinity,
@@ -414,9 +414,9 @@ class _FreshHomeState extends ConsumerWidget {
           emphasizeMotion: true,
           compactTitle: true,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.lg),
         _FirstVideoPanel(palette: palette),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.lg),
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
@@ -520,7 +520,7 @@ class _HomeSceneHero extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     title,
                     style:
@@ -604,7 +604,7 @@ class _FirstVideoPanel extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     Text(
                       context.l10n.homeCapturePrompt,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -748,55 +748,59 @@ class _AddFriendsCta extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: () {
-        ref.read(pendingParentZoneSectionProvider.notifier).state =
-            'familySpaces';
-        ref.read(appShellTabIndexProvider.notifier).state = 3;
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: palette.panelBorder)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: palette.accent.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+    return Semantics(
+      button: true,
+      label: context.l10n.homeConnectWithFriends,
+      child: GestureDetector(
+        onTap: () {
+          ref.read(pendingParentZoneSectionProvider.notifier).state =
+              'familySpaces';
+          ref.read(appShellTabIndexProvider.notifier).state = 3;
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: palette.panelBorder)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: palette.accent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person_add_rounded,
+                  color: palette.accent,
+                  size: AppIconSize.xl,
+                ),
               ),
-              child: Icon(
-                Icons.person_add_rounded,
-                color: palette.accent,
-                size: AppIconSize.xl,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.homeConnectWithFriends,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: palette.accent,
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.homeConnectWithFriends,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: palette.accent,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  Text(
-                    context.l10n.homeShareTrustedFamilies,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
-                  ),
-                ],
+                    Text(
+                      context.l10n.homeShareTrustedFamilies,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: palette.mutedInk),
-          ],
+              Icon(Icons.chevron_right_rounded, color: palette.mutedInk),
+            ],
+          ),
         ),
       ),
     );
@@ -820,7 +824,7 @@ class _SharedVideosSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(title: context.l10n.homeFromFriendsFamily),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         for (final entry in grouped.entries) ...[
           _SharedGroupHeader(
             mlsGroupId: entry.key,
@@ -832,7 +836,8 @@ class _SharedVideosSection extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: entry.value.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(width: AppSpacing.md),
               itemBuilder: (context, index) {
                 return _SharedVideoTile(
                   item: entry.value[index],
@@ -841,7 +846,7 @@ class _SharedVideosSection extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ],
     );
@@ -900,100 +905,104 @@ class _SharedVideoTile extends ConsumerWidget {
         ref.watch(videoLikeCountProvider(item.videoId)).valueOrNull ?? 0;
     final reactions = ref.watch(videoReactionSummariesProvider(item.videoId));
 
-    return SizedBox(
-      width: 196,
-      child: GestureDetector(
-        onTap: () => context.push('/player/remote/${item.remoteShareId}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: AppRadii.xxlAll,
-                      child: hasThumb
-                          ? MediaThumbnailFrame(
-                              file: thumbnailFile!,
-                              borderRadius: AppRadii.xlAll,
-                              background: LinearGradient(
-                                colors: [
-                                  palette.mediaSurfaceStrong,
-                                  palette.mediaScrim,
-                                ],
-                              ),
-                              padding: const EdgeInsets.all(AppSpacing.sm),
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
+    return Semantics(
+      button: true,
+      label: '${item.title}, $statusLabel',
+      child: SizedBox(
+        width: 196,
+        child: GestureDetector(
+          onTap: () => context.push('/player/remote/${item.remoteShareId}'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: AppRadii.xxlAll,
+                        child: hasThumb
+                            ? MediaThumbnailFrame(
+                                file: thumbnailFile!,
+                                borderRadius: AppRadii.xlAll,
+                                background: LinearGradient(
                                   colors: [
-                                    palette.accentSecondary.withValues(
-                                      alpha: 0.28,
-                                    ),
-                                    palette.accent.withValues(alpha: 0.20),
+                                    palette.mediaSurfaceStrong,
+                                    palette.mediaScrim,
                                   ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                                ),
+                                padding: const EdgeInsets.all(AppSpacing.sm),
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      palette.accentSecondary.withValues(
+                                        alpha: 0.28,
+                                      ),
+                                      palette.accent.withValues(alpha: 0.20),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Icon(
+                                  item.isDownloaded
+                                      ? Icons.play_circle_fill_rounded
+                                      : Icons.cloud_download_rounded,
+                                  size: AppIconSize.hero,
+                                  color: palette.accent,
                                 ),
                               ),
-                              child: Icon(
-                                item.isDownloaded
-                                    ? Icons.play_circle_fill_rounded
-                                    : Icons.cloud_download_rounded,
-                                size: AppIconSize.hero,
-                                color: palette.accent,
-                              ),
-                            ),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    top: AppSpacing.sm,
-                    right: AppSpacing.sm,
-                    child: _StatusBadge(
-                      label: statusLabel,
-                      color: item.isDownloaded
-                          ? palette.success
-                          : palette.accent,
+                    Positioned(
+                      top: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      child: _StatusBadge(
+                        label: statusLabel,
+                        color: item.isDownloaded
+                            ? palette.success
+                            : palette.accent,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              item.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            _RemoteAttributionLine(item: item, palette: palette),
-            if (likeCount > 0 || reactions.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: AppSpacing.xs),
-              Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  if (likeCount > 0)
-                    FeedMetricPill(
-                      palette: palette,
-                      label: context.l10n.homeLikeCount(likeCount),
-                      icon: Icons.favorite_rounded,
-                      iconColor: palette.danger,
-                    ),
-                  for (final reaction in reactions.take(2))
-                    FeedMetricPill(
-                      palette: palette,
-                      label: '${reaction.emoji} ${reaction.count}',
-                    ),
-                ],
-              ),
+              _RemoteAttributionLine(item: item, palette: palette),
+              if (likeCount > 0 || reactions.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    if (likeCount > 0)
+                      FeedMetricPill(
+                        palette: palette,
+                        label: context.l10n.homeLikeCount(likeCount),
+                        icon: Icons.favorite_rounded,
+                        iconColor: palette.danger,
+                      ),
+                    for (final reaction in reactions.take(2))
+                      FeedMetricPill(
+                        palette: palette,
+                        label: '${reaction.emoji} ${reaction.count}',
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

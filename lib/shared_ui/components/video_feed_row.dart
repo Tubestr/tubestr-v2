@@ -80,125 +80,133 @@ class LocalVideoTile extends ConsumerWidget {
         ? ref.watch(videoReactionSummariesProvider(video.id))
         : const [];
 
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 140,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 148,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: AppRadii.xlAll,
-                      child: hasThumb
-                          ? MediaThumbnailFrame(
-                              file: thumbFile!,
-                              borderRadius: AppRadii.xlAll,
-                              background: LinearGradient(
-                                colors: [
-                                  palette.accentMuted,
-                                  palette.accentSecondaryMuted,
-                                  palette.mediaSurfaceStrong,
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              padding: const EdgeInsets.all(AppSpacing.xs),
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
+    final statusLabel = isPending
+        ? context.l10n.approvalPending
+        : context.l10n.homeReady;
+
+    return Semantics(
+      button: true,
+      label: '${video.title}, $statusLabel',
+      child: GestureDetector(
+        onTap: onTap,
+        child: SizedBox(
+          width: 140,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 148,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: AppRadii.xlAll,
+                        child: hasThumb
+                            ? MediaThumbnailFrame(
+                                file: thumbFile!,
+                                borderRadius: AppRadii.xlAll,
+                                background: LinearGradient(
                                   colors: [
-                                    palette.accentMedium,
-                                    palette.accentSecondaryMedium,
+                                    palette.accentMuted,
+                                    palette.accentSecondaryMuted,
+                                    palette.mediaSurfaceStrong,
                                   ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                                padding: const EdgeInsets.all(AppSpacing.xs),
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      palette.accentMedium,
+                                      palette.accentSecondaryMedium,
+                                    ],
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  size: AppIconSize.empty,
+                                  color: palette.accent,
                                 ),
                               ),
-                              child: Icon(
-                                Icons.play_arrow_rounded,
-                                size: AppIconSize.empty,
-                                color: palette.accent,
-                              ),
-                            ),
+                      ),
                     ),
-                  ),
-                  if (isPending)
-                    Positioned(
-                      top: AppSpacing.xs,
-                      left: AppSpacing.xs,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.xs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: palette.warning,
-                          borderRadius: AppRadii.xsAll,
-                        ),
-                        child: Text(
-                          context.l10n.approvalPending,
-                          style: TextStyle(
-                            fontSize: AppTextSize.micro,
-                            color: palette.ink,
-                            fontWeight: FontWeight.w700,
+                    if (isPending)
+                      Positioned(
+                        top: AppSpacing.xs,
+                        left: AppSpacing.xs,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: AppSpacing.xs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: palette.warning,
+                            borderRadius: AppRadii.xsAll,
+                          ),
+                          child: Text(
+                            context.l10n.approvalPending,
+                            style: TextStyle(
+                              fontSize: AppTextSize.micro,
+                              color: palette.ink,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  if (video.liked)
-                    Positioned(
-                      top: AppSpacing.xs,
-                      right: AppSpacing.xs,
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: palette.danger.withValues(alpha: 0.92),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.favorite_rounded,
-                          size: AppIconSize.sm,
-                          color: palette.onAccent,
+                    if (video.liked)
+                      Positioned(
+                        top: AppSpacing.xs,
+                        right: AppSpacing.xs,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: palette.danger.withValues(alpha: 0.92),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.favorite_rounded,
+                            size: AppIconSize.sm,
+                            color: palette.onAccent,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              video.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            if (showReactions && (likeCount > 0 || reactions.isNotEmpty)) ...[
               const SizedBox(height: AppSpacing.xs),
-              Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  if (likeCount > 0)
-                    FeedMetricPill(
-                      palette: palette,
-                      label: '$likeCount',
-                      icon: Icons.favorite_rounded,
-                      iconColor: palette.danger,
-                    ),
-                  for (final reaction in reactions.take(2))
-                    FeedMetricPill(
-                      palette: palette,
-                      label: '${reaction.emoji} ${reaction.count}',
-                    ),
-                ],
+              Text(
+                video.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
+              if (showReactions && (likeCount > 0 || reactions.isNotEmpty)) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    if (likeCount > 0)
+                      FeedMetricPill(
+                        palette: palette,
+                        label: '$likeCount',
+                        icon: Icons.favorite_rounded,
+                        iconColor: palette.danger,
+                      ),
+                    for (final reaction in reactions.take(2))
+                      FeedMetricPill(
+                        palette: palette,
+                        label: '${reaction.emoji} ${reaction.count}',
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

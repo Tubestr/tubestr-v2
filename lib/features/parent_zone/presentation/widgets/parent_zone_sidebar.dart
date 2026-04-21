@@ -7,6 +7,7 @@ import '../../../../core/theme/theme_descriptor.dart';
 import '../models/parent_zone_models.dart';
 import '../../../../l10n/app_localizations_x.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../../shared_ui/motion/app_motion.dart';
 
 class ParentZoneSidebar extends StatelessWidget {
   const ParentZoneSidebar({
@@ -149,8 +150,8 @@ class _NavItem extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
+        duration: AppMotion.duration(context, AppMotion.stateChange),
+        curve: AppMotion.easeOutQuint,
         child: Material(
           color: isActive
               ? palette.ink.withValues(alpha: 0.08)
@@ -167,8 +168,11 @@ class _NavItem extends StatelessWidget {
               child: Row(
                 children: [
                   AnimatedScale(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
+                    duration: AppMotion.duration(
+                      context,
+                      AppMotion.stateChange,
+                    ),
+                    curve: AppMotion.easeOutQuint,
                     scale: isActive ? 1.05 : 1,
                     child: Icon(
                       section.icon,
@@ -178,8 +182,11 @@ class _NavItem extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpacing.lg),
                   AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
+                    duration: AppMotion.duration(
+                      context,
+                      AppMotion.stateChange,
+                    ),
+                    curve: AppMotion.easeOutQuint,
                     style: TextStyle(
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                       color: palette.ink,
