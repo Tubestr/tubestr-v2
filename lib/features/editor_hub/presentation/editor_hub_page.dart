@@ -16,6 +16,7 @@ import '../../../shared_ui/components/video_feed_row.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../editor/domain/editor_source.dart';
 import '../../editor/presentation/editor_detail_page.dart';
+import '../../../l10n/l10n.dart';
 
 /// Editor tab content — gallery of videos available for editing.
 class EditorHubContent extends ConsumerWidget {
@@ -56,7 +57,7 @@ class EditorHubContent extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Edit Studio needs another moment',
+                        context.l10n.editorHubNeedsMoment,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
@@ -144,7 +145,7 @@ class _HasClipsHeader extends ConsumerWidget {
     return Row(
       children: [
         Text(
-          'Edit Studio',
+          context.l10n.editorHubTitle,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             color: palette.accent,
             fontWeight: FontWeight.w800,
@@ -157,7 +158,7 @@ class _HasClipsHeader extends ConsumerWidget {
             ref.read(appShellTabIndexProvider.notifier).state = 1;
           },
           icon: const Icon(Icons.videocam_rounded),
-          tooltip: 'Capture',
+          tooltip: context.l10n.tabCapture,
         ),
       ],
     );
@@ -176,7 +177,7 @@ class _StudioHero extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Edit Studio',
+          context.l10n.editorHubTitle,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             color: palette.accent,
             fontWeight: FontWeight.w800,
@@ -184,7 +185,7 @@ class _StudioHero extends ConsumerWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Capture something first, then bring it here for stickers, music, text, and remixes.',
+          context.l10n.editorHubEmptyDetail,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
@@ -199,7 +200,7 @@ class _StudioHero extends ConsumerWidget {
                   ref.read(appShellTabIndexProvider.notifier).state = 1;
                 },
                 icon: const Icon(Icons.videocam_rounded),
-                label: const Text('Capture First'),
+                label: Text(context.l10n.editorHubCaptureFirst),
               ),
             ),
             const SizedBox(width: 10),
@@ -207,7 +208,7 @@ class _StudioHero extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: null,
                 icon: const Icon(Icons.auto_awesome_rounded),
-                label: const Text('Need a clip'),
+                label: Text(context.l10n.editorHubEmptyTitle),
               ),
             ),
           ],
@@ -244,14 +245,14 @@ class _EmptyState extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Nothing to remix yet',
+          context.l10n.editorHubNothingToRemix,
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
         Text(
-          'Record something in Capture first, then come back here to add music, stickers, text, and trims.',
+          context.l10n.editorHubRecordFirstDetail,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
@@ -263,17 +264,17 @@ class _EmptyState extends ConsumerWidget {
           children: [
             _StudioPill(
               icon: Icons.cut_rounded,
-              label: 'Trim',
+              label: context.l10n.editorToolTrim,
               palette: palette,
             ),
             _StudioPill(
               icon: Icons.music_note_rounded,
-              label: 'Music',
+              label: context.l10n.editorHubMusic,
               palette: palette,
             ),
             _StudioPill(
               icon: Icons.emoji_emotions_outlined,
-              label: 'Stickers',
+              label: context.l10n.editorToolStickers,
               palette: palette,
             ),
           ],
@@ -283,7 +284,7 @@ class _EmptyState extends ConsumerWidget {
           onPressed: () =>
               ref.read(appShellTabIndexProvider.notifier).state = 1,
           icon: const Icon(Icons.videocam_rounded),
-          label: const Text('Open Capture'),
+          label: Text(context.l10n.homeOpenCapture),
         ),
       ],
     );
@@ -344,7 +345,7 @@ class _SharedVideosSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'From Friends & Family',
+          context.l10n.homeFromFriendsFamily,
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -395,7 +396,7 @@ class _SharedGroupHeader extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
-        'From $label',
+        context.l10n.editorHubFromLabel(label),
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: palette.mutedInk,
           fontWeight: FontWeight.w700,

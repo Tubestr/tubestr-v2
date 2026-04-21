@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../../core/di/providers.dart';
 import '../models/launch_diagnostics.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
+import '../../../../l10n/l10n.dart';
 
 final _appPackageInfoProvider = FutureProvider<PackageInfo>((ref) {
   return PackageInfo.fromPlatform();
@@ -40,6 +41,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
       shareHistory: shareHistory,
       reports: reports,
       remoteShares: remoteShares,
+      l10n: context.l10n,
     );
     final recentHistory = diagnostics.recentHistory.reversed
         .take(10)
@@ -61,7 +63,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Current State',
+                context.l10n.parentDiagnosticsCurrentState,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -77,19 +79,33 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     ? palette.warning
                     : palette.success,
                 title: diagnostics.refreshInFlight
-                    ? 'Refresh in flight'
-                    : 'Generation ${diagnostics.refreshGeneration}',
-                detail:
-                    'Trigger ${diagnostics.activeRefreshTrigger ?? diagnostics.lastRefreshTrigger ?? 'manual'} · ${diagnostics.activeSubscriptions.length} active subscription(s) · ${diagnostics.trackedGroupNostrIds.length} tracked group(s)',
+                    ? context.l10n.parentDiagnosticsRefreshInFlight
+                    : context.l10n.parentDiagnosticsGeneration(
+                        diagnostics.refreshGeneration,
+                      ),
+                detail: context.l10n.parentDiagnosticsRefreshTriggerDetail(
+                  diagnostics.activeRefreshTrigger ??
+                      diagnostics.lastRefreshTrigger ??
+                      'manual',
+                  diagnostics.activeSubscriptions.length,
+                  diagnostics.trackedGroupNostrIds.length,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Last refresh ${_formatTimestamp(diagnostics.lastRefreshCompletedAt)}',
+                context.l10n.parentDiagnosticsLastRefresh(
+                  _formatTimestamp(context, diagnostics.lastRefreshCompletedAt),
+                ),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 4),
               Text(
-                'Requests ${diagnostics.refreshRequestCount} · Coalesced ${diagnostics.coalescedRefreshRequestCount} · Stream errors ${diagnostics.subscriptionErrorCount} · Unsubscribe failures ${diagnostics.unsubscribeFailureCount}',
+                context.l10n.parentDiagnosticsStats(
+                  diagnostics.refreshRequestCount,
+                  diagnostics.coalescedRefreshRequestCount,
+                  diagnostics.subscriptionErrorCount,
+                  diagnostics.unsubscribeFailureCount,
+                ),
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -97,7 +113,9 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
               if (diagnostics.lastRefreshError != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Last error: ${diagnostics.lastRefreshError}',
+                  context.l10n.parentDiagnosticsLastError(
+                    '${diagnostics.lastRefreshError}',
+                  ),
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: palette.danger),
@@ -113,30 +131,32 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                       await HapticFeedback.selectionClick();
                       await onRefreshSubscriptions();
                     },
-                    child: const Text('Refresh subscriptions'),
+                    child: Text(
+                      context.l10n.parentDiagnosticsRefreshSubscriptions,
+                    ),
                   ),
                   FilledButton.tonal(
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
+                      final copiedMessage =
+                          context.l10n.parentDiagnosticsCopied;
                       await Clipboard.setData(ClipboardData(text: dump));
                       if (!context.mounted) {
                         return;
                       }
                       await HapticFeedback.lightImpact();
                       messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Copied relay sync diagnostics'),
-                        ),
+                        SnackBar(content: Text(copiedMessage)),
                       );
                     },
-                    child: const Text('Copy debug dump'),
+                    child: Text(context.l10n.parentDiagnosticsCopyDebugDump),
                   ),
                   OutlinedButton(
                     onPressed: () {
                       HapticFeedback.selectionClick();
                       onRefreshPanel();
                     },
-                    child: const Text('Refresh page'),
+                    child: Text(context.l10n.parentDiagnosticsRefreshPage),
                   ),
                 ],
               ),
@@ -148,29 +168,31 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('App Build', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                context.l10n.parentDiagnosticsAppBuild,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 12),
               packageInfoAsync.when(
                 data: (packageInfo) => _InlineStatus(
                   icon: Icons.info_outline_rounded,
                   color: palette.accent,
-                  title: _formatAppVersion(packageInfo),
+                  title: _formatAppVersion(context, packageInfo),
                   detail: packageInfo.packageName.isEmpty
-                      ? 'Package identifier unavailable on this platform.'
+                      ? context.l10n.parentDiagnosticsPackageUnavailable
                       : packageInfo.packageName,
                 ),
                 loading: () => _InlineStatus(
                   icon: Icons.hourglass_empty_rounded,
                   color: palette.accent,
-                  title: 'Reading app build',
-                  detail: 'Version and build number are loading.',
+                  title: context.l10n.parentDiagnosticsReadingBuild,
+                  detail: context.l10n.parentDiagnosticsVersionLoading,
                 ),
                 error: (_, _) => _InlineStatus(
                   icon: Icons.warning_amber_rounded,
                   color: palette.warning,
-                  title: 'App build unavailable',
-                  detail:
-                      'This platform did not return version and build metadata.',
+                  title: context.l10n.parentDiagnosticsBuildUnavailable,
+                  detail: context.l10n.parentDiagnosticsBuildUnavailableDetail,
                 ),
               ),
             ],
@@ -182,7 +204,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Launch Triage',
+                context.l10n.parentDiagnosticsLaunchTriage,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -194,11 +216,18 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     ? palette.warning
                     : palette.success,
                 title: launchSnapshot.hasIssues
-                    ? '${launchSnapshot.totalIssueCount} launch issue(s) need attention'
-                    : 'No queued launch issues right now',
+                    ? context.l10n.parentDiagnosticsLaunchIssuesNeedAttention(
+                        launchSnapshot.totalIssueCount,
+                      )
+                    : context.l10n.parentDiagnosticsNoLaunchIssues,
                 detail: launchSnapshot.hasIssues
-                    ? '${launchSnapshot.queuedActions.length} queued action(s) · ${launchSnapshot.shareIssues.length} share issue(s) · ${launchSnapshot.reportIssues.length} report issue(s) · ${launchSnapshot.downloadIssues.length} download issue(s)'
-                    : 'Shares, reports, and remote downloads look clear from this device.',
+                    ? context.l10n.parentDiagnosticsLaunchDetail(
+                        launchSnapshot.queuedActions.length,
+                        launchSnapshot.shareIssues.length,
+                        launchSnapshot.reportIssues.length,
+                        launchSnapshot.downloadIssues.length,
+                      )
+                    : context.l10n.parentDiagnosticsClear,
               ),
               if (launchSnapshot.actionsByType.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -220,13 +249,13 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Active Subscriptions',
+                context.l10n.parentDiagnosticsActiveSubscriptions,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
               if (diagnostics.activeSubscriptions.isEmpty)
                 Text(
-                  'No relay subscriptions are active right now.',
+                  context.l10n.parentDiagnosticsNoActiveSubscriptions,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -249,26 +278,29 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Delivery Issues',
+                context.l10n.parentDiagnosticsDeliveryIssues,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
               if (!launchSnapshot.hasIssues)
                 Text(
-                  'Nothing is waiting for retry from shares, reports, or remote downloads.',
+                  context.l10n.parentDiagnosticsNoRetriesWaiting,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                 )
               else ...[
                 if (launchSnapshot.shareIssues.isNotEmpty) ...[
-                  Text('Shares', style: Theme.of(context).textTheme.titleSmall),
+                  Text(
+                    context.l10n.parentDiagnosticsShares,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
                   const SizedBox(height: 8),
                   for (final entry in launchSnapshot.shareIssues)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        '${entry.title} · ${describeShareStatus(entry.status)}${entry.error == null || entry.error!.isEmpty ? '' : ' · ${entry.error}'}',
+                        '${entry.title} · ${describeShareStatus(entry.status, context.l10n)}${entry.error == null || entry.error!.isEmpty ? '' : ' · ${entry.error}'}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -277,7 +309,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                   if (launchSnapshot.shareIssues.isNotEmpty)
                     const SizedBox(height: 8),
                   Text(
-                    'Reports',
+                    context.l10n.parentDiagnosticsReportsSection,
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
@@ -285,7 +317,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        '${report.reason} · ${describeReportStatus(report.status)}',
+                        '${describeReportReason(report.reason, context.l10n)} · ${describeReportStatus(report.status, context.l10n)}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -295,7 +327,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                       launchSnapshot.reportIssues.isNotEmpty)
                     const SizedBox(height: 8),
                   Text(
-                    'Remote downloads',
+                    context.l10n.parentDiagnosticsRemoteDownloadsSection,
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
@@ -303,7 +335,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        '${share.title} · ${summarizeDownloadError(share.downloadError)}',
+                        '${share.title} · ${summarizeDownloadError(share.downloadError, context.l10n)}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -318,13 +350,13 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Recent History',
+                context.l10n.parentDiagnosticsRecentHistory,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
               if (recentHistory.isEmpty)
                 Text(
-                  'No control-plane activity captured yet.',
+                  context.l10n.parentDiagnosticsNoHistory,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -346,21 +378,21 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
   }
 }
 
-String _formatTimestamp(DateTime? value) {
+String _formatTimestamp(BuildContext context, DateTime? value) {
   if (value == null) {
-    return 'has not completed yet';
+    return context.l10n.parentDiagnosticsNotCompleted;
   }
-  return 'completed ${value.toLocal()}';
+  return context.l10n.parentDiagnosticsCompleted('${value.toLocal()}');
 }
 
-String _formatAppVersion(PackageInfo packageInfo) {
+String _formatAppVersion(BuildContext context, PackageInfo packageInfo) {
   final version = packageInfo.version.trim().isEmpty
-      ? 'unknown version'
+      ? context.l10n.parentDiagnosticsUnknownVersion
       : packageInfo.version.trim();
   final buildNumber = packageInfo.buildNumber.trim().isEmpty
-      ? 'unknown build'
+      ? context.l10n.parentDiagnosticsUnknownBuild
       : packageInfo.buildNumber.trim();
-  return 'Version $version · Build $buildNumber';
+  return context.l10n.parentDiagnosticsVersionBuild(version, buildNumber);
 }
 
 class _InlineStatus extends StatelessWidget {

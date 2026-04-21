@@ -1,51 +1,51 @@
 import 'package:flutter/material.dart';
 
-enum ReportFeeling {
-  uncomfortable('😕', 'Feels Weird', 'inappropriate', 1),
-  sad('😢', 'Makes Me Sad', 'harassment', 1),
-  confused('🤔', 'Confusing', 'inappropriate', 2),
-  scared('😨', 'Scary', 'unsafe', 2),
-  angry('😠', 'Really Bad', 'illegal', 3);
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n.dart';
 
-  const ReportFeeling(this.emoji, this.label, this.reason, this.minimumLevel);
+enum ReportFeeling {
+  uncomfortable('😕', 'inappropriate', 1),
+  sad('😢', 'harassment', 1),
+  confused('🤔', 'inappropriate', 2),
+  scared('😨', 'unsafe', 2),
+  angry('😠', 'illegal', 3);
+
+  const ReportFeeling(this.emoji, this.reason, this.minimumLevel);
 
   final String emoji;
-  final String label;
   final String reason;
   final int minimumLevel;
+
+  String localizedLabel(AppLocalizations l10n) => switch (this) {
+    ReportFeeling.uncomfortable => l10n.reportFeelingUncomfortable,
+    ReportFeeling.sad => l10n.reportFeelingSad,
+    ReportFeeling.confused => l10n.reportFeelingConfused,
+    ReportFeeling.scared => l10n.reportFeelingScared,
+    ReportFeeling.angry => l10n.reportFeelingAngry,
+  };
 }
 
 enum ReportActionOption {
-  tellThem(
-    icon: Icons.pan_tool_alt_rounded,
-    title: 'Just Tell Them',
-    subtitle: 'Note it for yourself.',
-    level: 1,
-  ),
-  hideVideos(
-    icon: Icons.visibility_off_rounded,
-    title: 'Hide Their Videos',
-    subtitle: 'Let your parent know privately.',
-    level: 2,
-  ),
-  blockThem(
-    icon: Icons.gpp_bad_rounded,
-    title: 'Block Them',
-    subtitle: 'Alert both families.',
-    level: 3,
-  );
+  tellThem(icon: Icons.pan_tool_alt_rounded, level: 1),
+  hideVideos(icon: Icons.visibility_off_rounded, level: 2),
+  blockThem(icon: Icons.gpp_bad_rounded, level: 3);
 
-  const ReportActionOption({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.level,
-  });
+  const ReportActionOption({required this.icon, required this.level});
 
   final IconData icon;
-  final String title;
-  final String subtitle;
   final int level;
+
+  String localizedTitle(AppLocalizations l10n) => switch (this) {
+    ReportActionOption.tellThem => l10n.reportActionTell,
+    ReportActionOption.hideVideos => l10n.reportActionHide,
+    ReportActionOption.blockThem => l10n.reportActionBlock,
+  };
+
+  String localizedSubtitle(AppLocalizations l10n) => switch (this) {
+    ReportActionOption.tellThem => l10n.reportActionTellSubtitle,
+    ReportActionOption.hideVideos => l10n.reportActionHideSubtitle,
+    ReportActionOption.blockThem => l10n.reportActionBlockSubtitle,
+  };
 }
 
 class FeelingReportSubmission {
@@ -85,7 +85,28 @@ class FeelingReportSubmission {
 
   String get reason => feeling.reason;
 
-  String get note => '${feeling.label} · ${action.title}';
+  String get note => '${feeling.reason} · ${action.name}';
+
+  String localizedDestinationLabel(AppLocalizations l10n) => switch (level) {
+    1 => l10n.reportDestinationLocal,
+    2 => l10n.reportDestinationParent,
+    _ => l10n.reportDestinationFamily,
+  };
+
+  String localizedLevelLabel(AppLocalizations l10n) => switch (level) {
+    1 => l10n.reportLevelNoted,
+    2 => l10n.reportLevelParentHelp,
+    _ => l10n.reportLevelFamilyAlert,
+  };
+
+  String localizedHelperText(AppLocalizations l10n) => switch (level) {
+    1 => l10n.reportLevelOneExplanation,
+    2 => l10n.reportLevelTwoExplanation,
+    _ => l10n.reportLevelThreeExplanation,
+  };
+
+  String localizedNote(AppLocalizations l10n) =>
+      '${feeling.localizedLabel(l10n)} · ${action.localizedTitle(l10n)}';
 }
 
 class FeelingReportSheet extends StatefulWidget {
@@ -275,7 +296,7 @@ class _FeelingStep extends StatelessWidget {
         const Text('🎬', style: TextStyle(fontSize: 56)),
         const SizedBox(height: 12),
         Text(
-          'How does this video make you feel?',
+          context.l10n.reportFeelingPrompt,
           style: theme.textTheme.headlineSmall?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w800,
@@ -335,7 +356,7 @@ class _ActionStep extends StatelessWidget {
               Text(feeling.emoji, style: const TextStyle(fontSize: 48)),
               const SizedBox(height: 8),
               Text(
-                feeling.label,
+                feeling.localizedLabel(context.l10n),
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -346,7 +367,7 @@ class _ActionStep extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'What should we do?',
+          context.l10n.reportActionPrompt,
           style: theme.textTheme.titleLarge?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w800,
@@ -362,7 +383,10 @@ class _ActionStep extends StatelessWidget {
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
-          child: FilledButton(onPressed: onNext, child: const Text('Next')),
+          child: FilledButton(
+            onPressed: onNext,
+            child: Text(context.l10n.actionNext),
+          ),
         ),
       ],
     );
@@ -403,7 +427,7 @@ class _ConfirmStep extends StatelessWidget {
         Text(feeling.emoji, style: const TextStyle(fontSize: 64)),
         const SizedBox(height: 12),
         Text(
-          'Ready to send?',
+          context.l10n.reportConfirmPrompt,
           style: theme.textTheme.headlineSmall?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w800,
@@ -411,7 +435,7 @@ class _ConfirmStep extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          submission.levelLabel,
+          submission.localizedLevelLabel(context.l10n),
           style: theme.textTheme.titleMedium?.copyWith(
             color: Colors.white.withValues(alpha: 0.86),
           ),
@@ -426,7 +450,7 @@ class _ConfirmStep extends StatelessWidget {
             border: Border.all(color: accent.withValues(alpha: 0.5)),
           ),
           child: Text(
-            submission.destinationLabel,
+            submission.localizedDestinationLabel(context.l10n),
             style: theme.textTheme.labelLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w700,
@@ -435,7 +459,7 @@ class _ConfirmStep extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          submission.helperText,
+          submission.localizedHelperText(context.l10n),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: Colors.white.withValues(alpha: 0.7),
           ),
@@ -452,7 +476,7 @@ class _ConfirmStep extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Send'),
+                : Text(context.l10n.actionSend),
           ),
         ),
       ],
@@ -487,7 +511,7 @@ class _FeelingButton extends StatelessWidget {
             Text(feeling.emoji, style: const TextStyle(fontSize: 32)),
             const SizedBox(height: 6),
             Text(
-              feeling.label,
+              feeling.localizedLabel(context.l10n),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -539,7 +563,7 @@ class _ActionButton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        option.title,
+                        option.localizedTitle(context.l10n),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -547,7 +571,7 @@ class _ActionButton extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        option.subtitle,
+                        option.localizedSubtitle(context.l10n),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 12,

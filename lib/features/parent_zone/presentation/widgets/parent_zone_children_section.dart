@@ -6,6 +6,8 @@ import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/content_scan_summary.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
+import '../../../../l10n/app_localizations_x.dart';
+import '../../../../l10n/l10n.dart';
 
 class ParentZoneChildrenSection extends ConsumerWidget {
   const ParentZoneChildrenSection({
@@ -50,14 +52,14 @@ class ParentZoneChildrenSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Approval Queue',
+                context.l10n.parentApprovalQueueTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
               Text(
                 pendingVideos.isEmpty
-                    ? 'No clips are waiting for a parent review right now.'
-                    : 'Review new clips before they can be shared outside the device.',
+                    ? context.l10n.parentApprovalEmptySubtitle
+                    : context.l10n.parentApprovalHasItemsSubtitle,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -66,7 +68,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
               if (pendingVideos.isEmpty)
                 _EmptyPanel(
                   icon: Icons.verified_rounded,
-                  title: 'Queue is clear',
+                  title: context.l10n.parentQueueClear,
                   detail:
                       'New videos are scanned automatically. Anything that needs your approval will appear here.',
                   color: palette.success,
@@ -108,10 +110,13 @@ class ParentZoneChildrenSection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Children', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                context.l10n.parentChildrenTitle,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 4),
               Text(
-                'Each child keeps a theme and local profile for capture, editing, and playback.',
+                context.l10n.parentChildrenDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -120,9 +125,8 @@ class ParentZoneChildrenSection extends ConsumerWidget {
               if (profiles.isEmpty)
                 _EmptyPanel(
                   icon: Icons.people_outline_rounded,
-                  title: 'No child profiles yet',
-                  detail:
-                      'Add a child profile below so the app has someone to capture and edit for.',
+                  title: context.l10n.parentNoChildProfiles,
+                  detail: context.l10n.parentAddChildPrompt,
                   color: palette.warning,
                   palette: palette,
                 )
@@ -130,9 +134,9 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                 for (final profile in profiles)
                   _ChildRow(
                     name: profile.name,
-                    themeLabel: ThemeDescriptorX.fromStorage(
-                      profile.theme,
-                    ).label,
+                    themeLabel: context.l10n.themeLabel(
+                      ThemeDescriptorX.fromStorage(profile.theme),
+                    ),
                     color: ThemeDescriptorX.fromStorage(
                       profile.theme,
                     ).paletteFor(Theme.of(context).brightness).accent,
@@ -140,12 +144,12 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                   ),
               const Divider(height: 28),
               Text(
-                'Add Child Profile',
+                context.l10n.onboardingAddChildProfile,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 4),
               Text(
-                'Choose a name and theme so capture and editing stay personalized.',
+                context.l10n.parentChooseChildTheme,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -153,7 +157,9 @@ class ParentZoneChildrenSection extends ConsumerWidget {
               const SizedBox(height: 12),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Child name'),
+                decoration: InputDecoration(
+                  labelText: context.l10n.parentChildName,
+                ),
               ),
               const SizedBox(height: 12),
               SingleChildScrollView(
@@ -164,7 +170,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
-                          label: Text(descriptor.label),
+                          label: Text(context.l10n.themeLabel(descriptor)),
                           selected: descriptor == childTheme,
                           onSelected: (_) {
                             HapticFeedback.selectionClick();
@@ -179,7 +185,7 @@ class ParentZoneChildrenSection extends ConsumerWidget {
               FilledButton.icon(
                 onPressed: onSaveChild,
                 icon: const Icon(Icons.person_add_rounded),
-                label: const Text('Save child'),
+                label: Text(context.l10n.parentSaveChild),
               ),
             ],
           ),
@@ -190,12 +196,12 @@ class ParentZoneChildrenSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Approvals & Scanning',
+                context.l10n.parentApprovalTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
               Text(
-                'Decide how much parent review happens before a clip can leave the device.',
+                context.l10n.parentApprovalDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -204,10 +210,8 @@ class ParentZoneChildrenSection extends ConsumerWidget {
               SwitchListTile.adaptive(
                 value: approvalRequired,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Require parent approval before sharing'),
-                subtitle: const Text(
-                  'Clips are always scanned on-device. Turn this on if you also want every new clip to wait for a parent.',
-                ),
+                title: Text(context.l10n.parentRequireApproval),
+                subtitle: Text(context.l10n.parentRequireApprovalDetail),
                 onChanged: (value) {
                   HapticFeedback.selectionClick();
                   onToggleApprovalRequired(value);
@@ -323,9 +327,12 @@ class _ApprovalCard extends StatelessWidget {
             children: [
               FilledButton.tonal(
                 onPressed: onApprove,
-                child: const Text('Approve'),
+                child: Text(context.l10n.actionApprove),
               ),
-              OutlinedButton(onPressed: onReject, child: const Text('Reject')),
+              OutlinedButton(
+                onPressed: onReject,
+                child: Text(context.l10n.actionReject),
+              ),
             ],
           ),
         ],

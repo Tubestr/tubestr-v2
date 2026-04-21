@@ -19,6 +19,7 @@ import '../../app_shell/presentation/app_shell.dart';
 import 'models/onboarding_flow_state.dart';
 import 'widgets/onboarding_bootstrap_widgets.dart';
 import 'widgets/onboarding_step_widgets.dart';
+import '../../../l10n/l10n.dart';
 
 class AppBootstrapPage extends ConsumerStatefulWidget {
   const AppBootstrapPage({super.key});
@@ -171,21 +172,21 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     final trimmedYear = _birthYearController.text.trim();
     final currentYear = DateTime.now().year;
     if (trimmedYear.isEmpty) {
-      return 'Enter the parent account holder\'s birth year before continuing.';
+      return context.l10n.onboardingParentEligibilityMissingYear;
     }
 
     final birthYear = int.tryParse(trimmedYear);
     if (birthYear == null || trimmedYear.length != 4) {
-      return 'Enter a valid four-digit birth year.';
+      return context.l10n.onboardingParentEligibilityInvalidYear;
     }
     if (birthYear < 1900 || birthYear > currentYear) {
-      return 'Enter a birth year between 1900 and $currentYear.';
+      return context.l10n.onboardingParentEligibilityYearRange(currentYear);
     }
     if (currentYear - birthYear < 18) {
-      return 'Tubestr parent accounts must be created by an adult who is 18 or older.';
+      return context.l10n.onboardingParentEligibilityAdult;
     }
     if (!_consentAccepted) {
-      return 'Confirm the parent consent statement before generating the parent key.';
+      return context.l10n.onboardingParentEligibilityConsent;
     }
     return null;
   }
@@ -193,7 +194,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   Future<void> _openPrivacyPolicy() async {
     await openExternalPageWithFallback(
       context,
-      title: 'Privacy Policy',
+      title: context.l10n.parentPrivacyPolicy,
       url: AppConstants.privacyUrl,
     );
   }
@@ -249,14 +250,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       if (!mounted) {
         return;
       }
+      final keyCreatedMessage = context.l10n.onboardingParentKeyCreated;
       await HapticFeedback.mediumImpact();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Parent key created. Save your backup before you continue.',
-          ),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(keyCreatedMessage)));
     } finally {
       if (mounted) {
         setState(() => _flow = _flow.copyWith(busy: false));
@@ -270,7 +266,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         busy: true,
         step: OnboardingStep.recovery,
         recoverySucceeded: null,
-        recoveryMessage: 'Checking your saved parent key...',
+        recoveryMessage: context.l10n.onboardingCheckingParentKey,
       );
     });
     try {
@@ -287,8 +283,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         _flow = _flow.copyWith(
           busy: false,
           recoverySucceeded: true,
-          recoveryMessage:
-              'Parent account restored on this device. In v2, child profiles are local, so you can add the children you want on this device next.',
+          recoveryMessage: context.l10n.onboardingParentRestoredLocal,
         );
       });
     } catch (error) {
@@ -309,9 +304,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     final scanned = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const QrScannerSheet(
-        title: 'Scan Backup Key',
-        instructions: 'Point the camera at your saved parent backup QR code.',
+      builder: (_) => QrScannerSheet(
+        title: context.l10n.onboardingScanBackupKey,
+        instructions: context.l10n.onboardingScanBackupInstructions,
       ),
     );
     if (!mounted || scanned == null || scanned.isEmpty) {
@@ -319,17 +314,15 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     }
     _restoreKeyController.text = scanned;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Backup key added. Restore when you are ready.'),
-      ),
+      SnackBar(content: Text(context.l10n.onboardingBackupKeyAdded)),
     );
   }
 
   String _restoreErrorMessage(Object error) {
     if (error is FormatException) {
-      return 'That backup key doesn\'t look complete yet. Paste the full `nsec1...` key or 64-character backup key and try again.';
+      return context.l10n.onboardingRestoreKeyIncomplete;
     }
-    return 'We could not restore that backup key yet. Please double-check it and try again.';
+    return context.l10n.onboardingRestoreKeyFailed;
   }
 
   Future<bool> _addChild({bool showValidationMessage = false}) async {
@@ -337,9 +330,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     if (name.isEmpty) {
       if (showValidationMessage) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Enter a child name before continuing.'),
-          ),
+          SnackBar(content: Text(context.l10n.onboardingChildNameRequired)),
         );
       }
       return false;
@@ -365,9 +356,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       if (mounted) {
         setState(() => _flow = _flow.copyWith(busy: false));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('We could not add that child profile yet.'),
-          ),
+          SnackBar(content: Text(context.l10n.onboardingAddChildFailed)),
         );
       }
       return false;
@@ -388,9 +377,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     }
     if (!hasProfiles) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add at least one child profile to finish setup.'),
-        ),
+        SnackBar(content: Text(context.l10n.onboardingNeedChildProfile)),
       );
       return;
     }
@@ -427,8 +414,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       setState(() {
         _flow = _flow.copyWith(
           busy: false,
-          permissionError:
-              'We could not get camera and microphone access yet. You can try again now or allow them later in Settings.',
+          permissionError: context.l10n.onboardingPermissionsFailed,
         );
       });
     }
@@ -483,12 +469,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   };
 
   String? get _progressLabel => switch (_flow.step) {
-    OnboardingStep.roleSelect => 'Getting started',
+    OnboardingStep.roleSelect => context.l10n.onboardingGettingStarted,
     OnboardingStep.parentKey ||
     OnboardingStep.restoreKey ||
-    OnboardingStep.recovery => 'Parent account',
-    OnboardingStep.childProfiles => 'Child profiles',
-    OnboardingStep.permissions => 'Almost done',
+    OnboardingStep.recovery => context.l10n.onboardingParentAccount,
+    OnboardingStep.childProfiles => context.l10n.onboardingChildProfiles,
+    OnboardingStep.permissions => context.l10n.onboardingAlmostDone,
     _ => null,
   };
 

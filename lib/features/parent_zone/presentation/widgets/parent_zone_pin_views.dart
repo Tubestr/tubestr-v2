@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../shared_ui/components/pin_widgets.dart';
+import '../../../../l10n/l10n.dart';
 
 class ParentZonePinSetupView extends StatelessWidget {
   const ParentZonePinSetupView({
@@ -55,14 +56,14 @@ class ParentZonePinSetupView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Create Parent PIN',
+                  context.l10n.parentCreatePinTitle,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Set a four-digit code so family controls stay separate from the kid-facing app.',
+                  context.l10n.parentPinCreateDetail,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
@@ -73,8 +74,8 @@ class ParentZonePinSetupView extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   maxLength: 4,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'New PIN (4 digits)',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.parentPinNew,
                     counterText: '',
                   ),
                   onChanged: onNewPinChanged,
@@ -85,8 +86,8 @@ class ParentZonePinSetupView extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   maxLength: 4,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm PIN',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.parentPinConfirm,
                     counterText: '',
                   ),
                   onChanged: onConfirmPinChanged,
@@ -100,7 +101,7 @@ class ParentZonePinSetupView extends StatelessWidget {
                 ],
                 const SizedBox(height: 20),
                 Text(
-                  'You can update this later in Settings.',
+                  context.l10n.parentPinUpdateLater,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -110,7 +111,7 @@ class ParentZonePinSetupView extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: onSavePin,
-                    child: const Text('Save PIN'),
+                    child: Text(context.l10n.parentPinSave),
                   ),
                 ),
               ],
@@ -169,14 +170,14 @@ class ParentZonePinEntryView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Unlock Parent Zone',
+                    context.l10n.parentUnlockTitle,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Enter your four-digit PIN to open family settings, approvals, and safety controls.',
+                    context.l10n.parentPinUnlockDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),

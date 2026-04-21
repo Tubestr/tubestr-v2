@@ -7,6 +7,8 @@ import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/share_history_entry.dart';
 import '../models/launch_diagnostics.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/l10n.dart';
 
 class ParentZoneActivitySection extends ConsumerWidget {
   const ParentZoneActivitySection({super.key});
@@ -37,13 +39,13 @@ class ParentZoneActivitySection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Recent Shares',
+                context.l10n.parentActivityRecentShares,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
               if (shareHistory.isEmpty)
                 Text(
-                  'When you share with another family, the latest deliveries will appear here.',
+                  context.l10n.parentActivityEmpty,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -63,13 +65,13 @@ class ParentZoneActivitySection extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Family Feedback',
+                      context.l10n.parentActivityFamilyFeedback,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
                     if (inboundReports.isEmpty)
                       Text(
-                        'No incoming family feedback right now.',
+                        context.l10n.parentActivityNoIncoming,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: palette.mutedInk,
                         ),
@@ -85,13 +87,13 @@ class ParentZoneActivitySection extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Feedback You Shared',
+                      context.l10n.parentActivityOutbound,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
                     if (outboundReports.isEmpty)
                       Text(
-                        'No reports yet. If a child flags a video, you will see delivery status here.',
+                        context.l10n.parentActivityNoReports,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: palette.mutedInk,
                         ),
@@ -107,13 +109,13 @@ class ParentZoneActivitySection extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Moderation Activity',
+                      context.l10n.parentActivityModeration,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
                     if (moderationLogs.isEmpty)
                       Text(
-                        'No moderation actions yet.',
+                        context.l10n.parentActivityNoModeration,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: palette.mutedInk,
                         ),
@@ -189,7 +191,7 @@ class _ShareHistoryRow extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${entry.childDisplayName} · ${describeShareStatus(entry.status)}',
+                  '${entry.childDisplayName} · ${describeShareStatus(entry.status, context.l10n)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 2),
@@ -225,18 +227,22 @@ class _InboundReportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final destinationLabel = _reportDestinationLabel(report.recipientType);
+    final destinationLabel = _reportDestinationLabel(
+      report.recipientType,
+      context.l10n,
+    );
     final feelingEmoji = switch (report.level) {
       1 => '\u{1F615}',
       2 => '\u{1F628}',
       _ => '\u{1F620}',
     };
+    final l10n = context.l10n;
     final helperText = switch (report.level) {
-      1 => 'Gentle feedback from another family.',
-      2 => 'A concern from another family needs a look.',
+      1 => l10n.parentReportGentle,
+      2 => l10n.parentReportConcern,
       _ => switch (report.recipientType) {
-        'safety_hq' => 'A serious concern was escalated to Safety HQ.',
-        _ => 'A concern was shared with both families.',
+        'safety_hq' => l10n.parentReportSafetyHq,
+        _ => l10n.parentReportFamily,
       },
     };
     return Padding(
@@ -258,7 +264,7 @@ class _InboundReportRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    report.reason,
+                    describeReportReason(report.reason, l10n),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -292,7 +298,10 @@ class _OutboundReportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final destinationLabel = _reportDestinationLabel(report.recipientType);
+    final destinationLabel = _reportDestinationLabel(
+      report.recipientType,
+      context.l10n,
+    );
     final isLocal = report.recipientType == 'local';
     final isLocalParent = report.recipientType == 'local_parent';
     final statusColor = switch (report.status) {
@@ -324,14 +333,14 @@ class _OutboundReportRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${report.reason} · level ${report.level} · $destinationLabel',
+                  '${describeReportReason(report.reason, context.l10n)} · ${context.l10n.reportLevelValue(report.level)} · $destinationLabel',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${describeReportStatus(report.status)} · ${_formatTimestamp(report.createdAt)}',
+                  '${describeReportStatus(report.status, context.l10n)} · ${_formatTimestamp(report.createdAt)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -343,14 +352,14 @@ class _OutboundReportRow extends StatelessWidget {
   }
 }
 
-String _reportDestinationLabel(String recipientType) {
+String _reportDestinationLabel(String recipientType, AppLocalizations l10n) {
   return switch (recipientType) {
-    'local' => 'Device only',
-    'local_parent' => 'Parent only',
-    'family' => 'Both families',
-    'group' => 'Family group',
-    'parents' => 'Parent helpers',
-    'safety_hq' => 'Safety HQ',
+    'local' => l10n.parentDestinationDeviceOnly,
+    'local_parent' => l10n.parentDestinationParentOnly,
+    'family' => l10n.parentDestinationBothFamilies,
+    'group' => l10n.parentDestinationFamilyGroup,
+    'parents' => l10n.parentDestinationParentHelpers,
+    'safety_hq' => l10n.parentSafetyHq,
     _ => recipientType,
   };
 }
@@ -365,9 +374,10 @@ class _ModerationLogRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final label = switch (log.actionType) {
-      'remove_member' => 'Removed a family member',
-      'delete_video' => 'Deleted shared video',
+      'remove_member' => l10n.parentAuditRemoveMember,
+      'delete_video' => l10n.parentAuditDeleteVideo,
       _ => log.actionType,
     };
     return Padding(

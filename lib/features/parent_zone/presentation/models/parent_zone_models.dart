@@ -3,17 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../../services/mdk/mdk_service.dart';
 
 enum ParentZoneSection {
-  dashboard('Dashboard', Icons.dashboard_rounded),
-  children('Children', Icons.people_rounded),
-  familySpaces('Family Spaces', Icons.link_rounded),
-  activity('Activity', Icons.history_rounded),
-  account('Account', Icons.person_rounded),
-  network('Network', Icons.cell_tower_rounded),
-  diagnostics('Diagnostics', Icons.radar_rounded);
+  dashboard(Icons.dashboard_rounded),
+  children(Icons.people_rounded),
+  familySpaces(Icons.link_rounded),
+  activity(Icons.history_rounded),
+  account(Icons.person_rounded),
+  network(Icons.cell_tower_rounded),
+  diagnostics(Icons.radar_rounded);
 
-  const ParentZoneSection(this.label, this.icon);
+  const ParentZoneSection(this.icon);
 
-  final String label;
   final IconData icon;
 }
 

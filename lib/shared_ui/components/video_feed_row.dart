@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/di/providers.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/theme/theme_descriptor.dart';
+import '../../l10n/l10n.dart';
 import 'feed_metric_pill.dart';
 import 'media_thumbnail_frame.dart';
 
@@ -139,8 +140,8 @@ class LocalVideoTile extends ConsumerWidget {
                           color: palette.warning,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          'Pending',
+                        child: Text(
+                          context.l10n.approvalPending,
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.white,

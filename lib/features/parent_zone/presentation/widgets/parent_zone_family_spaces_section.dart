@@ -8,6 +8,7 @@ import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../services/mdk/mdk_service.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../models/parent_zone_models.dart';
+import '../../../../l10n/l10n.dart';
 
 class ParentZoneFamilySpacesSection extends ConsumerWidget {
   const ParentZoneFamilySpacesSection({
@@ -54,12 +55,12 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Open A Family Space',
+                context.l10n.parentOpenFamilySpace,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
               Text(
-                'Share one invite code, then come back here when the other parent sends their welcome.',
+                context.l10n.parentOpenFamilySpaceDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -68,8 +69,8 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.qr_code_rounded,
                 color: palette.accent,
-                title: 'Create invite',
-                subtitle: 'Show a QR code or send a shareable invite link',
+                title: context.l10n.parentCreateInvite,
+                subtitle: context.l10n.parentCreateInviteDetail,
                 busy: isGeneratingInvitePacket,
                 palette: palette,
                 onTap: identity == null || busy ? null : onCreateInvite,
@@ -78,8 +79,8 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.qr_code_scanner_rounded,
                 color: palette.accentSecondary,
-                title: 'Scan invite',
-                subtitle: 'Join the shared family space in one step',
+                title: context.l10n.parentScanInvite,
+                subtitle: context.l10n.parentScanInviteDetail,
                 busy: isCreatingWelcome,
                 palette: palette,
                 onTap: identity == null || busy ? null : onScanAndProcessInvite,
@@ -88,8 +89,8 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.content_paste_rounded,
                 color: palette.ink,
-                title: 'Paste invite',
-                subtitle: 'Enter an invite link or code manually',
+                title: context.l10n.parentPasteInvite,
+                subtitle: context.l10n.parentPasteInviteDetail,
                 busy: false,
                 palette: palette,
                 onTap: identity == null || busy
@@ -118,7 +119,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
             }
             if (snapshot.hasError) {
               return FrostCard(
-                child: Text('We could not load family connections right now.'),
+                child: Text(context.l10n.parentFamilyConnectionsFailed),
               );
             }
             final data = snapshot.data!;
@@ -128,12 +129,12 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'No trusted families yet',
+                      context.l10n.parentNoFamiliesTitle,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Create an invite or scan one from another parent to open your first family space.',
+                      context.l10n.parentNoFamiliesDetail,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -157,7 +158,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Pending Welcomes',
+                              context.l10n.parentPendingWelcomes,
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                           ],
@@ -180,7 +181,9 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                                           welcome.welcomeEventIdHex,
                                         ),
                                   child: Text(
-                                    isAcceptingWelcome ? 'Joining…' : 'Approve',
+                                    isAcceptingWelcome
+                                        ? context.l10n.parentJoiningEllipsis
+                                        : context.l10n.actionApprove,
                                   ),
                                 ),
                               ],
@@ -205,7 +208,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Active Family Spaces',
+                              context.l10n.parentActiveFamilySpaces,
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                             const Spacer(),
@@ -237,7 +240,7 @@ class ParentZoneFamilySpacesSection extends ConsumerWidget {
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.more_horiz_rounded),
-                                  tooltip: 'Manage connection',
+                                  tooltip: context.l10n.parentManageConnection,
                                   onPressed: () {
                                     HapticFeedback.selectionClick();
                                     onManageGroup(group);
@@ -275,6 +278,7 @@ class _PendingWelcomeDetails extends ConsumerWidget {
     final groupLabel = _preferredGroupLabel(
       currentLabel: welcome.groupName,
       fallbackParentName: welcomer?.displayName,
+      context: context,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,7 +286,10 @@ class _PendingWelcomeDetails extends ConsumerWidget {
         Text(groupLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
         Text(
-          'From $inviterLabel · ${welcome.memberCount} members',
+          context.l10n.parentPendingWelcomeDetail(
+            inviterLabel,
+            welcome.memberCount,
+          ),
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -310,6 +317,7 @@ class _ActiveGroupDetails extends ConsumerWidget {
     final groupLabel = _preferredGroupLabel(
       currentLabel: group.name,
       fallbackParentName: familyLabel,
+      context: context,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,9 +327,9 @@ class _ActiveGroupDetails extends ConsumerWidget {
         Text(
           familyLabel == null || familyLabel.isEmpty
               ? adminPubkey == null
-                    ? '${group.memberCount} members'
-                    : '${formatCompactPublicKeyLabel(adminPubkey)} · ${group.memberCount} members'
-              : '$familyLabel · ${group.memberCount} members',
+                    ? context.l10n.parentMembers(group.memberCount)
+                    : '${formatCompactPublicKeyLabel(adminPubkey)} · ${context.l10n.parentMembers(group.memberCount)}'
+              : '$familyLabel · ${context.l10n.parentMembers(group.memberCount)}',
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -342,6 +350,7 @@ class _ActiveGroupDetails extends ConsumerWidget {
 String _preferredGroupLabel({
   required String currentLabel,
   required String? fallbackParentName,
+  required BuildContext context,
 }) {
   final trimmedCurrent = currentLabel.trim();
   if (trimmedCurrent.isNotEmpty &&
@@ -351,12 +360,14 @@ String _preferredGroupLabel({
 
   final fallback = fallbackParentName?.trim();
   if (fallback == null || fallback.isEmpty) {
-    return trimmedCurrent.isEmpty ? 'Family Space' : trimmedCurrent;
+    return trimmedCurrent.isEmpty
+        ? context.l10n.parentFamilySpaceFallback
+        : trimmedCurrent;
   }
   if (fallback.toLowerCase().contains('family')) {
     return fallback;
   }
-  return '$fallback Family';
+  return context.l10n.parentFamilyFallback(fallback);
 }
 
 void _showPasteInviteSheet(
@@ -383,12 +394,12 @@ void _showPasteInviteSheet(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Paste Invite',
+                context.l10n.parentPasteInviteTitle,
                 style: Theme.of(sheetContext).textTheme.titleLarge,
               ),
               const SizedBox(height: 6),
               Text(
-                'Paste an invite link or code from another parent.',
+                context.l10n.parentPasteInvitePrompt,
                 style: Theme.of(sheetContext).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -397,8 +408,8 @@ void _showPasteInviteSheet(
                 autofocus: true,
                 minLines: 2,
                 maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Invite link or code',
+                decoration: InputDecoration(
+                  labelText: context.l10n.parentInviteInputLabel,
                   hintText: 'tubestr://family-invite?...',
                 ),
               ),
@@ -413,7 +424,11 @@ void _showPasteInviteSheet(
                           Navigator.of(sheetContext).pop();
                           onSubmit();
                         },
-                  child: Text(busy ? 'Joining family…' : 'Use invite'),
+                  child: Text(
+                    busy
+                        ? context.l10n.parentJoiningFamily
+                        : context.l10n.parentUseInvite,
+                  ),
                 ),
               ),
             ],

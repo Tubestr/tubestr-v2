@@ -8,6 +8,7 @@ import '../../../core/theme/theme_descriptor.dart';
 import '../../../services/editor/editor_sticker_library.dart';
 import '../../../services/editor/selfie_segmentation_service.dart';
 import '../../../shared_ui/components/fill_camera_preview.dart';
+import '../../../l10n/l10n.dart';
 
 class SelfieStickerCapturePage extends StatefulWidget {
   const SelfieStickerCapturePage({
@@ -247,7 +248,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                 child: Column(
                   children: [
                     Text(
-                      'Take a photo to create a sticker',
+                      context.l10n.editorStickerPhotoTitle,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white,
@@ -288,7 +289,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                 child: Column(
                   children: [
                     Text(
-                      'Looking good! Use it as a sticker?',
+                      context.l10n.editorStickerPreviewPrompt,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white,
@@ -308,7 +309,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                                     _errorMessage = null;
                                   });
                                 },
-                          child: const Text('Retake'),
+                          child: Text(context.l10n.editorActionRetake),
                         ),
                         const SizedBox(width: 12),
                         FilledButton(
@@ -317,7 +318,7 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
                             backgroundColor: widget.palette.accent,
                             foregroundColor: Colors.white,
                           ),
-                          child: const Text('Use Sticker'),
+                          child: Text(context.l10n.editorActionUseSticker),
                         ),
                       ],
                     ),
@@ -368,21 +369,21 @@ class _SelfieStickerCapturePageState extends State<SelfieStickerCapturePage>
   String _cameraErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (message.contains('access') || message.contains('permission')) {
-      return 'Camera access is turned off. Allow it in Settings, then try again.';
+      return context.l10n.editorSelfieCameraDenied;
     }
-    return 'We couldn\'t open the selfie camera just yet. Please try again.';
+    return context.l10n.editorSelfieCameraFailed;
   }
 
   String _captureErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (message.contains('subject')) {
-      return 'We couldn\'t lift the sticker from that photo. Try another selfie with a clearer background.';
+      return context.l10n.editorStickerLiftFailed;
     }
-    return 'We couldn\'t make that sticker just yet. Try another photo.';
+    return context.l10n.editorStickerCreateFailed;
   }
 
   String _saveErrorMessage(Object error) {
-    return 'We couldn\'t save that sticker yet. Please try again.';
+    return context.l10n.editorStickerSaveFailed;
   }
 }
 

@@ -32,6 +32,8 @@ import 'widgets/parent_zone_family_spaces_section.dart';
 import 'widgets/parent_zone_network_section.dart';
 import 'widgets/parent_zone_pin_views.dart';
 import 'widgets/parent_zone_sidebar.dart';
+import '../../../l10n/app_localizations_x.dart';
+import '../../../l10n/l10n.dart';
 
 class ParentZoneContent extends ConsumerStatefulWidget {
   const ParentZoneContent({super.key});
@@ -167,14 +169,14 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       await HapticFeedback.heavyImpact();
       setState(() {
         _pinEntry = '';
-        _pinError = 'Incorrect PIN';
+        _pinError = context.l10n.parentPinIncorrect;
       });
     }
   }
 
   Future<void> _saveNewPin() async {
     if (_newPin.length < 4 || _newPin != _confirmPin) {
-      setState(() => _pinError = 'PINs must match (4 digits)');
+      setState(() => _pinError = context.l10n.parentPinMismatch);
       return;
     }
     await ref.read(parentAuthServiceProvider).setPin(_newPin);
@@ -336,8 +338,9 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         return;
       }
       ref.invalidate(mdkGroupSummariesProvider);
+      final joinedMessage = context.l10n.parentJoinedFamily(group.name);
       await HapticFeedback.mediumImpact();
-      messenger.showSnackBar(SnackBar(content: Text('Joined ${group.name}')));
+      messenger.showSnackBar(SnackBar(content: Text(joinedMessage)));
     } on MdkAlreadyConnectedException catch (error) {
       if (!mounted) {
         return;
@@ -356,30 +359,26 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
         return;
       }
       setState(() => _isAcceptingWelcome = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t finish joining that family space yet. Please try again.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.parentJoinFailed)));
     }
   }
 
   String _alreadyConnectedMessage(MdkAlreadyConnectedException error) {
     final groupName = error.group.name.trim();
     if (groupName.isEmpty) {
-      return 'You\'re already connected.';
+      return context.l10n.parentAlreadyConnected;
     }
-    return 'You\'re already connected in $groupName.';
+    return context.l10n.parentAlreadyConnectedGroup(groupName);
   }
 
   String _alreadyPendingMessage(FamilyConnectionAlreadyPendingException error) {
     final groupName = error.group.name.trim();
     if (groupName.isEmpty) {
-      return 'Connection already sent. They can approve it in Parent Zone.';
+      return context.l10n.parentConnectionAlreadySent;
     }
-    return 'Connection already sent for $groupName. They can approve it in Parent Zone.';
+    return context.l10n.parentConnectionAlreadySentGroup(groupName);
   }
 
   void _closeInviteSheetIfOpen() {
@@ -421,7 +420,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                 Text(title, style: Theme.of(sheetContext).textTheme.titleLarge),
                 const SizedBox(height: 6),
                 Text(
-                  'Have the other parent scan this from their Parent Zone. This will close automatically once they connect.',
+                  sheetContext.l10n.parentInviteQrInstructions,
                   style: Theme.of(sheetContext).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 20),
@@ -480,7 +479,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                         }
                       },
                       icon: const Icon(Icons.ios_share_rounded),
-                      label: const Text('Share link'),
+                      label: Text(context.l10n.parentShareLink),
                     ),
                   ),
                 ),
@@ -491,11 +490,11 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: payload));
                       ScaffoldMessenger.of(sheetContext).showSnackBar(
-                        const SnackBar(content: Text('Copied to clipboard')),
+                        SnackBar(content: Text(context.l10n.copiedToClipboard)),
                       );
                     },
                     icon: const Icon(Icons.copy_rounded),
-                    label: const Text('Copy code'),
+                    label: Text(context.l10n.parentCopyCode),
                   ),
                 ),
               ],
@@ -512,8 +511,8 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const QrScannerSheet(
-        instructions: 'Point the camera at a family invite QR code.',
+      builder: (_) => QrScannerSheet(
+        instructions: context.l10n.parentInviteScanInstructions,
       ),
     );
   }
@@ -543,15 +542,9 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
       setState(() => _isGeneratingInvitePacket = false);
       _startPendingWelcomePolling();
       _showQrSheet(
-        title: 'Your Invite Code',
+        title: context.l10n.parentInviteTitle,
         payload: result.payload,
-        shareText:
-            '''
-Tubestr Family Invite
-
-Open this link on the other parent's device:
-${result.payload}
-''',
+        shareText: context.l10n.parentInviteShareText(result.payload),
       );
     } catch (error, stackTrace) {
       debugPrint('Family invite creation failed: $error');
@@ -561,11 +554,7 @@ ${result.payload}
       }
       setState(() => _isGeneratingInvitePacket = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t create an invite just yet. Please try again.',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.parentCreateInviteFailed)),
       );
     }
   }
@@ -640,8 +629,8 @@ ${result.payload}
         SnackBar(
           content: Text(
             result.publishedWelcomeCount > 0
-                ? 'Connection sent. They can approve it in Parent Zone.'
-                : 'Group created.',
+                ? context.l10n.parentConnectionSent
+                : context.l10n.parentGroupCreated,
           ),
         ),
       );
@@ -684,11 +673,7 @@ ${result.payload}
         ref.read(pendingDeepLinkProvider.notifier).state = null;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t use that invite yet. Double-check it and try again.',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.parentInviteUseFailed)),
       );
     }
   }
@@ -761,24 +746,23 @@ ${result.payload}
   Future<void> _deleteChild(String profileId) async {
     final profiles = ref.read(profilesProvider).valueOrNull ?? const [];
     final profile = profiles.where((p) => p.id == profileId).firstOrNull;
-    final childName = profile?.name ?? 'this child profile';
+    final l10n = context.l10n;
+    final childName = profile?.name ?? l10n.parentDeleteChildFallback;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text('Delete $childName?'),
-          content: const Text(
-            'This will permanently remove the child profile and delete any videos and media stored on behalf of this profile from Tubestr-managed servers. Clips already delivered to other family members remain on their devices.\n\nThis cannot be undone.',
-          ),
+          title: Text(l10n.parentDeleteChildTitle(childName)),
+          content: Text(l10n.parentDeleteChildDetail),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.actionCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Delete profile'),
+              child: Text(context.l10n.parentDeleteProfile),
             ),
           ],
         );
@@ -801,9 +785,9 @@ ${result.payload}
     }
     final message = result.deletedProfile
         ? result.usedManagedCleanup
-              ? 'Profile deleted. ${result.deletedBlobCount} file${result.deletedBlobCount == 1 ? '' : 's'} removed from Tubestr servers.'
-              : 'Profile deleted.'
-        : 'We could not finish deleting $childName yet because ${result.failedDeleteCount} file${result.failedDeleteCount == 1 ? '' : 's'} could not be removed from Tubestr servers. Try again when the connection is stable.';
+              ? l10n.parentProfileDeleted(result.deletedBlobCount)
+              : l10n.parentChildDeleted(childName)
+        : l10n.parentChildDeletePartial(childName, result.failedDeleteCount);
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
@@ -837,6 +821,7 @@ ${result.payload}
 
   Future<void> _saveDisplayName() async {
     final messenger = ScaffoldMessenger.of(context);
+    final savedMessage = context.l10n.parentDisplayNameSaved;
     final next = _displayNameController.text.trim();
     if (next.isEmpty) {
       return;
@@ -847,7 +832,7 @@ ${result.payload}
       return;
     }
     await HapticFeedback.lightImpact();
-    messenger.showSnackBar(const SnackBar(content: Text('Saved display name')));
+    messenger.showSnackBar(SnackBar(content: Text(savedMessage)));
   }
 
   Future<void> _publishDisplayName() async {
@@ -856,6 +841,8 @@ ${result.payload}
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
+    final publishedMessage = context.l10n.parentProfilePublished;
+    final failedMessage = context.l10n.parentProfilePublishFailed;
     final next = _displayNameController.text.trim();
     if (next.isEmpty) {
       return;
@@ -871,21 +858,13 @@ ${result.payload}
         return;
       }
       await HapticFeedback.lightImpact();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Published parent profile')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(publishedMessage)));
     } catch (error) {
       ref.invalidate(offlineActionsProvider);
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t publish your parent profile just yet. Please try again.',
-          ),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(failedMessage)));
     }
   }
 
@@ -899,6 +878,7 @@ ${result.payload}
 
   Future<void> _retryOfflineQueue() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final actions = await ref.read(offlineActionStoreProvider).load();
     final totalBefore = actions.length;
     final flushed = await ref.read(offlineActionProcessorProvider).flush();
@@ -910,11 +890,9 @@ ${result.payload}
     }
     await HapticFeedback.lightImpact();
     final message = switch ((flushed, totalBefore)) {
-      (0, 0) => 'No queued actions to retry',
-      (0, _) =>
-        '$totalBefore action${totalBefore == 1 ? '' : 's'} still waiting — check your connection',
-      (_, _) =>
-        'Sent $flushed of $totalBefore queued action${totalBefore == 1 ? '' : 's'}',
+      (0, 0) => l10n.parentNoQueuedActions,
+      (0, _) => l10n.parentQueuedActionsStillWaiting(totalBefore),
+      (_, _) => l10n.parentQueuedActionsSent(flushed, totalBefore),
     };
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
@@ -984,6 +962,7 @@ ${result.payload}
 
   Future<void> _reconnectRelays() async {
     final messenger = ScaffoldMessenger.of(context);
+    final reconnectedMessage = context.l10n.parentRelaysReconnected;
     await ref.read(nostrServiceProvider).connect();
     await ref
         .read(syncCoordinatorProvider)
@@ -996,7 +975,7 @@ ${result.payload}
       return;
     }
     await HapticFeedback.lightImpact();
-    messenger.showSnackBar(const SnackBar(content: Text('Relays reconnected')));
+    messenger.showSnackBar(SnackBar(content: Text(reconnectedMessage)));
   }
 
   Future<void> _saveBlossomServer() async {
@@ -1061,6 +1040,7 @@ ${result.payload}
 
   Future<void> _updatePin() async {
     final messenger = ScaffoldMessenger.of(context);
+    final updatedMessage = context.l10n.parentPinUpdated;
     final pin = _pinManagementController.text.trim();
     if (pin.length < 4) {
       return;
@@ -1071,7 +1051,7 @@ ${result.payload}
       return;
     }
     await HapticFeedback.lightImpact();
-    messenger.showSnackBar(const SnackBar(content: Text('PIN updated')));
+    messenger.showSnackBar(SnackBar(content: Text(updatedMessage)));
   }
 
   Future<void> _provisionSafetyHq() async {
@@ -1080,6 +1060,7 @@ ${result.payload}
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final safetyService = ref.read(safetyHqServiceProvider);
     try {
       await safetyService.queueJoin();
@@ -1099,10 +1080,10 @@ ${result.payload}
       }
       await HapticFeedback.mediumImpact();
       final message = status.isJoined
-          ? 'Safety HQ is connected and ready.'
+          ? l10n.parentSafetyHqReady
           : group != null
-          ? 'Safety HQ is connecting. We sent the setup welcome to the moderation service.'
-          : 'Safety HQ is still connecting. Leave the app online for a moment and check again.';
+          ? l10n.parentSafetyHqConnectingStarted
+          : l10n.parentSafetyHqStillConnecting;
       messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (error, stackTrace) {
       debugPrint('Safety HQ provisioning failed: $error');
@@ -1117,10 +1098,9 @@ ${result.payload}
         message = error.message;
       } else if (errorText.contains('Proposals are not acceptable') ||
           errorText.contains('KeyPackage')) {
-        message =
-            'Safety HQ is temporarily unavailable while Tubestr refreshes the moderation service keys. Please try again later.';
+        message = l10n.parentSafetyHqKeysRefreshing;
       } else {
-        message = 'We couldn\'t set up Safety HQ yet. Please try again.';
+        message = l10n.parentSafetySetupFailed;
       }
       messenger.showSnackBar(SnackBar(content: Text(message)));
     }
@@ -1131,18 +1111,16 @@ ${result.payload}
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Sign out & reset app?'),
-          content: const Text(
-            'This will remove the saved parent account from this device, clear the Parent Zone PIN, wipe local videos and cached shares, and clear the synced Apple-keychain copy Tubestr uses for automatic restore here. Make sure your recovery key is saved first.',
-          ),
+          title: Text(context.l10n.parentSignOutResetTitle),
+          content: Text(context.l10n.parentSignOutResetDetail),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.actionCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Reset app'),
+              child: Text(context.l10n.parentResetApp),
             ),
           ],
         );
@@ -1197,13 +1175,9 @@ ${result.payload}
         _isResettingApp = false;
         _isDeletingAccount = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t finish resetting this device yet. Please try again.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.parentResetFailed)));
     }
   }
 
@@ -1233,11 +1207,7 @@ ${result.payload}
     final identity = ref.read(parentIdentityProvider).valueOrNull;
     if (identity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Create or restore the parent account on this device before deleting it.',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.parentAccountNoIdentity)),
       );
       return;
     }
@@ -1246,18 +1216,18 @@ ${result.payload}
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete parent account?'),
+          title: Text(context.l10n.parentDeleteAccountTitle),
           content: Text(
-            'This permanently deletes Tubestr backend account records for ${identity.npub}. This also signs the device out after deletion succeeds. Any App Store or Play subscription must still be cancelled separately in Apple or Google billing settings.',
+            context.l10n.parentDeleteAccountDetailWithAddress(identity.npub),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Keep account'),
+              child: Text(context.l10n.parentKeepAccount),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Delete account'),
+              child: Text(context.l10n.parentDeleteAccount),
             ),
           ],
         );
@@ -1280,9 +1250,7 @@ ${result.payload}
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Parent account deleted from Tubestr backend records.'),
-        ),
+        SnackBar(content: Text(context.l10n.parentAccountDeleted)),
       );
     } catch (error) {
       if (!mounted) {
@@ -1294,7 +1262,7 @@ ${result.payload}
           content: Text(
             error is FormatException
                 ? error.message
-                : 'We couldn\'t delete the parent account yet. Please try again.',
+                : context.l10n.parentDeleteAccountFailed,
           ),
         ),
       );
@@ -1302,18 +1270,24 @@ ${result.payload}
   }
 
   Future<void> _openSupportPage() {
-    return _openExternalPage(title: 'Support', url: AppConstants.supportUrl);
+    return _openExternalPage(
+      title: context.l10n.parentSupport,
+      url: AppConstants.supportUrl,
+    );
   }
 
   Future<void> _openPrivacyPolicy() {
     return _openExternalPage(
-      title: 'Privacy Policy',
+      title: context.l10n.parentPrivacyPolicy,
       url: AppConstants.privacyUrl,
     );
   }
 
   Future<void> _openTermsPage() {
-    return _openExternalPage(title: 'Terms', url: AppConstants.termsUrl);
+    return _openExternalPage(
+      title: context.l10n.parentTerms,
+      url: AppConstants.termsUrl,
+    );
   }
 
   Future<void> _openExternalPage({
@@ -1641,7 +1615,7 @@ ${result.payload}
                     children: [
                       _ParentHeaderButton(
                         icon: Icons.menu_rounded,
-                        tooltip: 'Open sections',
+                        tooltip: context.l10n.parentOpenSections,
                         onPressed: () async {
                           await HapticFeedback.selectionClick();
                           setState(() => _sidebarOpen = true);
@@ -1653,7 +1627,7 @@ ${result.payload}
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Parent Zone',
+                              context.l10n.parentZoneTitle,
                               style: Theme.of(context).textTheme.labelMedium
                                   ?.copyWith(
                                     letterSpacing: 0.8,
@@ -1661,7 +1635,7 @@ ${result.payload}
                                   ),
                             ),
                             const SizedBox(height: 4),
-                            Text(_section.label),
+                            Text(context.l10n.parentZoneSectionLabel(_section)),
                           ],
                         ),
                       ),
@@ -1740,11 +1714,11 @@ ${result.payload}
                   palette: palette,
                   parentLabel:
                       (parentLabel == null || parentLabel.trim().isEmpty)
-                      ? 'Family controls'
+                      ? context.l10n.parentFamilyControls
                       : parentLabel.trim(),
                   accountHint: _needsPinSetup
-                      ? 'PIN setup required'
-                      : 'Protected by parent PIN',
+                      ? context.l10n.parentPinSetupRequired
+                      : context.l10n.parentProtectedByPin,
                   selected: _section,
                   onSelect: (section) async {
                     await HapticFeedback.selectionClick();
@@ -1907,6 +1881,10 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
+    final deletedMessage = context.l10n.parentSharedVideoDeleted(
+      projection.title,
+    );
+    final deleteFailedMessage = context.l10n.parentDeleteSharedVideoFailed;
     setState(() => _working = true);
     try {
       await ref
@@ -1922,21 +1900,13 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       setState(() => _working = false);
       _refresh();
       await HapticFeedback.mediumImpact();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Deleted ${projection.title} for this family')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(deletedMessage)));
     } catch (error) {
       if (!mounted) {
         return;
       }
       setState(() => _working = false);
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t delete that shared video just yet. Please try again.',
-          ),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(deleteFailedMessage)));
     }
   }
 
@@ -1946,6 +1916,8 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
+    final removedMessage = context.l10n.parentMemberRemoved;
+    final removeFailedMessage = context.l10n.parentRemoveMemberFailed;
     setState(() => _working = true);
     try {
       await ref
@@ -1962,21 +1934,13 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       setState(() => _working = false);
       _refresh();
       await HapticFeedback.mediumImpact();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Removed member from family group')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(removedMessage)));
     } catch (error) {
       if (!mounted) {
         return;
       }
       setState(() => _working = false);
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t remove that member just yet. Please try again.',
-          ),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(removeFailedMessage)));
     }
   }
 
@@ -1986,6 +1950,8 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
+    final promotedMessage = context.l10n.parentMemberPromoted;
+    final promoteFailedMessage = context.l10n.parentPromoteMemberFailed;
     setState(() => _working = true);
     try {
       await ref
@@ -2002,21 +1968,13 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       setState(() => _working = false);
       _refresh();
       await HapticFeedback.mediumImpact();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Promoted member to admin')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(promotedMessage)));
     } catch (error) {
       if (!mounted) {
         return;
       }
       setState(() => _working = false);
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We couldn\'t promote that member just yet. Please try again.',
-          ),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(promoteFailedMessage)));
     }
   }
 
@@ -2027,36 +1985,28 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
     }
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final leftMessage = context.l10n.parentLeftFamily(widget.group.name);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Leave this family space?'),
+          title: Text(context.l10n.parentLeaveFamilyTitle),
           content: Text(
             isAdmin
-                ? 'You\'ll step down as admin and leave "${widget.group.name}". '
-                      'You will stop receiving new shares from this family and '
-                      'will no longer be able to send to it. Past clips already '
-                      'on your device stay on your device.\n\n'
-                      'If you are the only admin of a multi-member space, '
-                      'promote another member to admin first using the Make '
-                      'admin button above.'
-                : 'You will leave "${widget.group.name}". You will stop '
-                      'receiving new shares from this family and will no longer '
-                      'be able to send to it. Past clips already on your device '
-                      'stay on your device.',
+                ? context.l10n.parentLeaveFamilyAdmin(widget.group.name)
+                : context.l10n.parentLeaveFamilyMember(widget.group.name),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.actionCancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
               ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Leave'),
+              child: Text(context.l10n.parentLeave),
             ),
           ],
         );
@@ -2085,18 +2035,14 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       await HapticFeedback.mediumImpact();
       widget.onChanged();
       navigator.pop();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Left ${widget.group.name}')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(leftMessage)));
     } on LastAdminCannotLeaveException {
       if (!mounted) {
         return;
       }
       setState(() {
         _working = false;
-        _leaveError =
-            'You\'re the only admin. Use Make admin on another member above, '
-            'then try again.';
+        _leaveError = context.l10n.parentLeaveFamilyLastAdmin;
       });
     } catch (error) {
       if (!mounted) {
@@ -2104,8 +2050,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
       }
       setState(() {
         _working = false;
-        _leaveError =
-            'We couldn\'t leave that family space just yet. Please try again.';
+        _leaveError = context.l10n.parentLeaveFamilyFailed;
       });
     }
   }
@@ -2134,10 +2079,8 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
             if (snapshot.hasError) {
               return SizedBox(
                 height: 320,
-                child: const Center(
-                  child: Text(
-                    'Moderation details need another moment to load.',
-                  ),
+                child: Center(
+                  child: Text(context.l10n.parentModerationLoadingDetail),
                 ),
               );
             }
@@ -2151,7 +2094,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                 shrinkWrap: true,
                 children: [
                   Text(
-                    'Moderation Controls',
+                    context.l10n.parentModerationControls,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       letterSpacing: 0.8,
                       color: palette.mutedInk,
@@ -2166,7 +2109,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Delete shared videos or remove family members. These are separate actions.',
+                    context.l10n.parentModerationControlsDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
@@ -2184,13 +2127,13 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Members',
+                          context.l10n.parentMembersTitle,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 8),
                         if (data.members.isEmpty)
                           Text(
-                            'No member details available yet.',
+                            context.l10n.parentNoMemberDetails,
                             style: Theme.of(context).textTheme.bodySmall,
                           )
                         else
@@ -2224,13 +2167,13 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Shared Videos',
+                          context.l10n.parentSharedVideos,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 8),
                         if (data.shares.isEmpty)
                           Text(
-                            'No shared videos from this family yet.',
+                            context.l10n.parentNoSharedVideosFromFamily,
                             style: Theme.of(context).textTheme.bodySmall,
                           )
                         else
@@ -2248,7 +2191,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Removing a member does not delete their past content automatically.',
+                    context.l10n.parentRemoveMemberCaveat,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -2266,7 +2209,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Leave this family space',
+                          context.l10n.parentLeaveFamilySpaceAction,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 6),
@@ -2299,7 +2242,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                                           identity.publicKeyHex,
                                         ),
                                   ),
-                            child: const Text('Leave family space'),
+                            child: Text(context.l10n.parentLeaveFamilyTitle),
                           ),
                         ),
                         if (_leaveError != null) ...[
@@ -2336,10 +2279,10 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
         : members.where((m) => m != identity.publicKeyHex).length;
     if (isAdmin) {
       return otherMembers == 0
-          ? 'You are the only member. Leaving abandons the group — nobody else can receive new shares here.'
-          : 'You\'ll self-demote, then publish a leave request. Another member commits the removal when they come online.';
+          ? context.l10n.parentLeaveFamilySolo
+          : context.l10n.parentLeaveFamilyAdminGuidance;
     }
-    return 'You\'ll publish a leave request. Another member commits the removal when they come online; new shares stop arriving in this space.';
+    return context.l10n.parentLeaveFamilyMemberGuidance;
   }
 }
 
@@ -2411,7 +2354,7 @@ class _MemberTile extends ConsumerWidget {
               children: [
                 Text(
                   isCurrentIdentity
-                      ? 'You'
+                      ? context.l10n.parentYou
                       : (profile?.displayName.trim().isNotEmpty ?? false)
                       ? profile!.displayName
                       : formatCompactPublicKeyLabel(memberPublicKeyHex),
@@ -2425,7 +2368,7 @@ class _MemberTile extends ConsumerWidget {
                     Flexible(
                       child: Text(
                         isCurrentIdentity
-                            ? 'Current parent identity'
+                            ? context.l10n.parentCurrentParentIdentity
                             : displayKey,
                         style: Theme.of(context).textTheme.bodySmall,
                         overflow: TextOverflow.ellipsis,
@@ -2444,13 +2387,17 @@ class _MemberTile extends ConsumerWidget {
             if (!memberIsAdmin) ...[
               TextButton(
                 onPressed: working ? null : onPromote,
-                child: const Text('Make admin'),
+                child: Text(context.l10n.parentMakeAdmin),
               ),
               const SizedBox(width: 4),
             ],
             FilledButton.tonal(
               onPressed: working ? null : onRemove,
-              child: Text(working ? 'Working…' : 'Remove'),
+              child: Text(
+                working
+                    ? context.l10n.parentWorking
+                    : context.l10n.actionRemove,
+              ),
             ),
           ],
         ],
@@ -2473,7 +2420,7 @@ class _AdminBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        'Admin',
+        context.l10n.parentAdmin,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: palette.accent,
           fontWeight: FontWeight.w700,
@@ -2534,21 +2481,37 @@ class _ModerationVideoRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${share.displayName} · ${share.status}',
+                  '${share.displayName} · ${_moderationShareStatusLabel(share.status, context)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
           ),
           if (deleted)
-            Text('Deleted', style: Theme.of(context).textTheme.bodySmall)
+            Text(
+              context.l10n.parentDeleted,
+              style: Theme.of(context).textTheme.bodySmall,
+            )
           else
             FilledButton.tonal(
               onPressed: working ? null : onDelete,
-              child: Text(working ? 'Working…' : 'Delete'),
+              child: Text(
+                working
+                    ? context.l10n.parentWorking
+                    : context.l10n.actionDelete,
+              ),
             ),
         ],
       ),
     );
   }
 }
+
+String _moderationShareStatusLabel(String status, BuildContext context) =>
+    switch (status) {
+      'deleted' => context.l10n.parentDeleted,
+      'downloaded' => context.l10n.homeReady,
+      'failed' => context.l10n.homeNeedsRetry,
+      'downloading' => context.l10n.homeDownloading,
+      _ => status,
+    };

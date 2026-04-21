@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/router/deep_link_service.dart';
 import '../../../core/theme/theme_descriptor.dart';
+import '../../../l10n/l10n.dart';
 import '../../../services/sync/sync_coordinator.dart';
 import '../../../shared_ui/components/nook_decorations.dart';
 import '../../capture/presentation/capture_page.dart';
@@ -216,10 +217,10 @@ class _CustomTabBar extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   static const _tabs = [
-    (icon: Icons.home_rounded, label: 'Home', kind: _TabKind.standard),
-    (icon: Icons.videocam_rounded, label: 'Capture', kind: _TabKind.capture),
-    (icon: Icons.auto_awesome, label: 'Studio', kind: _TabKind.standard),
-    (icon: Icons.shield_rounded, label: 'Parent', kind: _TabKind.control),
+    (icon: Icons.home_rounded, kind: _TabKind.standard),
+    (icon: Icons.videocam_rounded, kind: _TabKind.capture),
+    (icon: Icons.auto_awesome, kind: _TabKind.standard),
+    (icon: Icons.shield_rounded, kind: _TabKind.control),
   ];
 
   @override
@@ -258,7 +259,7 @@ class _CustomTabBar extends StatelessWidget {
             Expanded(
               child: _TabButton(
                 icon: _tabs[i].icon,
-                label: _tabs[i].label,
+                label: _tabLabel(context, i),
                 kind: _tabs[i].kind,
                 isActive: i == currentIndex,
                 palette: palette,
@@ -276,6 +277,13 @@ class _CustomTabBar extends StatelessWidget {
       ),
     );
   }
+
+  String _tabLabel(BuildContext context, int index) => switch (index) {
+    0 => context.l10n.tabHome,
+    1 => context.l10n.tabCapture,
+    2 => context.l10n.tabStudio,
+    _ => context.l10n.tabParent,
+  };
 }
 
 enum _TabKind { standard, capture, control }

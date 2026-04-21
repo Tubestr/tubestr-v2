@@ -31,6 +31,7 @@ import '../../player/presentation/player_page.dart';
 import '../domain/editor_preview_style.dart';
 import '../domain/editor_trim_utils.dart';
 import 'selfie_sticker_capture_page.dart';
+import '../../../l10n/l10n.dart';
 
 class EditorDetailPage extends ConsumerStatefulWidget {
   const EditorDetailPage({super.key, required this.source});
@@ -542,7 +543,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   void _showAudioError(EditorMusicTrackAsset track, Object error) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Could not load ${track.label}. Please try again.'),
+        content: Text(context.l10n.editorLoadTrackFailed(track.label)),
         backgroundColor: Colors.red.shade700,
       ),
     );
@@ -562,7 +563,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
           .export(
             session: _session,
             profileId: widget.source.profileId,
-            title: '${widget.source.title} Remix',
+            title: context.l10n.editorRemixTitle(widget.source.title),
             preferredDisplaySize: preferredDisplaySize,
             preferredRotationDegrees: preferredRotationDegrees,
           );
@@ -686,9 +687,9 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Remix saved',
+                            context.l10n.editorRemixSavedTitle,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -701,8 +702,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                     const SizedBox(height: 10),
                     Text(
                       result.warning == null
-                          ? 'Your remix is in the library and ready for the next step.'
-                          : '${result.warning} The remix is still saved and ready to keep going.',
+                          ? context.l10n.editorExportSaved
+                          : context.l10n.editorExportWarning(result.warning!),
                       style: const TextStyle(color: Colors.white70),
                     ),
                     if (scan != null) ...[
@@ -757,7 +758,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                                   );
                                 },
                           icon: const Icon(Icons.play_circle_outline_rounded),
-                          label: const Text('Watch'),
+                          label: Text(context.l10n.actionWatch),
                         ),
                         FilledButton.icon(
                           onPressed:
@@ -770,13 +771,13 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                           icon: const Icon(Icons.ios_share_rounded),
                           label: Text(
                             scan?.needsReview == true
-                                ? 'Review first'
-                                : 'Share',
+                                ? context.l10n.editorReviewFirst
+                                : context.l10n.actionShare,
                           ),
                         ),
                         FilledButton.tonal(
                           onPressed: () => Navigator.of(sheetContext).pop(),
-                          child: const Text('Keep editing later'),
+                          child: Text(context.l10n.editorActionKeepEditing),
                         ),
                       ],
                     ),
@@ -828,11 +829,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       }
       final count = result.queuedGroupCount;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Sharing to $count family space${count == 1 ? '' : 's'}…',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.editorSharing(count))),
       );
     } catch (error) {
       if (!mounted) {
@@ -847,23 +844,23 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   String _exportErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (message.contains('ffmpeg') || message.contains('export')) {
-      return 'We couldn\'t finish saving that remix yet. Try again in a moment.';
+      return context.l10n.editorExportSaveFailed;
     }
-    return 'We couldn\'t save that remix yet. Your edit choices are still here.';
+    return context.l10n.editorExportGenericFailed;
   }
 
   String _shareErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (message.contains('approval')) {
-      return 'This remix still needs a parent review before it can be shared.';
+      return context.l10n.editorShareNeedsReview;
     }
     if (_looksLikeShareUploadError(message)) {
-      return "We couldn't upload that remix to the family media server yet. Check your connection and try again.";
+      return context.l10n.editorShareUploadFailed;
     }
     if (message.contains('group') || message.contains('family')) {
-      return 'Connect with a family space first, then try sharing this remix again.';
+      return context.l10n.editorShareConnectFamily;
     }
-    return 'We couldn\'t share that remix yet. It\'s still saved safely in your library.';
+    return context.l10n.editorShareFailed;
   }
 
   bool _looksLikeShareUploadError(String message) {
@@ -1107,7 +1104,9 @@ class _MinimalHeader extends StatelessWidget {
                   color: Colors.white,
                   size: 20,
                 ),
-          label: isExporting ? 'Exporting' : 'Export',
+          label: isExporting
+              ? context.l10n.editorActionExporting
+              : context.l10n.editorActionExport,
         ),
       ],
     );
@@ -1279,7 +1278,7 @@ class _SideToolButton extends StatelessWidget {
     final btnSize = isCompact ? 44.0 : (isTablet ? 60.0 : 52.0);
     final iconSize = isCompact ? 22.0 : (isTablet ? 28.0 : 24.0);
     final labelSize = isTablet ? 11.0 : 10.0;
-    final label = _labelFor(tool);
+    final label = _labelFor(tool, context);
 
     return Tooltip(
       message: label,
@@ -1373,13 +1372,13 @@ class _SideToolButton extends StatelessWidget {
     };
   }
 
-  static String _labelFor(EditorTool tool) {
+  static String _labelFor(EditorTool tool, BuildContext context) {
     return switch (tool) {
-      EditorTool.trim => 'Trim',
-      EditorTool.effects => 'Effects',
-      EditorTool.overlays => 'Stickers',
-      EditorTool.audio => 'Audio',
-      EditorTool.text => 'Text',
+      EditorTool.trim => context.l10n.editorToolTrim,
+      EditorTool.effects => context.l10n.editorToolEffects,
+      EditorTool.overlays => context.l10n.editorToolStickers,
+      EditorTool.audio => context.l10n.editorToolAudio,
+      EditorTool.text => context.l10n.editorToolText,
     };
   }
 }
@@ -1460,7 +1459,11 @@ class _TimelineBar extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'Keep: ${_formatDuration(normalizedTrim.trimRange.duration)}',
+                            context.l10n.editorTrimKeepDuration(
+                              _formatDuration(
+                                normalizedTrim.trimRange.duration,
+                              ),
+                            ),
                             style: TextStyle(
                               color: palette.accentSecondary,
                               fontSize: 11,
@@ -1796,7 +1799,7 @@ class _CompactEffectsTool extends StatelessWidget {
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Text(
-                        preset.label,
+                        _localizedFilterPresetLabel(preset.id, context),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 13,
@@ -1814,7 +1817,7 @@ class _CompactEffectsTool extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _CompactSlider(
-              label: 'Brightness',
+              label: context.l10n.editorBrightness,
               value: session.adjustments.brightness,
               min: -1,
               max: 1,
@@ -1823,7 +1826,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
-              label: 'Contrast',
+              label: context.l10n.editorContrast,
               value: session.adjustments.contrast,
               min: 0.5,
               max: 1.8,
@@ -1832,7 +1835,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
-              label: 'Saturation',
+              label: context.l10n.editorSaturation,
               value: session.adjustments.saturation,
               min: 0,
               max: 2,
@@ -1841,7 +1844,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
-              label: 'Sharpness',
+              label: context.l10n.editorSharpness,
               value: session.adjustments.sharpness,
               min: 0,
               max: 1,
@@ -1850,7 +1853,7 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             _CompactSlider(
-              label: 'Vignette',
+              label: context.l10n.editorVignette,
               value: session.adjustments.vignette,
               min: 0,
               max: 1,
@@ -2017,7 +2020,7 @@ class _CompactOverlayToolState extends State<_CompactOverlayTool> {
                 final isSelected = category.id == selectedCategory.id;
                 return _StickerCategoryChip(
                   palette: widget.palette,
-                  label: category.label,
+                  label: category.localizedLabel(context),
                   isSelected: isSelected,
                   onTap: () => setState(() => _categoryId = category.id),
                 );
@@ -2109,7 +2112,7 @@ class _StickerToolHeader extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
         decoration: InputDecoration(
-          hintText: 'Search stickers',
+          hintText: context.l10n.editorSearchStickers,
           hintStyle: TextStyle(
             color: Colors.white.withValues(alpha: 0.45),
             fontSize: 14,
@@ -2255,7 +2258,9 @@ class _StickerEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        query.trim().isEmpty ? 'No stickers here yet' : 'No matching stickers',
+        query.trim().isEmpty
+            ? context.l10n.editorNoStickersHereYet
+            : context.l10n.editorNoMatchingStickers,
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.55),
           fontSize: 13,
@@ -2380,6 +2385,21 @@ class _StickerCategory {
       _travel,
     ];
   }
+
+  String localizedLabel(BuildContext context) => switch (id) {
+    'all' => context.l10n.editorCategoryAll,
+    'yours' => context.l10n.editorCategoryYours,
+    'originals' => context.l10n.editorCategoryOriginals,
+    'faces' => context.l10n.editorCategoryFaces,
+    'hearts' => context.l10n.editorCategoryHearts,
+    'party' => context.l10n.editorCategoryParty,
+    'animals' => context.l10n.editorCategoryAnimals,
+    'food' => context.l10n.editorCategoryFood,
+    'sports' => context.l10n.editorCategorySports,
+    'objects' => context.l10n.editorCategoryObjects,
+    'travel' => context.l10n.editorCategoryTravel,
+    _ => label,
+  };
 }
 
 bool _matchAll(_StickerPickerItem item) => true;
@@ -2630,7 +2650,7 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
                 final isSelected = category.id == selectedCategory.id;
                 return _StickerCategoryChip(
                   palette: widget.palette,
-                  label: category.label,
+                  label: category.localizedLabel(context),
                   isSelected: isSelected,
                   onTap: () => setState(() => _categoryId = category.id),
                 );
@@ -2704,8 +2724,8 @@ class _CompactAudioToolState extends State<_CompactAudioTool> {
                       color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'Remove',
+                    child: Text(
+                      context.l10n.actionRemove,
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -2746,7 +2766,7 @@ class _AudioToolHeader extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
         decoration: InputDecoration(
-          hintText: 'Search music',
+          hintText: context.l10n.editorSearchMusic,
           hintStyle: TextStyle(
             color: Colors.white.withValues(alpha: 0.45),
             fontSize: 14,
@@ -2817,8 +2837,8 @@ class _AudioTrackRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final creator = track.creator;
     final status = track.isBlossomBacked && !isCached
-        ? 'Download'
-        : (track.license ?? 'Ready');
+        ? context.l10n.editorMusicDownload
+        : (track.license ?? context.l10n.editorMusicReady);
 
     return GestureDetector(
       onTap: isDownloading ? null : onSelected,
@@ -2914,7 +2934,7 @@ class _AudioTrackRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                isDownloading ? 'Loading' : status,
+                isDownloading ? context.l10n.editorMusicLoading : status,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -2944,7 +2964,9 @@ class _AudioEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        query.trim().isEmpty ? 'No music here yet' : 'No matching music',
+        query.trim().isEmpty
+            ? context.l10n.editorNoMusicHereYet
+            : context.l10n.editorNoMatchingMusic,
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.55),
           fontSize: 13,
@@ -3037,7 +3059,31 @@ class _AudioCategory {
         )
         .toList(growable: false);
   }
+
+  String localizedLabel(BuildContext context) => switch (id) {
+    'all' => context.l10n.editorCategoryAll,
+    'downloaded' => context.l10n.editorMusicReady,
+    'happy' => context.l10n.editorMusicHappy,
+    'energy' => context.l10n.editorMusicEnergy,
+    'chill' => context.l10n.editorMusicChill,
+    'chiptune' => context.l10n.editorMusicChiptune,
+    'dramatic' => context.l10n.editorMusicDramatic,
+    'loops' => context.l10n.editorMusicLoops,
+    _ => label,
+  };
 }
+
+String _localizedFilterPresetLabel(String presetId, BuildContext context) =>
+    switch (presetId) {
+      'none' => context.l10n.editorFilterNone,
+      'vivid' => context.l10n.editorFilterVivid,
+      'matte' => context.l10n.editorFilterMatte,
+      'fade' => context.l10n.editorFilterFade,
+      'warm' => context.l10n.editorFilterWarm,
+      'cool' => context.l10n.editorFilterCool,
+      'noir' => context.l10n.editorFilterNoir,
+      _ => presetId,
+    };
 
 bool _matchAllAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
   return true;
@@ -3176,7 +3222,7 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                 Expanded(
                   child: selected == null
                       ? Text(
-                          'Tap existing text or add a new one.',
+                          context.l10n.editorTapText,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 13,
@@ -3190,7 +3236,7 @@ class _CompactTextToolState extends State<_CompactTextTool> {
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Type something...',
+                            hintText: context.l10n.editorTypeSomething,
                             hintStyle: TextStyle(
                               color: Colors.white.withValues(alpha: 0.35),
                             ),
@@ -3354,13 +3400,13 @@ class _AddTextButton extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 4),
+            const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 4),
             Text(
-              'Add text',
+              context.l10n.editorAddText,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 13,

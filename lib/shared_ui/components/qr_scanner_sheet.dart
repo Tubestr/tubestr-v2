@@ -6,17 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 
+import '../../l10n/l10n.dart';
 import 'fill_camera_preview.dart';
 
 class QrScannerSheet extends StatefulWidget {
-  const QrScannerSheet({
-    super.key,
-    this.title = 'Scan QR',
-    this.instructions = 'Point the camera at a QR code.',
-  });
+  const QrScannerSheet({super.key, this.title, this.instructions});
 
-  final String title;
-  final String instructions;
+  final String? title;
+  final String? instructions;
 
   @override
   State<QrScannerSheet> createState() => _QrScannerSheetState();
@@ -71,7 +68,7 @@ class _QrScannerSheetState extends State<QrScannerSheet>
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
         if (mounted) {
-          setState(() => _errorMessage = 'No camera available.');
+          setState(() => _errorMessage = context.l10n.qrNoCamera);
         }
         return;
       }
@@ -100,7 +97,7 @@ class _QrScannerSheetState extends State<QrScannerSheet>
       await _startStream();
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Could not open camera: $error');
+      setState(() => _errorMessage = context.l10n.qrOpenCameraFailed('$error'));
     }
   }
 
@@ -213,6 +210,7 @@ class _QrScannerSheetState extends State<QrScannerSheet>
   Widget build(BuildContext context) {
     final controller = _controller;
     final error = _errorMessage;
+    final l10n = context.l10n;
 
     return SafeArea(
       child: SizedBox(
@@ -220,7 +218,10 @@ class _QrScannerSheetState extends State<QrScannerSheet>
         child: Column(
           children: [
             const SizedBox(height: 12),
-            Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              widget.title ?? l10n.scanQrTitle,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: Padding(
@@ -255,7 +256,7 @@ class _QrScannerSheetState extends State<QrScannerSheet>
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Text(
-                widget.instructions,
+                widget.instructions ?? l10n.scanQrInstructions,
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),

@@ -4,23 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/di/providers.dart';
+import '../../l10n/l10n.dart';
 
 class PrivateKeyExportCard extends ConsumerStatefulWidget {
   const PrivateKeyExportCard({
     super.key,
     required this.secret,
-    this.title = 'Private key backup',
-    this.description =
-        'This private key gives full control of your parent account.',
-    this.warningText =
-        'Keep this private. Anyone with this key can control your family account.',
+    this.title,
+    this.description,
+    this.warningText,
     this.shareText,
   });
 
   final String secret;
-  final String title;
-  final String description;
-  final String warningText;
+  final String? title;
+  final String? description;
+  final String? warningText;
   final String? shareText;
 
   @override
@@ -34,6 +33,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
   @override
   Widget build(BuildContext context) {
     final palette = ref.watch(activePaletteProvider);
+    final l10n = context.l10n;
     final displayedSecret = _revealed
         ? widget.secret
         : _maskSecret(widget.secret);
@@ -55,7 +55,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                widget.title,
+                widget.title ?? l10n.privateKeyBackupTitle,
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -65,7 +65,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
         ),
         const SizedBox(height: 8),
         Text(
-          widget.description,
+          widget.description ?? l10n.privateKeyBackupSubtitle,
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -97,7 +97,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
                   _revealed ? Icons.visibility_off_rounded : Icons.visibility,
                   size: 18,
                 ),
-                label: Text(_revealed ? 'Hide' : 'Reveal'),
+                label: Text(_revealed ? l10n.actionHide : l10n.actionReveal),
               ),
             ),
             const SizedBox(width: 8),
@@ -109,11 +109,11 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
                     return;
                   }
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Recovery key copied')),
+                    SnackBar(content: Text(l10n.recoveryKeyCopied)),
                   );
                 },
                 icon: const Icon(Icons.copy_rounded, size: 18),
-                label: const Text('Copy'),
+                label: Text(l10n.actionCopy),
               ),
             ),
             const SizedBox(width: 8),
@@ -125,7 +125,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
                   );
                 },
                 icon: const Icon(Icons.ios_share_rounded, size: 18),
-                label: const Text('Share'),
+                label: Text(l10n.actionShare),
               ),
             ),
           ],
@@ -140,7 +140,7 @@ class _PrivateKeyExportCardState extends ConsumerState<PrivateKeyExportCard> {
             border: Border.all(color: palette.danger.withValues(alpha: 0.2)),
           ),
           child: Text(
-            widget.warningText,
+            widget.warningText ?? l10n.privateKeyBackupWarning,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: palette.danger,
               fontWeight: FontWeight.w700,

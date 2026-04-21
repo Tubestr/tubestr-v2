@@ -19,6 +19,7 @@ import '../../../shared_ui/components/fill_camera_preview.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../editor/presentation/editor_detail_page.dart';
 import '../../player/presentation/player_page.dart';
+import '../../../l10n/l10n.dart';
 
 /// Capture tab content — full-screen camera with floating controls.
 class CaptureContent extends ConsumerStatefulWidget {
@@ -114,8 +115,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       } else if (mounted) {
         setState(() {
           _noticeMessage = null;
-          _errorMessage =
-              'We couldn\'t find a camera on this device right now.';
+          _errorMessage = context.l10n.captureNoCamera;
         });
       }
     } catch (e) {
@@ -162,7 +162,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         _errorMessage = null;
         _noticeMessage = opened.recordsAudio
             ? null
-            : 'Microphone access is off, so clips will save without sound. Turn microphone access on in Settings to add audio.';
+            : context.l10n.captureMicrophoneNoticeOff;
         _cameraDisposeStarted = false;
       });
     } catch (e) {
@@ -311,7 +311,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         _isRecording = false;
         _isSaving = false;
         _noticeMessage = null;
-        _errorMessage = 'Choose a child profile before recording a clip.';
+        _errorMessage = context.l10n.captureChooseChild;
       });
       return;
     }
@@ -335,10 +335,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
           : 1.0;
       if (mounted) {
         setState(() {
-          _workflowState = const _CaptureWorkflowState(
+          _workflowState = _CaptureWorkflowState(
             stage: _CaptureWorkflowStage.processing,
-            headline: 'Finishing your clip',
-            detail: 'Preparing the video and thumbnail for your library.',
+            headline: context.l10n.captureFinishingClipTitle,
+            detail: context.l10n.captureFinishingClipDetail,
           );
         });
       }
@@ -360,10 +360,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
           );
       if (mounted) {
         setState(() {
-          _workflowState = const _CaptureWorkflowState(
+          _workflowState = _CaptureWorkflowState(
             stage: _CaptureWorkflowStage.scanning,
-            headline: 'Checking your clip',
-            detail: 'Running an on-device safety scan before sharing.',
+            headline: context.l10n.captureCheckingClip,
+            detail: context.l10n.captureSafetyScanDetail,
           );
         });
       }
@@ -515,8 +515,8 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                         const SizedBox(height: 18),
                         Text(
                           _errorMessage == null
-                              ? 'Opening camera'
-                              : 'Camera needs attention',
+                              ? context.l10n.captureOpeningCamera
+                              : context.l10n.captureCameraNeedsAttention,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -527,7 +527,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                         const SizedBox(height: 8),
                         Text(
                           _errorMessage ??
-                              'Getting everything ready so you can record a new clip.',
+                              context.l10n.captureGettingReadyDetail,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white70,
@@ -542,7 +542,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                               foregroundColor: Colors.white,
                               side: const BorderSide(color: Colors.white54),
                             ),
-                            child: const Text('Try again'),
+                            child: Text(context.l10n.actionTryAgain),
                           ),
                         ],
                       ],
@@ -591,17 +591,17 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                     color: Colors.black.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.mic_off_rounded,
                         color: Colors.white,
                         size: 14,
                       ),
-                      SizedBox(width: 5),
+                      const SizedBox(width: 5),
                       Text(
-                        'Silent',
+                        context.l10n.captureMicSilent,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 13,
@@ -739,8 +739,8 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Video Saved!',
+                  Text(
+                    context.l10n.captureVideoSaved,
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ],
@@ -822,10 +822,10 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
                 child: _CaptureWorkflowOverlay(
                   state:
                       _workflowState ??
-                      const _CaptureWorkflowState(
+                      _CaptureWorkflowState(
                         stage: _CaptureWorkflowStage.preparing,
-                        headline: 'Preparing camera',
-                        detail: 'Getting everything ready.',
+                        headline: context.l10n.capturePreparingCamera,
+                        detail: context.l10n.captureGettingReadyShort,
                       ),
                 ),
               ),
@@ -882,19 +882,19 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   }
 
   _CaptureWorkflowState _buildFinishedWorkflowState(ContentScanSummary scan) {
+    final l10n = context.l10n;
     if (scan.needsReview) {
       return _CaptureWorkflowState(
         stage: _CaptureWorkflowStage.complete,
-        headline: 'Saved, but needs a parent look',
+        headline: l10n.captureSavedNeedsReview,
         detail: scan.summary,
         canShare: false,
       );
     }
     return _CaptureWorkflowState(
       stage: _CaptureWorkflowStage.complete,
-      headline: 'Clip ready',
-      detail:
-          'Your clip is saved, scanned, and ready to edit, watch, or share.',
+      headline: l10n.captureClipReady,
+      detail: l10n.captureReadyDetail,
       canShare: true,
     );
   }
@@ -910,13 +910,14 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
         .firstWhereOrNull((item) => item.id == video.profileId);
     if (identity == null || profile == null) {
       setState(() {
-        _errorMessage = 'Finish parent setup before sharing this clip.';
+        _errorMessage = context.l10n.captureFinishSetupShareThisClip;
       });
       return;
     }
 
     setState(() => _isRunningQuickShare = true);
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     try {
       final result = await ref
           .read(videoShareCoordinatorProvider)
@@ -935,11 +936,7 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
       await HapticFeedback.mediumImpact();
       final count = result.queuedGroupCount;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Sharing "${video.title}" to $count family space${count == 1 ? '' : 's'}…',
-          ),
-        ),
+        SnackBar(content: Text(l10n.captureSharing(video.title, count))),
       );
     } catch (error) {
       if (!mounted) {
@@ -998,41 +995,41 @@ class _CaptureContentState extends ConsumerState<CaptureContent>
   String _cameraErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (error is TimeoutException) {
-      return 'The camera took too long to open. Try again, or close any other app using the camera.';
+      return context.l10n.captureCameraTimeout;
     }
     if (_isCameraAccessError(error)) {
-      return 'Camera access is turned off. Allow camera access in Settings, then try again.';
+      return context.l10n.captureCameraDenied;
     }
     if (_isAudioAccessError(error)) {
-      return 'Microphone access is off. Try again, or turn microphone access on in Settings to record with sound.';
+      return context.l10n.captureMicrophoneDenied;
     }
     if (message.contains('access') || message.contains('permission')) {
-      return 'Camera access is still turned off. Allow access in Settings, then try again.';
+      return context.l10n.captureCameraStillDenied;
     }
     if (message.contains('camera') && message.contains('in use')) {
-      return 'The camera is busy right now. Close any other app using it and try again.';
+      return context.l10n.captureCameraBusy;
     }
     if (message.contains('profile')) {
-      return 'Choose a child profile before recording a clip.';
+      return context.l10n.captureChooseChild;
     }
-    return 'We couldn\'t start the camera just yet. Give it another try.';
+    return context.l10n.captureCameraStartFailed;
   }
 
   String _shareErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (message.contains('parent') || message.contains('identity')) {
-      return 'Finish parent setup before sharing clips with family.';
+      return context.l10n.captureFinishSetupShare;
     }
     if (message.contains('approval')) {
-      return 'This clip needs a parent review before it can be shared.';
+      return context.l10n.captureNeedsParentReview;
     }
     if (_looksLikeShareUploadError(message)) {
-      return "We couldn't upload that clip to the family media server yet. Check your connection and try again.";
+      return context.l10n.playerShareUploadFailed;
     }
     if (message.contains('group') || message.contains('family')) {
-      return 'Connect with a family space first, then you can share this clip.';
+      return context.l10n.captureConnectFamilyShare;
     }
-    return 'We couldn\'t share that clip yet. It\'s still saved safely here.';
+    return context.l10n.captureShareFailed;
   }
 
   bool _looksLikeShareUploadError(String message) {
@@ -1306,12 +1303,12 @@ class _CaptureNextStepCard extends StatelessWidget {
                       FilledButton.tonalIcon(
                         onPressed: onOpenPlayer,
                         icon: const Icon(Icons.play_circle_outline_rounded),
-                        label: const Text('Watch'),
+                        label: Text(context.l10n.actionWatch),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: onOpenEditor,
                         icon: const Icon(Icons.auto_awesome_rounded),
-                        label: const Text('Edit'),
+                        label: Text(context.l10n.actionEdit),
                       ),
                       FilledButton.icon(
                         onPressed: state.canShare && !isQuickSharing
@@ -1327,7 +1324,9 @@ class _CaptureNextStepCard extends StatelessWidget {
                               )
                             : const Icon(Icons.ios_share_rounded),
                         label: Text(
-                          state.canShare ? 'Share now' : 'Review first',
+                          state.canShare
+                              ? context.l10n.captureShareNow
+                              : context.l10n.editorReviewFirst,
                         ),
                       ),
                     ],

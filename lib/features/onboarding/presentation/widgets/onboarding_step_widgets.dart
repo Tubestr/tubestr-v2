@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../core/constants.dart';
 import '../../../../core/storage/app_database.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../domain/models/parent_identity.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../shared_ui/motion/app_motion.dart';
 import '../../../../shared_ui/components/private_key_export_card.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/app_localizations_x.dart';
+import '../../../../l10n/l10n.dart';
 
 class OnboardingCenteredStep extends StatelessWidget {
   const OnboardingCenteredStep({super.key, required this.child});
@@ -115,51 +117,47 @@ class OnboardingIntroSlides extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onSkip;
 
-  static const _slides = [
+  List<_OnboardingIntroSlideData> _buildSlides(AppLocalizations l10n) => [
     _OnboardingIntroSlideData(
       icon: Icons.family_restroom_rounded,
-      title: 'Your Family\'s Private Space',
-      subtitle:
-          '${AppConstants.appName} is a video app built just for families. No ads, no algorithms, no strangers.',
+      title: l10n.onboardingIntroTitle,
+      subtitle: l10n.onboardingIntroSubtitle,
       stepLabel: null,
-      colors: [Color(0xFFE8794E), Color(0xFFF9B45E)],
+      colors: const [Color(0xFFE8794E), Color(0xFFF9B45E)],
     ),
     _OnboardingIntroSlideData(
       icon: Icons.key_rounded,
-      title: 'Create Your Parent Key',
-      subtitle:
-          'First, you\'ll set up a secure parent identity. This key is yours alone and controls your family\'s account.',
-      stepLabel: 'Step 1',
-      colors: [Color(0xFF6E63A8), Color(0xFFE2C76C)],
+      title: l10n.onboardingParentKeyTitle,
+      subtitle: l10n.onboardingParentKeySubtitle,
+      stepLabel: l10n.onboardingStepOne,
+      colors: const [Color(0xFF6E63A8), Color(0xFFE2C76C)],
     ),
     _OnboardingIntroSlideData(
       icon: Icons.child_care_rounded,
-      title: 'Add Your Kids',
-      subtitle:
-          'Create a profile for each child with their own colorful theme. Each kid gets a personalized experience.',
-      stepLabel: 'Step 2',
-      colors: [Color(0xFF3FAE6F), Color(0xFF7A684A)],
+      title: l10n.onboardingKidsTitle,
+      subtitle: l10n.onboardingKidsSubtitle,
+      stepLabel: l10n.onboardingStepTwo,
+      colors: const [Color(0xFF3FAE6F), Color(0xFF7A684A)],
     ),
     _OnboardingIntroSlideData(
       icon: Icons.videocam_rounded,
-      title: 'Record & Edit Together',
-      subtitle:
-          'Kids can capture videos, add stickers, music, and effects in the Edit Studio. Creativity without the risk.',
-      stepLabel: 'Step 3',
-      colors: [Color(0xFF9C7AA8), Color(0xFFF2A7B7)],
+      title: l10n.onboardingCreateTitle,
+      subtitle: l10n.onboardingCreateSubtitle,
+      stepLabel: l10n.onboardingStepThree,
+      colors: const [Color(0xFF9C7AA8), Color(0xFFF2A7B7)],
     ),
     _OnboardingIntroSlideData(
       icon: Icons.shield_rounded,
-      title: 'You Approve Everything',
-      subtitle:
-          'Every video goes through you first. Review, approve, and share only with family members you trust.',
-      stepLabel: 'Step 4',
-      colors: [Color(0xFF4A90D9), Color(0xFF67B8A7)],
+      title: l10n.onboardingApproveTitle,
+      subtitle: l10n.onboardingApproveSubtitle,
+      stepLabel: l10n.onboardingStepFour,
+      colors: const [Color(0xFF4A90D9), Color(0xFF67B8A7)],
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final slides = _buildSlides(context.l10n);
     return Column(
       children: [
         Align(
@@ -177,17 +175,17 @@ class OnboardingIntroSlides extends StatelessWidget {
                 ),
               ),
               onPressed: onSkip,
-              child: const Text('Skip'),
+              child: Text(context.l10n.actionSkip),
             ),
           ),
         ),
         Expanded(
           child: PageView.builder(
             controller: controller,
-            itemCount: _slides.length,
+            itemCount: slides.length,
             onPageChanged: onPageChanged,
             itemBuilder: (context, index) {
-              final slide = _slides[index];
+              final slide = slides[index];
               final isActive = index == page;
               return AnimatedScale(
                 duration: AppMotion.duration(context, AppMotion.stateChange),
@@ -301,7 +299,7 @@ class OnboardingIntroSlides extends StatelessWidget {
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_slides.length, (index) {
+          children: List.generate(slides.length, (index) {
             final active = index == page;
             return AnimatedContainer(
               duration: AppMotion.duration(context, AppMotion.stateChange),
@@ -327,7 +325,9 @@ class OnboardingIntroSlides extends StatelessWidget {
             child: FilledButton(
               onPressed: onNext,
               child: Text(
-                page < _slides.length - 1 ? 'Next' : 'Let\'s Get Started',
+                page < slides.length - 1
+                    ? context.l10n.actionNext
+                    : context.l10n.onboardingGetStarted,
               ),
             ),
           ),
@@ -359,14 +359,14 @@ class OnboardingRoleSelectStep extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Welcome to ${AppConstants.appName}',
+              context.l10n.onboardingWelcomeTitle,
               style: Theme.of(
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'First, we need to create your parent account. This only takes a minute.',
+              context.l10n.onboardingRoleSelectSubtitle,
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -379,7 +379,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onNewParent,
                 icon: const Icon(Icons.auto_awesome),
-                label: const Text('Create new account'),
+                label: Text(context.l10n.onboardingCreateNewAccount),
               ),
             ),
             const SizedBox(height: 16),
@@ -389,7 +389,7 @@ class OnboardingRoleSelectStep extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onRestore,
                 icon: const Icon(Icons.restore_rounded),
-                label: const Text('I have a backup key'),
+                label: Text(context.l10n.onboardingHaveBackupKey),
               ),
             ),
           ],
@@ -449,7 +449,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Create Your Parent Key',
+              context.l10n.onboardingParentKeyTitle,
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -457,7 +457,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your parent key is like your family\'s master password. It proves you\'re the parent and lets you manage everything.',
+              context.l10n.onboardingParentKeyHelp,
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -468,9 +468,9 @@ class OnboardingParentKeyStep extends StatelessWidget {
               controller: displayNameController,
               enabled: identity == null && !busy,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Parent display name',
-                hintText: 'Lee & Emma',
+              decoration: InputDecoration(
+                labelText: context.l10n.onboardingParentDisplayName,
+                hintText: context.l10n.onboardingDisplayNameHint,
               ),
             ),
             if (identity == null) ...[
@@ -484,9 +484,9 @@ class OnboardingParentKeyStep extends StatelessWidget {
                   LengthLimitingTextInputFormatter(4),
                 ],
                 onChanged: onBirthYearChanged,
-                decoration: const InputDecoration(
-                  labelText: 'Parent birth year',
-                  hintText: '1988',
+                decoration: InputDecoration(
+                  labelText: context.l10n.onboardingParentBirthYear,
+                  hintText: context.l10n.onboardingBirthYearHint,
                 ),
               ),
               const SizedBox(height: 12),
@@ -538,7 +538,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                                 await onOpenPrivacyPolicy();
                               },
                         icon: const Icon(Icons.open_in_new_rounded),
-                        label: const Text('Read privacy policy'),
+                        label: Text(context.l10n.onboardingReadPrivacyPolicy),
                       ),
                     ),
                   ],
@@ -564,7 +564,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
               const SizedBox(height: 16),
               PrivateKeyExportCard(
                 secret: identity!.nsec,
-                title: 'Parent backup key',
+                title: context.l10n.onboardingBackupKeyCardTitle,
                 description:
                     'Save this before you continue. It is the recovery path for your parent account.',
                 shareText: _parentBackupShareText(identity!),
@@ -578,7 +578,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Text(
-                  'Your private key is the master backup for this parent account. Save it somewhere safe before continuing.',
+                  context.l10n.onboardingPrivateKeyHelp,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
@@ -590,16 +590,16 @@ class OnboardingParentKeyStep extends StatelessWidget {
                 height: 52,
                 child: FilledButton(
                   onPressed: onContinue,
-                  child: const Text('Continue to Child Profiles'),
+                  child: Text(context.l10n.onboardingContinueChildProfiles),
                 ),
               ),
             ] else ...[
               if (busy)
-                const Column(
+                Column(
                   children: [
                     CircularProgressIndicator(),
                     SizedBox(height: 16),
-                    Text('Preparing your secure parent key...'),
+                    Text(context.l10n.onboardingPreparingKey),
                   ],
                 )
               else
@@ -608,7 +608,7 @@ class OnboardingParentKeyStep extends StatelessWidget {
                   height: 52,
                   child: FilledButton(
                     onPressed: eligibilityMessage == null ? onGenerate : null,
-                    child: const Text('Generate Parent Key'),
+                    child: Text(context.l10n.onboardingGenerateParentKey),
                   ),
                 ),
             ],
@@ -659,7 +659,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Welcome Back',
+              context.l10n.onboardingWelcomeBackTitle,
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -667,7 +667,7 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Paste your saved `nsec1...` key or 64-character backup key. You can also scan the QR code if you saved one. If this device still has your parent account saved in secure storage or synced Apple Keychain, ${AppConstants.appName} will pick it up automatically on launch.',
+              context.l10n.onboardingRestoreKeySubtitle,
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -679,8 +679,8 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
               enabled: !busy,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Parent backup key',
+              decoration: InputDecoration(
+                labelText: context.l10n.onboardingParentBackupKey,
                 hintText: 'nsec1...',
               ),
             ),
@@ -693,12 +693,12 @@ class OnboardingRestoreKeyStep extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: busy ? null : onScanQr,
                   icon: const Icon(Icons.qr_code_scanner_rounded),
-                  label: const Text('Scan QR Code'),
+                  label: Text(context.l10n.onboardingScanQrCode),
                 ),
                 FilledButton.icon(
                   onPressed: busy ? null : onRestore,
                   icon: const Icon(Icons.lock_open_rounded),
-                  label: const Text('Restore'),
+                  label: Text(context.l10n.actionRestore),
                 ),
               ],
             ),
@@ -759,10 +759,10 @@ class OnboardingRecoveryStep extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               busy
-                  ? 'Restoring your parent account'
+                  ? context.l10n.onboardingRestoringParentAccount
                   : succeeded == true
-                  ? 'Recovery complete'
-                  : 'Recovery needs another try',
+                  ? context.l10n.onboardingRecoveryComplete
+                  : context.l10n.onboardingRecoveryNeedsRetry,
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -789,7 +789,7 @@ class OnboardingRecoveryStep extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  'Parent key recovered',
+                  context.l10n.onboardingParentKeyRecovered,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: palette.success,
                     fontWeight: FontWeight.w700,
@@ -805,11 +805,15 @@ class OnboardingRecoveryStep extends StatelessWidget {
                 if (onTryAgain != null)
                   OutlinedButton(
                     onPressed: onTryAgain,
-                    child: const Text('Try again'),
+                    child: Text(context.l10n.actionTryAgain),
                   ),
                 FilledButton(
                   onPressed: busy ? null : onContinue,
-                  child: Text(succeeded == true ? 'Continue' : 'Restore first'),
+                  child: Text(
+                    succeeded == true
+                        ? context.l10n.actionContinue
+                        : context.l10n.onboardingRestoreFirst,
+                  ),
                 ),
               ],
             ),
@@ -850,7 +854,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
         children: [
           const SizedBox(height: 40),
           Text(
-            'Who\'s in Your Family?',
+            context.l10n.onboardingWhoFamily,
             style: Theme.of(
               context,
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -891,7 +895,9 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(
-                        ThemeDescriptorX.fromStorage(profile.theme).label,
+                        context.l10n.themeLabel(
+                          ThemeDescriptorX.fromStorage(profile.theme),
+                        ),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: palette.mutedInk,
                         ),
@@ -907,7 +913,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Add Child Profile',
+                  context.l10n.onboardingAddChildProfile,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 12),
@@ -915,13 +921,16 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                   controller: nameController,
                   enabled: !busy,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'Emma',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.onboardingName,
+                    hintText: context.l10n.onboardingChildNameHint,
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text('Theme', style: Theme.of(context).textTheme.labelMedium),
+                Text(
+                  context.l10n.onboardingTheme,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
                 const SizedBox(height: 8),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -931,7 +940,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                         ButtonSegment(
                           value: themeOption,
                           label: Text(
-                            themeOption.label,
+                            context.l10n.themeLabel(themeOption),
                             style: const TextStyle(fontSize: 12),
                           ),
                         ),
@@ -948,7 +957,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: busy ? null : onAdd,
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add Child Profile'),
+                    label: Text(context.l10n.onboardingAddChildProfile),
                   ),
                 ),
               ],
@@ -960,7 +969,7 @@ class OnboardingChildProfilesStep extends StatelessWidget {
             height: 52,
             child: FilledButton(
               onPressed: onFinish,
-              child: const Text('Complete Onboarding'),
+              child: Text(context.l10n.onboardingComplete),
             ),
           ),
           const SizedBox(height: 40),
@@ -1009,14 +1018,14 @@ class OnboardingPermissionsStep extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'One Last Thing',
+              context.l10n.onboardingOneLastThing,
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              '${AppConstants.appName} uses the camera for recording videos and scanning family invites, and the microphone for video sound.',
+              context.l10n.onboardingAppPermissionsDetail,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -1028,15 +1037,15 @@ class OnboardingPermissionsStep extends StatelessWidget {
                 children: [
                   OnboardingPermissionRow(
                     icon: Icons.videocam_rounded,
-                    title: 'Camera',
-                    detail: 'Record clips and scan invite QR codes.',
+                    title: context.l10n.onboardingCamera,
+                    detail: context.l10n.onboardingCameraPermissionDetail,
                     palette: palette,
                   ),
                   const SizedBox(height: 12),
                   OnboardingPermissionRow(
                     icon: Icons.mic_rounded,
-                    title: 'Microphone',
-                    detail: 'Capture audio while recording videos.',
+                    title: context.l10n.onboardingMicrophone,
+                    detail: context.l10n.onboardingMicrophonePermissionDetail,
                     palette: palette,
                   ),
                 ],
@@ -1078,13 +1087,17 @@ class OnboardingPermissionsStep extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check_circle_outline_rounded),
-                label: Text(busy ? 'Requesting Access...' : 'Allow Access'),
+                label: Text(
+                  busy
+                      ? context.l10n.onboardingRequestingAccess
+                      : context.l10n.onboardingAllowAccess,
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: busy ? null : onSkip,
-              child: const Text('Skip for now'),
+              child: Text(context.l10n.actionSkipForNow),
             ),
           ],
         ),
@@ -1162,14 +1175,14 @@ class OnboardingCompleteStep extends StatelessWidget {
             Icon(Icons.verified_rounded, size: 72, color: palette.success),
             const SizedBox(height: 24),
             Text(
-              'You\'re All Set!',
+              context.l10n.onboardingCompleteTitle,
               style: Theme.of(
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Your family\'s ${AppConstants.appName} is ready.',
+              context.l10n.onboardingCompleteSubtitle,
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: palette.mutedInk),
@@ -1207,7 +1220,7 @@ class OnboardingParentPublicKeyCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Parent public key',
+                context.l10n.onboardingParentPublicKey,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
@@ -1227,11 +1240,11 @@ class OnboardingParentPublicKeyCard extends StatelessWidget {
                 return;
               }
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Public key copied')),
+                SnackBar(content: Text(context.l10n.publicKeyCopied)),
               );
             },
             icon: const Icon(Icons.copy_rounded, size: 16),
-            label: const Text('Copy'),
+            label: Text(context.l10n.actionCopy),
           ),
         ],
       ),

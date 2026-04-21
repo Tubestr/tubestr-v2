@@ -5,8 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants.dart';
 import '../../core/di/providers.dart';
+import '../../core/i18n/app_locale_preference.dart';
 import '../../core/theme/app_theme_mode.dart';
 import '../../core/theme/theme_descriptor.dart';
+import '../../l10n/app_localizations_x.dart';
+import '../../l10n/l10n.dart';
 
 /// Capsule button that shows the active profile name and opens
 /// a menu to switch profiles or change theme.
@@ -22,6 +25,7 @@ class ProfileSwitcherButton extends ConsumerWidget {
         profiles.firstOrNull;
     final activeTheme = ref.watch(activeThemeProvider);
     final appearanceMode = ref.watch(activeAppearanceModeProvider);
+    final localePreference = ref.watch(activeLocalePreferenceProvider);
     final palette = ref.watch(activePaletteProvider);
 
     return MenuAnchor(
@@ -30,7 +34,7 @@ class ProfileSwitcherButton extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Text(
-              'Switch Profile',
+              context.l10n.switchProfile,
               style: Theme.of(
                 context,
               ).textTheme.labelMedium?.copyWith(color: palette.mutedInk),
@@ -52,7 +56,7 @@ class ProfileSwitcherButton extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text(
-            'Theme',
+            context.l10n.onboardingTheme,
             style: Theme.of(
               context,
             ).textTheme.labelMedium?.copyWith(color: palette.mutedInk),
@@ -83,13 +87,13 @@ class ProfileSwitcherButton extends ConsumerWidget {
             trailingIcon: theme == activeTheme
                 ? Icon(Icons.check_rounded, size: 18, color: palette.accent)
                 : const SizedBox(width: 18),
-            child: Text(theme.label),
+            child: Text(context.l10n.themeLabel(theme)),
           ),
         const Divider(height: 8),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text(
-            'Appearance',
+            context.l10n.appearance,
             style: Theme.of(
               context,
             ).textTheme.labelMedium?.copyWith(color: palette.mutedInk),
@@ -113,6 +117,42 @@ class ProfileSwitcherButton extends ConsumerWidget {
                 : const SizedBox(width: 18),
             child: _AppearanceModeLabel(mode: mode, palette: palette),
           ),
+        const Divider(height: 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Text(
+            context.l10n.language,
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: palette.mutedInk),
+          ),
+        ),
+        for (final preference in AppLocalePreference.values)
+          MenuItemButton(
+            onPressed: () async {
+              HapticFeedback.selectionClick();
+              await ref
+                  .read(appDatabaseProvider)
+                  .putSetting(
+                    AppConstants.localePreferenceSettingKey,
+                    preference.name,
+                  );
+            },
+            leadingIcon: Icon(
+              _localePreferenceIcon(preference),
+              size: 19,
+              color: preference == localePreference
+                  ? palette.accent
+                  : palette.mutedInk,
+            ),
+            trailingIcon: preference == localePreference
+                ? Icon(Icons.check_rounded, size: 18, color: palette.accent)
+                : const SizedBox(width: 18),
+            child: _LocalePreferenceLabel(
+              preference: preference,
+              palette: palette,
+            ),
+          ),
       ],
       builder: (context, controller, child) {
         return ActionChip(
@@ -132,7 +172,7 @@ class ProfileSwitcherButton extends ConsumerWidget {
             ),
           ),
           label: Text(
-            selected?.name ?? 'Profile',
+            selected?.name ?? context.l10n.profileSwitcherProfileFallback,
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           ),
           onPressed: () {
@@ -148,6 +188,13 @@ class ProfileSwitcherButton extends ConsumerWidget {
   }
 }
 
+IconData _localePreferenceIcon(AppLocalePreference preference) =>
+    switch (preference) {
+      AppLocalePreference.system => Icons.language_rounded,
+      AppLocalePreference.english => Icons.translate_rounded,
+      AppLocalePreference.spanish => Icons.translate_rounded,
+    };
+
 class _AppearanceModeLabel extends StatelessWidget {
   const _AppearanceModeLabel({required this.mode, required this.palette});
 
@@ -162,9 +209,39 @@ class _AppearanceModeLabel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(mode.label),
+          Text(context.l10n.appearanceModeLabel(mode)),
           Text(
-            mode.description,
+            context.l10n.appearanceModeDescription(mode),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocalePreferenceLabel extends StatelessWidget {
+  const _LocalePreferenceLabel({
+    required this.preference,
+    required this.palette,
+  });
+
+  final AppLocalePreference preference;
+  final KidPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(context.l10n.localePreferenceLabel(preference)),
+          Text(
+            context.l10n.localePreferenceDescription(preference),
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),

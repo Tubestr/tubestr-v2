@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/l10n.dart';
+
 Future<void> openExternalPageWithFallback(
   BuildContext context, {
   required String title,
@@ -24,6 +26,6 @@ Future<void> openExternalPageWithFallback(
     return;
   }
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Could not open $title in a browser.')),
+    SnackBar(content: Text(context.l10n.externalOpenFailed(title))),
   );
 }

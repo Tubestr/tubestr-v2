@@ -15,6 +15,7 @@ import '../../../shared_ui/components/feed_metric_pill.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/components/profile_switcher.dart';
 import '../../../shared_ui/components/video_feed_row.dart';
+import '../../../l10n/l10n.dart';
 
 /// Home tab content — matches v1 HomeFeedView.
 class HomeFeedContent extends ConsumerWidget {
@@ -88,7 +89,9 @@ class HomeFeedContent extends ConsumerWidget {
                                   minHeight: constraints.maxHeight - 116,
                                 ),
                                 child: _FreshHomeState(
-                                  name: selectedProfile?.name ?? 'there',
+                                  name:
+                                      selectedProfile?.name ??
+                                      context.l10n.homeFallbackName,
                                   palette: palette,
                                 ),
                               ),
@@ -103,7 +106,9 @@ class HomeFeedContent extends ConsumerWidget {
                               data: (items) {
                                 if (items.isEmpty) {
                                   return _WelcomeEmptyState(
-                                    name: selectedProfile?.name ?? 'there',
+                                    name:
+                                        selectedProfile?.name ??
+                                        context.l10n.homeFallbackName,
                                     palette: palette,
                                   );
                                 }
@@ -126,7 +131,7 @@ class HomeFeedContent extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Your videos need another moment',
+                                      context.l10n.homeVideosNeedMoment,
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
@@ -136,7 +141,7 @@ class HomeFeedContent extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      'We couldn\'t load this child\'s library just yet. Pull down to try again.',
+                                      context.l10n.homeLibraryError,
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
@@ -331,11 +336,12 @@ class _WelcomeEmptyState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final hour = DateTime.now().hour;
     final greeting = switch (hour) {
-      < 12 => 'Good Morning',
-      < 17 => 'Good Afternoon',
-      _ => 'Good Evening',
+      < 12 => l10n.homeGoodMorning,
+      < 17 => l10n.homeGoodAfternoon,
+      _ => l10n.homeGoodEvening,
     };
 
     return Column(
@@ -343,10 +349,9 @@ class _WelcomeEmptyState extends ConsumerWidget {
       children: [
         _HomeSceneHero(
           palette: palette,
-          eyebrow: '$greeting, $name',
-          title: 'Make your first video',
-          detail:
-              'Start in Capture, then head to Edit Studio to add stickers, music, or text.',
+          eyebrow: l10n.homeGreeting(greeting, name),
+          title: l10n.homeMakeFirstVideo,
+          detail: l10n.homeStartSubtitle,
           emphasizeMotion: true,
         ),
         const SizedBox(height: 18),
@@ -361,7 +366,7 @@ class _WelcomeEmptyState extends ConsumerWidget {
               ref.read(appShellTabIndexProvider.notifier).state = 1;
             },
             icon: const Icon(Icons.videocam_rounded),
-            label: const Text('Open Capture'),
+            label: Text(context.l10n.homeOpenCapture),
           ),
         ),
       ],
@@ -377,11 +382,12 @@ class _FreshHomeState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final hour = DateTime.now().hour;
     final greeting = switch (hour) {
-      < 12 => 'Good Morning',
-      < 17 => 'Good Afternoon',
-      _ => 'Good Evening',
+      < 12 => l10n.homeGoodMorning,
+      < 17 => l10n.homeGoodAfternoon,
+      _ => l10n.homeGoodEvening,
     };
 
     return Column(
@@ -390,10 +396,9 @@ class _FreshHomeState extends ConsumerWidget {
       children: [
         _HomeSceneHero(
           palette: palette,
-          eyebrow: '$greeting, $name',
-          title: 'Your family video shelf starts here',
-          detail:
-              'Capture a first clip or connect with a trusted family before this space fills up.',
+          eyebrow: l10n.homeGreeting(greeting, name),
+          title: l10n.homeEmptyTitle,
+          detail: l10n.homeEmptySubtitle,
           emphasizeMotion: true,
           compactTitle: true,
         ),
@@ -408,7 +413,7 @@ class _FreshHomeState extends ConsumerWidget {
               ref.read(appShellTabIndexProvider.notifier).state = 1;
             },
             icon: const Icon(Icons.videocam_rounded),
-            label: const Text('Open Capture'),
+            label: Text(context.l10n.homeOpenCapture),
           ),
         ),
         const SizedBox(height: 10),
@@ -422,7 +427,7 @@ class _FreshHomeState extends ConsumerWidget {
               ref.read(appShellTabIndexProvider.notifier).state = 3;
             },
             icon: const Icon(Icons.person_add_alt_1_rounded),
-            label: const Text('Connect Families'),
+            label: Text(context.l10n.homeConnectFamilies),
           ),
         ),
       ],
@@ -577,7 +582,7 @@ class _FirstVideoPanel extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        'First steps',
+                        context.l10n.homeFirstSteps,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: palette.accent,
                           fontWeight: FontWeight.w800,
@@ -587,7 +592,7 @@ class _FirstVideoPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Capture a clip, then decorate it in Edit Studio when you\'re ready.',
+                      context.l10n.homeCapturePrompt,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: palette.ink,
                         fontWeight: FontWeight.w800,
@@ -596,7 +601,7 @@ class _FirstVideoPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'This shelf stays simple until your family actually starts recording.',
+                      context.l10n.homeFirstStepsDetail,
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -625,9 +630,12 @@ class _FirstVideoPanel extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _FirstStepPill(label: 'Capture', palette: palette),
-              _FirstStepPill(label: 'Edit', palette: palette),
-              _FirstStepPill(label: 'Share later', palette: palette),
+              _FirstStepPill(label: context.l10n.tabCapture, palette: palette),
+              _FirstStepPill(label: context.l10n.actionEdit, palette: palette),
+              _FirstStepPill(
+                label: context.l10n.homeShareLater,
+                palette: palette,
+              ),
             ],
           ),
         ],
@@ -678,7 +686,7 @@ class _MyVideosSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            _SectionHeader(title: 'My Videos'),
+            _SectionHeader(title: context.l10n.homeMyVideos),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -752,14 +760,14 @@ class _AddFriendsCta extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Connect with Friends',
+                    context.l10n.homeConnectWithFriends,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: palette.accent,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
-                    'Share videos with trusted families',
+                    context.l10n.homeShareTrustedFamilies,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -791,7 +799,7 @@ class _SharedVideosSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHeader(title: 'From Friends & Family'),
+        _SectionHeader(title: context.l10n.homeFromFriendsFamily),
         const SizedBox(height: 12),
         for (final entry in grouped.entries) ...[
           _SharedGroupHeader(
@@ -860,11 +868,12 @@ class _SharedVideoTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final thumbnailFile = item.hasThumbnail ? File(item.localThumbPath!) : null;
     final hasThumb = thumbnailFile?.existsSync() == true;
+    final l10n = context.l10n;
     final statusLabel = switch (item.status) {
-      'available' when item.isDownloaded => 'Ready',
-      'available' => 'Tap to download later',
-      'downloading' => 'Downloading',
-      'failed' => 'Needs retry',
+      'available' when item.isDownloaded => l10n.homeReady,
+      'available' => l10n.homeTapDownloadLater,
+      'downloading' => l10n.homeDownloading,
+      'failed' => l10n.homeNeedsRetry,
       _ => item.status,
     };
     final likeCount =
@@ -949,7 +958,7 @@ class _SharedVideoTile extends ConsumerWidget {
                   if (likeCount > 0)
                     FeedMetricPill(
                       palette: palette,
-                      label: '$likeCount ${likeCount == 1 ? 'like' : 'likes'}',
+                      label: context.l10n.homeLikeCount(likeCount),
                       icon: Icons.favorite_rounded,
                       iconColor: const Color(0xFFFF6B7A),
                     ),
@@ -983,7 +992,9 @@ class _RemoteAttributionLine extends ConsumerWidget {
         ? item.displayName
         : '${profile.displayName} · ${item.displayName}';
     return Text(
-      item.isDownloaded ? 'Ready to watch' : 'Saved from $sourceLabel',
+      item.isDownloaded
+          ? context.l10n.homeReadyToWatch
+          : context.l10n.homeSavedFrom(sourceLabel),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: Theme.of(

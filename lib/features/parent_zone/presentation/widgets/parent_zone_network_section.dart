@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants.dart';
 import '../../../../core/di/providers.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../services/safety/safety_hq_service.dart';
+import '../../../../l10n/l10n.dart';
 
 class ParentZoneNetworkSection extends ConsumerWidget {
   const ParentZoneNetworkSection({
@@ -53,14 +55,14 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Connection Health',
+                    context.l10n.parentConnectionHealth,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     queuedActions.isEmpty
-                        ? 'Sharing and reporting are connected right now.'
-                        : 'Some actions are waiting for a relay connection before they can finish.',
+                        ? context.l10n.parentConnectionHealthy
+                        : context.l10n.parentConnectionWaiting,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -74,11 +76,13 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                         ? palette.success
                         : palette.warning,
                     title: queuedActions.isEmpty
-                        ? 'Everything has synced'
-                        : '${queuedActions.length} queued action(s)',
+                        ? context.l10n.parentEverythingSynced
+                        : context.l10n.parentQueuedActions(
+                            queuedActions.length,
+                          ),
                     detail: queuedActions.isEmpty
-                        ? 'No retries needed.'
-                        : 'Retry when you want to push waiting work back through.',
+                        ? context.l10n.parentNoRetriesNeeded
+                        : context.l10n.parentRetryWaitingDetail,
                   ),
                   const SizedBox(height: 12),
                   FilledButton.tonal(
@@ -87,7 +91,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                         : () async {
                             await onRetryOfflineQueue();
                           },
-                    child: const Text('Retry now'),
+                    child: Text(context.l10n.actionRetryNow),
                   ),
                 ],
               ),
@@ -105,12 +109,12 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Relay Access',
+                    context.l10n.parentRelayAccess,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'These relay addresses carry invites, reports, and family updates. Changes here also publish to other Nostr clients that use your key.',
+                    context.l10n.parentRelayAccessDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -128,14 +132,14 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     ),
                   if (urls.isEmpty)
                     Text(
-                      'No custom relays saved yet.',
+                      context.l10n.parentNoCustomRelays,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: relayController,
-                    decoration: const InputDecoration(
-                      labelText: 'Add relay URL',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.parentRelayInputLabel,
                       hintText: 'wss://relay.example.com',
                     ),
                   ),
@@ -149,28 +153,30 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                           onSaveRelays();
                           onRefresh();
                         },
-                        child: const Text('Save relays'),
+                        child: Text(context.l10n.parentRelaySave),
                       ),
                       FilledButton.tonal(
                         onPressed: () async {
                           await onReconnectRelays();
                           onRefresh();
                         },
-                        child: const Text('Reconnect'),
+                        child: Text(context.l10n.parentReconnect),
                       ),
                       OutlinedButton(
                         onPressed: () async {
                           await onResetRelays();
                           onRefresh();
                         },
-                        child: const Text('Use defaults'),
+                        child: Text(context.l10n.parentUseDefaults),
                       ),
                     ],
                   ),
                   if (relayList?.updatedAt != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Last published ${_formatTimestamp(relayList!.updatedAt!)}',
+                      context.l10n.parentLastPublished(
+                        _formatTimestamp(relayList!.updatedAt!, context.l10n),
+                      ),
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -194,12 +200,12 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Media Servers',
+                    context.l10n.parentMediaServers,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Choose where encrypted media uploads can live for family delivery. Saves publish automatically so other devices and clients stay in sync.',
+                    context.l10n.parentMediaServersDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -220,8 +226,8 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                   const SizedBox(height: 8),
                   TextField(
                     controller: blossomController,
-                    decoration: const InputDecoration(
-                      labelText: 'Add Blossom server',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.parentBlossomInputLabel,
                       hintText: 'https://blossom.example',
                     ),
                   ),
@@ -235,14 +241,16 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                           onSaveBlossomServers();
                           onRefresh();
                         },
-                        child: const Text('Save servers'),
+                        child: Text(context.l10n.parentServersSave),
                       ),
                     ],
                   ),
                   if (list?.updatedAt != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Last published ${_formatTimestamp(list!.updatedAt!)}',
+                      context.l10n.parentLastPublished(
+                        _formatTimestamp(list!.updatedAt!, context.l10n),
+                      ),
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -262,12 +270,12 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Safety HQ',
+                    context.l10n.parentSafetyHq,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Keep higher-risk reports separate from the main family thread and deliver them to Tubestr moderation once Safety HQ is connected.',
+                    context.l10n.parentSafetyHqDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -277,7 +285,7 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     data: (status) => _SafetyStatusBody(status: status),
                     loading: () => const LinearProgressIndicator(minHeight: 2),
                     error: (error, _) => Text(
-                      'Safety HQ needs another moment to refresh.',
+                      context.l10n.parentSafetyHqRefreshPending,
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
@@ -291,10 +299,10 @@ class ParentZoneNetworkSection extends ConsumerWidget {
                     },
                     child: Text(
                       safetyStatus.valueOrNull?.isJoined == true
-                          ? 'Refresh Safety HQ'
+                          ? context.l10n.parentSafetyHqRefresh
                           : safetyStatus.valueOrNull?.isProvisioning == true
-                          ? 'Check Safety HQ'
-                          : 'Set Up Safety HQ',
+                          ? context.l10n.parentSafetyHqCheck
+                          : context.l10n.parentSafetyHqSetup,
                     ),
                   ),
                 ],
@@ -308,43 +316,39 @@ class ParentZoneNetworkSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'How Safety Reporting Works',
+                context.l10n.parentHowSafetyWorks,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
               Text(
-                'Parents can verify what stays private, what reaches the other family, and where media abuse reports are sent.',
+                context.l10n.parentSafetyWorksDetail,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
               ),
               const SizedBox(height: 12),
-              const _ReportingExplainerRow(
+              _ReportingExplainerRow(
                 icon: Icons.phone_android_rounded,
-                title: 'Level 1 stays here',
-                detail:
-                    'Gentle feedback stays on this device so a child can talk with a grown-up later.',
+                title: context.l10n.parentSafetyLevelOneTitle,
+                detail: context.l10n.parentSafetyLevelOneDetail,
               ),
               const SizedBox(height: 10),
-              const _ReportingExplainerRow(
+              _ReportingExplainerRow(
                 icon: Icons.family_restroom_rounded,
-                title: 'Level 2 alerts the parent on this device',
-                detail:
-                    'Stronger concerns stay private to this family and show up in Parent Zone only.',
+                title: context.l10n.parentSafetyLevelTwoTitle,
+                detail: context.l10n.parentSafetyLevelTwoDetail,
               ),
               const SizedBox(height: 10),
-              const _ReportingExplainerRow(
+              _ReportingExplainerRow(
                 icon: Icons.groups_rounded,
-                title: 'Level 3 alerts both families',
-                detail:
-                    'The family group gets the report first. Safety HQ keeps a separate copy when it has been set up.',
+                title: context.l10n.parentSafetyLevelThreeTitle,
+                detail: context.l10n.parentSafetyLevelThreeDetail,
               ),
               const SizedBox(height: 10),
-              const _ReportingExplainerRow(
+              _ReportingExplainerRow(
                 icon: Icons.cloud_upload_rounded,
-                title: 'BUD-09 abuse signals are best effort',
-                detail:
-                    'If a parent deletes a shared video, Tubestr also asks the media servers to flag that blob, but the in-app moderation state remains the source of truth.',
+                title: context.l10n.parentSafetyBud09Title,
+                detail: context.l10n.parentSafetyBud09Detail,
               ),
             ],
           ),
@@ -362,6 +366,9 @@ class _SafetyStatusBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final label = _safetyStatusLabel(status, l10n);
+    final detail = _safetyStatusDetail(status, l10n);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -372,15 +379,18 @@ class _SafetyStatusBody extends StatelessWidget {
               ? Icons.sync_rounded
               : Icons.shield_outlined,
           color: status.isJoined ? Colors.green : Colors.orange,
-          title: 'Status: ${status.label}',
+          title: l10n.parentStatus(label),
           detail: status.lastSyncAt == null
-              ? status.detail
-              : '${status.detail} Last updated ${status.lastSyncAt!.toLocal()}',
+              ? detail
+              : l10n.parentStatusLastUpdated(
+                  detail,
+                  _formatTimestamp(status.lastSyncAt!, l10n),
+                ),
         ),
         if (status.groupId != null && status.groupId!.isNotEmpty) ...[
           const SizedBox(height: 10),
           Text(
-            'Local group ID',
+            context.l10n.parentLocalGroupId,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: palette.onSurface.withValues(alpha: 0.6),
             ),
@@ -391,6 +401,32 @@ class _SafetyStatusBody extends StatelessWidget {
       ],
     );
   }
+}
+
+String _safetyStatusLabel(SafetyHqStatus status, AppLocalizations l10n) {
+  if (status.isJoined) {
+    return l10n.safetyHqProvisioned;
+  }
+  if (status.isProvisioning) {
+    return l10n.safetyHqConnecting;
+  }
+  if (status.isQueued) {
+    return l10n.safetyHqQueued;
+  }
+  return l10n.safetyHqNotConfigured;
+}
+
+String _safetyStatusDetail(SafetyHqStatus status, AppLocalizations l10n) {
+  if (status.isJoined) {
+    return l10n.safetyHqProvisionedDetail;
+  }
+  if (status.isProvisioning) {
+    return l10n.safetyHqConnectingDetail;
+  }
+  if (status.isQueued) {
+    return l10n.safetyHqQueuedDetail;
+  }
+  return l10n.safetyHqNotConfiguredDetail;
 }
 
 class _ReportingExplainerRow extends StatelessWidget {
@@ -479,23 +515,21 @@ class _InlineStatus extends StatelessWidget {
   }
 }
 
-String _formatTimestamp(DateTime value) {
+String _formatTimestamp(DateTime value, AppLocalizations l10n) {
   final now = DateTime.now();
   final diff = now.difference(value);
   if (diff.inSeconds < 60) {
-    return 'just now';
+    return l10n.parentJustNow;
   }
   if (diff.inMinutes < 60) {
-    final minutes = diff.inMinutes;
-    return '$minutes minute${minutes == 1 ? '' : 's'} ago';
+    return l10n.parentMinutesAgo(diff.inMinutes);
   }
   if (diff.inHours < 24) {
-    final hours = diff.inHours;
-    return '$hours hour${hours == 1 ? '' : 's'} ago';
+    return l10n.parentHoursAgo(diff.inHours);
   }
   final days = diff.inDays;
   if (days < 30) {
-    return '$days day${days == 1 ? '' : 's'} ago';
+    return l10n.parentDaysAgo(days);
   }
   final local = value.toLocal();
   return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';

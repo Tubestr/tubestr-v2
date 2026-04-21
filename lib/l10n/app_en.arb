@@ -1,0 +1,1173 @@
+{
+  "@@locale": "en",
+  "appTitle": "Tubestr",
+  "tabHome": "Home",
+  "tabCapture": "Capture",
+  "tabStudio": "Studio",
+  "tabParent": "Parent",
+  "actionCancel": "Cancel",
+  "actionCopy": "Copy",
+  "actionDelete": "Delete",
+  "actionEdit": "Edit",
+  "actionHide": "Hide",
+  "actionNext": "Next",
+  "actionRemove": "Remove",
+  "actionReveal": "Reveal",
+  "actionSend": "Send",
+  "actionShare": "Share",
+  "actionTryAgain": "Try again",
+  "actionWatch": "Watch",
+  "actionContinue": "Continue",
+  "actionSkip": "Skip",
+  "actionSkipForNow": "Skip for now",
+  "actionRestore": "Restore",
+  "actionRetryNow": "Retry now",
+  "actionApprove": "Approve",
+  "actionReject": "Reject",
+  "copiedToClipboard": "Copied to clipboard",
+  "publicKeyCopied": "Public key copied",
+  "recoveryKeyCopied": "Recovery key copied",
+  "externalOpenFailed": "Could not open {title} in a browser.",
+  "@externalOpenFailed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeSystemDescription": "Follow device",
+  "themeLightDescription": "Keep it bright",
+  "themeDarkDescription": "Keep it cozy",
+  "language": "Language",
+  "languageSystem": "System",
+  "languageEnglish": "English",
+  "languageSpanish": "Spanish",
+  "languageSystemDescription": "Follow device language",
+  "languageEnglishDescription": "Use English",
+  "languageSpanishDescription": "Use Spanish",
+  "kidThemeCampfire": "Campfire",
+  "kidThemeTreehouse": "Treehouse",
+  "kidThemeBlanketFort": "Blanket Fort",
+  "kidThemeStarlight": "Starlight",
+  "switchProfile": "Switch Profile",
+  "appearance": "Appearance",
+  "privateKeyBackupTitle": "Private key backup",
+  "privateKeyBackupSubtitle": "This private key gives full control of your parent account.",
+  "privateKeyBackupWarning": "Keep this private. Anyone with this key can control your family account.",
+  "profileSwitcherNoProfile": "No profile yet",
+  "profileSwitcherProfileFallback": "Profile",
+  "scanQrTitle": "Scan QR",
+  "scanQrInstructions": "Point the camera at a QR code.",
+  "qrNoCamera": "No camera available.",
+  "qrOpenCameraFailed": "Could not open camera: {error}",
+  "@qrOpenCameraFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "reportFeelingPrompt": "How does this video make you feel?",
+  "reportActionPrompt": "What should we do?",
+  "reportConfirmPrompt": "Ready to send?",
+  "reportFeelingUncomfortable": "Feels Weird",
+  "reportFeelingSad": "Makes Me Sad",
+  "reportFeelingConfused": "Confusing",
+  "reportFeelingScared": "Scary",
+  "reportFeelingAngry": "Really Bad",
+  "reportActionTell": "Just Tell Them",
+  "reportActionTellSubtitle": "Note it for yourself.",
+  "reportActionHide": "Hide Their Videos",
+  "reportActionHideSubtitle": "Let your parent know privately.",
+  "reportActionBlock": "Block Them",
+  "reportActionBlockSubtitle": "Alert both families.",
+  "reportDestinationLocal": "Stays on this device",
+  "reportDestinationParent": "Your parent",
+  "reportDestinationFamily": "Both families",
+  "reportLevelNoted": "Level 1 · Noted",
+  "reportLevelParentHelp": "Level 2 · Parent help",
+  "reportLevelFamilyAlert": "Level 3 · Family alert",
+  "reportLevelOneExplanation": "This stays on your device so you can talk about it with a grown-up later.",
+  "reportLevelTwoExplanation": "This lets your parent know so they can check in with you.",
+  "reportLevelThreeExplanation": "This sends an alert to both families so the grown-ups can sort it out.",
+  "reportReasonInappropriate": "Inappropriate",
+  "reportReasonHarassment": "Harassment",
+  "reportReasonUnsafe": "Unsafe",
+  "reportReasonIllegal": "Illegal",
+  "reportLevelValue": "level {level}",
+  "@reportLevelValue": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingIntroTitle": "Your Family's Private Space",
+  "onboardingIntroSubtitle": "Tubestr is a video app built just for families. No ads, no algorithms, no strangers.",
+  "onboardingParentKeyTitle": "Create Your Parent Key",
+  "onboardingParentKeySubtitle": "First, you'll set up a secure parent identity. This key is yours alone and controls your family's account.",
+  "onboardingKidsTitle": "Add Your Kids",
+  "onboardingKidsSubtitle": "Create a profile for each child with their own colorful theme. Each kid gets a personalized experience.",
+  "onboardingCreateTitle": "Record & Edit Together",
+  "onboardingCreateSubtitle": "Kids can capture videos, add stickers, music, and effects in the Edit Studio. Creativity without the risk.",
+  "onboardingApproveTitle": "You Approve Everything",
+  "onboardingApproveSubtitle": "Every video goes through you first. Review, approve, and share only with family members you trust.",
+  "onboardingStepOne": "Step 1",
+  "onboardingStepTwo": "Step 2",
+  "onboardingStepThree": "Step 3",
+  "onboardingStepFour": "Step 4",
+  "onboardingGetStarted": "Let's Get Started",
+  "onboardingWelcomeTitle": "Welcome to Tubestr",
+  "onboardingWelcomeBackTitle": "Welcome Back",
+  "onboardingGettingStarted": "Getting started",
+  "onboardingParentAccount": "Parent account",
+  "onboardingChildProfiles": "Child profiles",
+  "onboardingAlmostDone": "Almost done",
+  "onboardingCreateNewAccount": "Create new account",
+  "onboardingHaveBackupKey": "I have a backup key",
+  "onboardingParentDisplayName": "Parent display name",
+  "onboardingParentBirthYear": "Parent birth year",
+  "onboardingParentBackupKey": "Parent backup key",
+  "onboardingGenerateParentKey": "Generate Parent Key",
+  "onboardingContinueChildProfiles": "Continue to Child Profiles",
+  "onboardingComplete": "Complete Onboarding",
+  "onboardingAddChildProfile": "Add Child Profile",
+  "onboardingScanQrCode": "Scan QR Code",
+  "onboardingReadPrivacyPolicy": "Read privacy policy",
+  "onboardingAllowAccess": "Allow Access",
+  "onboardingRequestingAccess": "Requesting Access...",
+  "onboardingParentEligibilityMissingYear": "Enter the parent account holder's birth year before continuing.",
+  "onboardingParentEligibilityInvalidYear": "Enter a valid four-digit birth year.",
+  "onboardingParentEligibilityYearRange": "Enter a birth year between 1900 and {currentYear}.",
+  "@onboardingParentEligibilityYearRange": {
+    "placeholders": {
+      "currentYear": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingParentEligibilityAdult": "Tubestr parent accounts must be created by an adult who is 18 or older.",
+  "onboardingParentEligibilityConsent": "Confirm the parent consent statement before generating the parent key.",
+  "onboardingParentKeyCreated": "Parent key created. Save your backup before you continue.",
+  "onboardingBackupKeyAdded": "Backup key added. Restore when you are ready.",
+  "onboardingRestoreKeyIncomplete": "That backup key doesn't look complete yet. Paste the full `nsec1...` key or 64-character backup key and try again.",
+  "onboardingRestoreKeyFailed": "We could not restore that backup key yet. Please double-check it and try again.",
+  "onboardingChildNameRequired": "Enter a child name before continuing.",
+  "onboardingAddChildFailed": "We could not add that child profile yet.",
+  "onboardingNeedChildProfile": "Add at least one child profile to finish setup.",
+  "onboardingPermissionsFailed": "We could not get camera and microphone access yet. You can try again now or allow them later in Settings.",
+  "onboardingCheckingParentKey": "Checking your saved parent key...",
+  "onboardingBootstrapNeedsMoment": "Tubestr needs another moment",
+  "onboardingBootstrapChecking": "We are checking your parent backup and preparing this device.",
+  "onboardingBootstrapReachFailed": "We could not reach this device's saved family setup just yet. Please try again in a moment.",
+  "onboardingBootstrapLibraryMoment": "Your family library needs another moment to open on this device. Please try again.",
+  "onboardingBootstrapGeneric": "We hit a setup snag while opening your family space. Nothing is lost. Please try again.",
+  "onboardingWhoFamily": "Who's in Your Family?",
+  "onboardingWhoFamilySubtitle": "Add a profile for each child. They'll each get their own themed space to watch and create videos.",
+  "onboardingTheme": "Theme",
+  "onboardingName": "Name",
+  "onboardingPreparingKey": "Preparing your secure parent key...",
+  "onboardingSaveParentKey": "Save your parent key",
+  "onboardingPrivateKeyHelp": "Your private key is the master backup for this parent account. Save it somewhere safe before continuing.",
+  "onboardingCompleteTitle": "You're All Set!",
+  "onboardingCompleteSubtitle": "Your family's Tubestr is ready.",
+  "onboardingBackupShareText": "Tubestr Parent Backup Key\n\nKeep this private. Anyone with this key can control your family account.\n\n{key}",
+  "@onboardingBackupShareText": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "homeGoodMorning": "Good Morning",
+  "homeGoodAfternoon": "Good Afternoon",
+  "homeGoodEvening": "Good Evening",
+  "homeGreeting": "{greeting}, {name}",
+  "@homeGreeting": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeStartSubtitle": "Start in Capture, then head to Edit Studio to add stickers, music, or text.",
+  "homeVideosNeedMoment": "Your videos need another moment",
+  "homeLibraryError": "We couldn't load this child's library just yet. Pull down to try again.",
+  "homeEmptyTitle": "Your family video shelf starts here",
+  "homeEmptySubtitle": "Capture a first clip or connect with a trusted family before this space fills up.",
+  "homeOpenCapture": "Open Capture",
+  "homeConnectFamilies": "Connect Families",
+  "homeCapturePrompt": "Capture a clip, then decorate it in Edit Studio when you're ready.",
+  "homeShareLater": "Share later",
+  "homeConnectWithFriends": "Connect with Friends",
+  "homeShareTrustedFamilies": "Share videos with trusted families",
+  "homeReady": "Ready",
+  "homeTapDownloadLater": "Tap to download later",
+  "homeDownloading": "Downloading",
+  "homeNeedsRetry": "Needs retry",
+  "approvalPending": "Pending",
+  "captureCameraNeedsAttention": "Camera needs attention",
+  "captureNoCamera": "We couldn't find a camera on this device right now.",
+  "captureCheckingClip": "Checking your clip",
+  "captureTryRecordingAgain": "Try recording again",
+  "captureVideoSaved": "Video Saved!",
+  "captureSavedNeedsReview": "Saved, but needs a parent look",
+  "captureClipReady": "Clip ready",
+  "captureReadyDetail": "Your clip is saved, scanned, and ready to edit, watch, or share.",
+  "captureShareNow": "Share now",
+  "captureChooseChild": "Choose a child profile before recording a clip.",
+  "captureCameraTimeout": "The camera took too long to open. Try again, or close any other app using the camera.",
+  "captureCameraDenied": "Camera access is turned off. Allow camera access in Settings, then try again.",
+  "captureMicrophoneDenied": "Microphone access is off. Try again, or turn microphone access on in Settings to record with sound.",
+  "captureCameraStillDenied": "Camera access is still turned off. Allow access in Settings, then try again.",
+  "captureCameraBusy": "The camera is busy right now. Close any other app using it and try again.",
+  "captureCameraStartFailed": "We couldn't start the camera just yet. Give it another try.",
+  "captureFinishSetupShare": "Finish parent setup before sharing clips with family.",
+  "captureNeedsParentReview": "This clip needs a parent review before it can be shared.",
+  "captureConnectFamilyShare": "Connect with a family space first, then you can share this clip.",
+  "captureShareFailed": "We couldn't share that clip yet. It's still saved safely here.",
+  "captureSharing": "Sharing \"{title}\" to {count, plural, =1{# family space} other{# family spaces}}...",
+  "@captureSharing": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorHubTitle": "Edit Studio",
+  "editorHubNeedsMoment": "Edit Studio needs another moment",
+  "editorHubLoadFailed": "We couldn't load your clips for editing just yet. Try switching profiles or come back in a moment.",
+  "editorHubEmptyTitle": "Need a clip",
+  "editorHubEmptyDetail": "Capture something first, then bring it here for stickers, music, text, and remixes.",
+  "editorHubCaptureFirst": "Capture First",
+  "editorToolTrim": "Trim",
+  "editorToolEffects": "Effects",
+  "editorToolStickers": "Stickers",
+  "editorToolAudio": "Audio",
+  "editorToolText": "Text",
+  "editorActionKeepEditing": "Keep editing later",
+  "editorActionUseSticker": "Use Sticker",
+  "editorActionRetake": "Retake",
+  "editorSearchStickers": "Search stickers",
+  "editorSearchMusic": "Search music",
+  "editorTypeSomething": "Type something...",
+  "editorAddText": "Add text",
+  "editorTapText": "Tap existing text or add a new one.",
+  "editorStickerPhotoTitle": "Take a photo to create a sticker",
+  "editorSelfieCameraDenied": "Camera access is turned off. Allow it in Settings, then try again.",
+  "editorSelfieCameraFailed": "We couldn't open the selfie camera just yet. Please try again.",
+  "editorStickerLiftFailed": "We couldn't lift the sticker from that photo. Try another selfie with a clearer background.",
+  "editorStickerCreateFailed": "We couldn't make that sticker just yet. Try another photo.",
+  "editorStickerSaveFailed": "We couldn't save that sticker yet. Please try again.",
+  "editorExportSaved": "Your remix is in the library and ready for the next step.",
+  "editorExportWarning": "{warning} The remix is still saved and ready to keep going.",
+  "@editorExportWarning": {
+    "placeholders": {
+      "warning": {
+        "type": "String"
+      }
+    }
+  },
+  "editorExportGenericFailed": "We couldn't save that remix yet. Your edit choices are still here.",
+  "editorExportSaveFailed": "We couldn't finish saving that remix yet. Try again in a moment.",
+  "editorShareNeedsReview": "This remix still needs a parent review before it can be shared.",
+  "editorShareUploadFailed": "We couldn't upload that remix to the family media server yet. Check your connection and try again.",
+  "editorShareConnectFamily": "Connect with a family space first, then try sharing this remix again.",
+  "editorShareFailed": "We couldn't share that remix yet. It's still saved safely in your library.",
+  "editorSharing": "Sharing to {count, plural, =1{# family space} other{# family spaces}}...",
+  "@editorSharing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerDownloadNow": "Download Now",
+  "playerRepairDownload": "Repair Download",
+  "playerDownloading": "Downloading...",
+  "playerSharedDownloaded": "Shared video downloaded",
+  "playerReportDelivered": "Report delivered",
+  "playerReportSaved": "Report saved ({status})",
+  "@playerReportSaved": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "playerHideDetails": "Hide details",
+  "playerShowDetails": "Show details",
+  "playerReact": "React",
+  "playerMyClip": "My clip",
+  "playerFamilyShare": "Family share",
+  "playerRemoteMissingTitle": "This video isn't here yet",
+  "playerRemotePreparingTitle": "Getting your video ready",
+  "playerRemoteFailedTitle": "Let's try that download again",
+  "playerRemoteReadyTitle": "Family video ready to watch",
+  "playerRemotePreparingDetail": "This clip is still getting ready on this device.",
+  "playerRemoteCheckingDetail": "Checking the saved copy so playback stays smooth and safe.",
+  "playerRemoteReadyDetail": "Download this family clip and press play when it is ready.",
+  "playerDownloadConnectionFailed": "We couldn't download that clip right now. Check your connection and try again.",
+  "playerDownloadVerificationFailed": "The saved copy needs another pass. Try the download again in a moment.",
+  "playerDownloadFailed": "We couldn't download that clip yet. Please try again.",
+  "playerShareNeedsReview": "This clip still needs a parent review before it can be shared.",
+  "playerShareUploadFailed": "We couldn't upload that clip to the family media server yet. Check your connection and try again.",
+  "playerShareConnectFamily": "Connect with a family space first, then try sharing again.",
+  "playerShareFailed": "We couldn't share that clip yet. It's still saved safely here.",
+  "playerReportFailed": "We couldn't send that report just yet. Your note is still on this device, so please try again.",
+  "playerLikeFailed": "That like didn't go through yet. Please try again in a moment.",
+  "playerReactionFailed": "That reaction didn't go through yet. Please try again in a moment.",
+  "playerSharing": "Sharing \"{title}\" to {count, plural, =1{# family space} other{# family spaces}}...",
+  "@playerSharing": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerWatchingSoFar": "Watching so far",
+  "playerWatchingSoFarDevice": "Watching so far on this device",
+  "playerPlayCount": "{count, plural, =1{# Play} other{# Plays}}",
+  "@playerPlayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerCompletion": "{value}% Completion",
+  "@playerCompletion": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "playerReplays": "{value}% Replays",
+  "@playerReplays": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "playerNoLikes": "No likes yet",
+  "playerLikeCount": "{count, plural, =1{# Like} other{# Likes}}",
+  "@playerLikeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerAFamily": "A family",
+  "playerMoreLikes": "+{count} more",
+  "@playerMoreLikes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerReactions": "Reactions",
+  "parentZoneTitle": "Parent Zone",
+  "parentSectionDashboard": "Dashboard",
+  "parentSectionChildren": "Children",
+  "parentSectionFamily": "Family Spaces",
+  "parentSectionActivity": "Activity",
+  "parentSectionNetwork": "Network",
+  "parentSectionAccount": "Account",
+  "parentSectionDiagnostics": "Diagnostics",
+  "parentStartHere": "Start Here",
+  "parentControlRoom": "Control Room",
+  "parentOpenSections": "Open sections",
+  "parentPinIncorrect": "Incorrect PIN",
+  "parentPinMismatch": "PINs must match (4 digits)",
+  "parentCreatePinTitle": "Create Parent PIN",
+  "parentUnlockTitle": "Unlock Parent Zone",
+  "parentPinCreateDetail": "Set a four-digit code so family controls stay separate from the kid-facing app.",
+  "parentPinUpdateLater": "You can update this later in Settings.",
+  "parentPinNew": "New PIN (4 digits)",
+  "parentPinConfirm": "Confirm PIN",
+  "parentPinSave": "Save PIN",
+  "parentPinUpdated": "PIN updated",
+  "parentDisplayNameSaved": "Saved display name",
+  "parentProfilePublished": "Published parent profile",
+  "parentProfilePublishFailed": "We couldn't publish your parent profile just yet. Please try again.",
+  "parentJoinedFamily": "Joined {name}",
+  "@parentJoinedFamily": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parentAlreadyConnected": "You're already connected.",
+  "parentAlreadyConnectedGroup": "You're already connected in {groupName}.",
+  "@parentAlreadyConnectedGroup": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "parentConnectionAlreadySent": "Connection already sent. They can approve it in Parent Zone.",
+  "parentConnectionAlreadySentGroup": "Connection already sent for {groupName}. They can approve it in Parent Zone.",
+  "@parentConnectionAlreadySentGroup": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "parentConnectionSent": "Connection sent. They can approve it in Parent Zone.",
+  "parentGroupCreated": "Group created.",
+  "parentJoinFailed": "We couldn't finish joining that family space yet. Please try again.",
+  "parentCreateInviteFailed": "We couldn't create an invite just yet. Please try again.",
+  "parentInviteUseFailed": "We couldn't use that invite yet. Double-check it and try again.",
+  "parentInviteTitle": "Your Invite Code",
+  "parentInviteScanInstructions": "Point the camera at a family invite QR code.",
+  "parentInviteShareText": "Tubestr Family Invite\n\nOpen this link on the other parent's device:\n{payload}",
+  "@parentInviteShareText": {
+    "placeholders": {
+      "payload": {
+        "type": "String"
+      }
+    }
+  },
+  "parentShareLink": "Share link",
+  "parentCopyCode": "Copy code",
+  "parentOpenFamilySpace": "Open A Family Space",
+  "parentOpenFamilySpaceDetail": "Share one invite code, then come back here when the other parent sends their welcome.",
+  "parentCreateInvite": "Create invite",
+  "parentCreateInviteDetail": "Show a QR code or send a shareable invite link",
+  "parentScanInvite": "Scan invite",
+  "parentScanInviteDetail": "Join the shared family space in one step",
+  "parentPasteInvite": "Paste invite",
+  "parentPasteInviteDetail": "Enter an invite link or code manually",
+  "parentPasteInviteTitle": "Paste Invite",
+  "parentPasteInvitePrompt": "Paste an invite link or code from another parent.",
+  "parentInviteInputLabel": "Invite link or code",
+  "parentUseInvite": "Use invite",
+  "parentJoiningFamily": "Joining family…",
+  "parentFamilyConnectionsFailed": "We could not load family connections right now.",
+  "parentNoFamiliesTitle": "No trusted families yet",
+  "parentNoFamiliesDetail": "Create an invite or scan one from another parent to open your first family space.",
+  "parentPendingWelcomes": "Pending Welcomes",
+  "parentActiveFamilySpaces": "Active Family Spaces",
+  "parentManageConnection": "Manage connection",
+  "parentFamilySpaceFallback": "Family Space",
+  "parentFamilyFallback": "{name} Family",
+  "@parentFamilyFallback": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parentMembers": "{count, plural, =1{# member} other{# members}}",
+  "@parentMembers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentConnectionHealth": "Connection Health",
+  "parentConnectionHealthy": "Sharing and reporting are connected right now.",
+  "parentConnectionWaiting": "Some actions are waiting for a relay connection before they can finish.",
+  "parentEverythingSynced": "Everything has synced",
+  "parentQueuedActions": "{count, plural, =1{# queued action} other{# queued actions}}",
+  "@parentQueuedActions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentNoRetriesNeeded": "No retries needed.",
+  "parentRelayAccess": "Relay Access",
+  "parentRelayAccessDetail": "These relay addresses carry invites, reports, and family updates. Changes here also publish to other Nostr clients that use your key.",
+  "parentNoCustomRelays": "No custom relays saved yet.",
+  "parentRelayInputLabel": "Add relay URL",
+  "parentRelaySave": "Save relays",
+  "parentReconnect": "Reconnect",
+  "parentUseDefaults": "Use defaults",
+  "parentRelaysReconnected": "Relays reconnected",
+  "parentLastPublished": "Last published {time}",
+  "@parentLastPublished": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "parentMediaServers": "Media Servers",
+  "parentMediaServersDetail": "Choose where encrypted media uploads can live for family delivery. Saves publish automatically so other devices and clients stay in sync.",
+  "parentBlossomInputLabel": "Add Blossom server",
+  "parentServersSave": "Save servers",
+  "parentSafetyHq": "Safety HQ",
+  "parentSafetyHqDetail": "Keep higher-risk reports separate from the main family thread and deliver them to Tubestr moderation once Safety HQ is connected.",
+  "parentSafetyHqRefreshPending": "Safety HQ needs another moment to refresh.",
+  "parentSafetyHqRefresh": "Refresh Safety HQ",
+  "parentSafetyHqCheck": "Check Safety HQ",
+  "parentSafetyHqSetup": "Set Up Safety HQ",
+  "parentSafetyHqReady": "Safety HQ is connected and ready.",
+  "parentSafetyHqConnectingStarted": "Safety HQ is connecting. We sent the setup welcome to the moderation service.",
+  "parentSafetyHqStillConnecting": "Safety HQ is still connecting. Leave the app online for a moment and check again.",
+  "parentSafetySetupFailed": "We couldn't set up Safety HQ yet. Please try again.",
+  "parentHowSafetyWorks": "How Safety Reporting Works",
+  "parentSafetyWorksDetail": "Parents can verify what stays private, what reaches the other family, and where media abuse reports are sent.",
+  "parentSafetyLevelOneTitle": "Level 1 stays here",
+  "parentSafetyLevelOneDetail": "Gentle feedback stays on this device so a child can talk with a grown-up later.",
+  "parentSafetyLevelTwoTitle": "Level 2 alerts the parent on this device",
+  "parentSafetyLevelTwoDetail": "Stronger concerns stay private to this family and show up in Parent Zone only.",
+  "parentSafetyLevelThreeTitle": "Level 3 alerts both families",
+  "parentSafetyLevelThreeDetail": "The family group gets the report first. Safety HQ keeps a separate copy when it has been set up.",
+  "parentSafetyBud09Title": "BUD-09 abuse signals are best effort",
+  "parentSafetyBud09Detail": "If a parent deletes a shared video, Tubestr also asks the media servers to flag that blob, but the in-app moderation state remains the source of truth.",
+  "parentStatus": "Status: {status}",
+  "@parentStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "parentStatusLastUpdated": "{detail} Last updated {time}",
+  "@parentStatusLastUpdated": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "parentLocalGroupId": "Local group ID",
+  "parentJustNow": "just now",
+  "parentMinutesAgo": "{count, plural, =1{# minute ago} other{# minutes ago}}",
+  "@parentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentHoursAgo": "{count, plural, =1{# hour ago} other{# hours ago}}",
+  "@parentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDaysAgo": "{count, plural, =1{# day ago} other{# days ago}}",
+  "@parentDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentChildrenTitle": "Children",
+  "parentChildrenDetail": "Each child keeps a theme and local profile for capture, editing, and playback.",
+  "parentAddChildPrompt": "Add a child profile below so the app has someone to capture and edit for.",
+  "parentAddChildProfile": "Add Child Profile",
+  "parentChildName": "Child name",
+  "parentChooseChildTheme": "Choose a name and theme so capture and editing stay personalized.",
+  "parentSaveChild": "Save child",
+  "parentApprovalTitle": "Approvals & Scanning",
+  "parentApprovalDetail": "Decide how much parent review happens before a clip can leave the device.",
+  "parentRequireApproval": "Require parent approval before sharing",
+  "parentRequireApprovalDetail": "Clips are always scanned on-device. Turn this on if you also want every new clip to wait for a parent.",
+  "parentApprovalQueueTitle": "Approval Queue",
+  "parentApprovalWaitingScan": "Waiting on scan results",
+  "parentUnsafeTopic": "Unsafe topic",
+  "parentNeedsLook": "Needs a look",
+  "parentVeryLoud": "Very loud",
+  "parentLotsOfFaces": "Lots of faces",
+  "parentLongClip": "Long clip",
+  "parentIntenseTitle": "Intense title",
+  "parentAccountTitle": "Parent account",
+  "parentAccountNoIdentity": "Create or restore the parent account before using family tools.",
+  "parentDisplayNameLabel": "Display name",
+  "parentDisplayNameHint": "Lee and Emma",
+  "parentDisplayNameDetail": "Choose the name other families will see when you connect or share.",
+  "parentUpdatePin": "Update PIN",
+  "parentUpdatePinDetail": "Update the four-digit code that protects the parent workspace.",
+  "parentNewPinLabel": "New 4-digit PIN",
+  "parentPublicAddressReady": "Your public parent address is ready for invites and sharing.",
+  "parentBackupKeyDescription": "This is the backup key for your parent account. Keep it somewhere private and easy for you to find later.",
+  "parentSupport": "Support",
+  "parentPrivacyPolicy": "Privacy Policy",
+  "parentTerms": "Terms",
+  "parentSignOutReset": "Sign out & reset app",
+  "parentSignOutResetTitle": "Sign out & reset app?",
+  "parentSignOutResetDetail": "This will remove the saved parent account from this device, clear the Parent Zone PIN, wipe local videos and cached shares, and clear the synced Apple-keychain copy Tubestr uses for automatic restore here. Make sure your recovery key is saved first.",
+  "parentResetFailed": "We couldn't finish resetting this device yet. Please try again.",
+  "parentDeleteAccountTitle": "Delete parent account?",
+  "parentDeleteAccountDetail": "This removes backend account records for this parent address. Media already copied onto other approved family devices may still remain there until those recipients delete it too.",
+  "parentDeleteAccountDetailWithAddress": "This permanently deletes Tubestr backend account records for {address}. This also signs the device out after deletion succeeds. Any App Store or Play subscription must still be cancelled separately in Apple or Google billing settings.",
+  "@parentDeleteAccountDetailWithAddress": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "parentDeleteAccount": "Delete account",
+  "parentKeepAccount": "Keep account",
+  "parentDeleteAccountFailed": "We couldn't delete the parent account yet. Please try again.",
+  "parentAccountDeleted": "Parent account deleted from Tubestr backend records.",
+  "parentDeleteChildTitle": "Delete {childName}?",
+  "@parentDeleteChildTitle": {
+    "placeholders": {
+      "childName": {
+        "type": "String"
+      }
+    }
+  },
+  "parentDeleteChildFallback": "this child profile",
+  "parentDeleteChildDetail": "This will permanently remove the child profile and delete any videos and media stored on behalf of this profile from Tubestr-managed servers. Clips already delivered to other family members remain on their devices.\n\nThis cannot be undone.",
+  "parentDeleteProfile": "Delete profile",
+  "parentChildDeleted": "{childName} removed from Tubestr servers.",
+  "@parentChildDeleted": {
+    "placeholders": {
+      "childName": {
+        "type": "String"
+      }
+    }
+  },
+  "parentChildDeletePartial": "We could not finish deleting {childName} yet because {count, plural, =1{# file could not be removed} other{# files could not be removed}} from Tubestr servers. Try again when the connection is stable.",
+  "@parentChildDeletePartial": {
+    "placeholders": {
+      "childName": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentNoQueuedActions": "No queued actions to retry",
+  "parentQueuedActionsStillWaiting": "{count, plural, =1{# action still waiting — check your connection} other{# actions still waiting — check your connection}}",
+  "@parentQueuedActionsStillWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentQueuedActionsSent": "Sent {flushed} of {total, plural, =1{# queued action} other{# queued actions}}",
+  "@parentQueuedActionsSent": {
+    "placeholders": {
+      "flushed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parentSharedVideoDeleted": "Deleted {title} for this family",
+  "@parentSharedVideoDeleted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "parentDeleteSharedVideoFailed": "We couldn't delete that shared video just yet. Please try again.",
+  "parentMemberRemoved": "Removed member from family group",
+  "parentRemoveMemberFailed": "We couldn't remove that member just yet. Please try again.",
+  "parentMemberPromoted": "Promoted member to admin",
+  "parentPromoteMemberFailed": "We couldn't promote that member just yet. Please try again.",
+  "parentLeaveFamilyTitle": "Leave this family space?",
+  "parentLeaveFamilySolo": "You are the only member. Leaving abandons the group — nobody else can receive new shares here.",
+  "parentLeaveFamilyAdmin": "You'll step down as admin and leave \"{groupName}\". You will stop receiving new shares from this family and will no longer be able to send to it. Past clips already stay on your device.",
+  "@parentLeaveFamilyAdmin": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "parentLeaveFamilyMember": "You will leave \"{groupName}\". You will stop receiving new shares from this family and will no longer be able to send to it. Past clips already stay on your device.",
+  "@parentLeaveFamilyMember": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "parentLeaveFamilyLastAdmin": "You're the only admin. Use Make admin on another member above, then try again.",
+  "parentLeaveFamilyFailed": "We couldn't leave that family space just yet. Please try again.",
+  "parentLeftFamily": "Left {groupName}",
+  "@parentLeftFamily": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "parentLeaveFamilyAdminGuidance": "You'll self-demote, then publish a leave request. Another member commits the removal when they come online.",
+  "parentLeaveFamilyMemberGuidance": "You'll publish a leave request. Another member commits the removal when they come online; new shares stop arriving in this space.",
+  "parentMakeAdmin": "Make admin",
+  "parentWorking": "Working…",
+  "parentSharedVideos": "Shared Videos",
+  "parentCurrentParentIdentity": "Current parent identity",
+  "parentYou": "You",
+  "parentAdmin": "Admin",
+  "parentDeleted": "Deleted",
+  "parentDiagnosticsCurrentState": "Current State",
+  "parentDiagnosticsActiveSubscriptions": "Active Subscriptions",
+  "parentDiagnosticsAppBuild": "App Build",
+  "parentDiagnosticsRefreshSubscriptions": "Refresh subscriptions",
+  "parentDiagnosticsCopyDebugDump": "Copy debug dump",
+  "parentDiagnosticsRefreshPage": "Refresh page",
+  "parentDiagnosticsCopied": "Copied relay sync diagnostics",
+  "parentDiagnosticsVersionLoading": "Version and build number are loading.",
+  "parentDiagnosticsBuildUnavailable": "App build unavailable",
+  "parentDiagnosticsBuildUnavailableDetail": "This platform did not return version and build metadata.",
+  "parentDiagnosticsVersionBuild": "Version {version} · Build {buildNumber}",
+  "@parentDiagnosticsVersionBuild": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "parentDiagnosticsUnknownVersion": "unknown version",
+  "parentDiagnosticsUnknownBuild": "unknown build",
+  "parentDiagnosticsNotCompleted": "has not completed yet",
+  "parentDiagnosticsCompleted": "completed {value}",
+  "@parentDiagnosticsCompleted": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "parentDiagnosticsShares": "Shares",
+  "parentDiagnosticsDeliveryIssues": "Delivery Issues",
+  "parentDiagnosticsRecentHistory": "Recent History",
+  "parentDiagnosticsNoHistory": "No control-plane activity captured yet.",
+  "parentDiagnosticsClear": "Shares, reports, and remote downloads look clear from this device.",
+  "parentActivityEmpty": "When you share with another family, the latest deliveries will appear here.",
+  "parentReportGentle": "Gentle feedback from another family.",
+  "parentReportConcern": "A concern from another family needs a look.",
+  "parentReportSafetyHq": "A serious concern was escalated to Safety HQ.",
+  "parentReportFamily": "A concern was shared with both families.",
+  "parentDestinationDeviceOnly": "Device only",
+  "parentDestinationParentOnly": "Parent only",
+  "parentDestinationBothFamilies": "Both families",
+  "parentDestinationFamilyGroup": "Family group",
+  "parentDestinationParentHelpers": "Parent helpers",
+  "parentAuditRemoveMember": "Removed a family member",
+  "parentAuditDeleteVideo": "Deleted shared video",
+  "launchQueuedShares": "Queued shares",
+  "launchQueuedLikes": "Queued likes",
+  "launchQueuedReactions": "Queued reactions",
+  "launchQueuedReports": "Queued reports",
+  "launchQueuedProfileUpdates": "Queued profile updates",
+  "launchQueuedRelayUpdates": "Queued relay list updates",
+  "launchQueuedMediaServerUpdates": "Queued media server updates",
+  "launchQueuedMuteUpdates": "Queued mute list updates",
+  "launchDelivered": "Delivered",
+  "launchWaitingRetry": "Waiting for retry",
+  "launchWaitingSafety": "Waiting on Safety HQ copy",
+  "launchWaitingConnection": "Waiting for connection",
+  "launchWaitingMediaReference": "Waiting for encrypted media reference",
+  "launchDeliveryFailed": "Delivery failed",
+  "launchDownloadFailed": "Download failed. Retry when the connection is stable.",
+  "launchDownloadRelayFailed": "Download failed because the relay or media server was unreachable.",
+  "launchDownloadUnlockFailed": "Download failed while unlocking the encrypted video package.",
+  "launchDownloadVerifyFailed": "Download failed because the saved copy did not pass verification.",
+  "launchDownloadMetadataFailed": "Download failed because the shared clip metadata was incomplete.",
+  "launchDownloadGenericFailed": "Download failed. Retry to fetch a fresh encrypted copy.",
+  "safetyHqProvisioned": "Provisioned",
+  "safetyHqConnecting": "Connecting",
+  "safetyHqQueued": "Queued",
+  "safetyHqNotConfigured": "Not configured",
+  "safetyHqProvisionedDetail": "Safety HQ is provisioned and ready to receive higher-risk family alerts.",
+  "safetyHqConnectingDetail": "Tubestr has already sent the setup welcome. This turns ready once the moderation service joins the group over the relay network.",
+  "safetyHqQueuedDetail": "Safety HQ setup is queued and will start as soon as this device can reach the moderation relays.",
+  "safetyHqNotConfiguredDetail": "Set up Safety HQ to keep a separate copy of higher-risk family alerts in Tubestr moderation.",
+  "safetyHqMissingApiUrl": "This build is missing the Tubestr Safety HQ API URL.",
+  "safetyHqIncompleteBootstrap": "Tubestr Safety HQ bootstrap data is incomplete.",
+  "editorActionExport": "Export",
+  "editorActionExporting": "Exporting",
+  "editorLoadTrackFailed": "Could not load {track}. Please try again.",
+  "@editorLoadTrackFailed": {
+    "placeholders": {
+      "track": {
+        "type": "String"
+      }
+    }
+  },
+  "editorRemixTitle": "{title} Remix",
+  "@editorRemixTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "editorBrightness": "Brightness",
+  "editorContrast": "Contrast",
+  "editorSaturation": "Saturation",
+  "editorSharpness": "Sharpness",
+  "editorVignette": "Vignette",
+  "editorTrimKeepDuration": "Keep: {duration}",
+  "@editorTrimKeepDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "editorCategoryAll": "All",
+  "editorCategoryYours": "Yours",
+  "editorCategoryOriginals": "Originals",
+  "editorCategoryFaces": "Faces",
+  "editorCategoryHearts": "Hearts",
+  "editorCategoryParty": "Party",
+  "editorCategoryAnimals": "Animals",
+  "editorCategoryFood": "Food",
+  "editorCategorySports": "Sports",
+  "editorCategoryObjects": "Objects",
+  "editorCategoryTravel": "Travel",
+  "editorFilterNone": "None",
+  "editorFilterVivid": "Vivid",
+  "editorFilterMatte": "Matte",
+  "editorFilterFade": "Fade",
+  "editorFilterWarm": "Warm",
+  "editorFilterCool": "Cool",
+  "editorFilterNoir": "Noir",
+  "editorNoStickersHereYet": "No stickers here yet",
+  "editorNoMatchingStickers": "No matching stickers",
+  "editorMusicReady": "Ready",
+  "editorMusicDownload": "Download",
+  "editorMusicLoading": "Loading",
+  "editorMusicHappy": "Happy",
+  "editorMusicEnergy": "Energy",
+  "editorMusicChill": "Chill",
+  "editorMusicChiptune": "Chiptune",
+  "editorMusicDramatic": "Dramatic",
+  "editorMusicLoops": "Loops",
+  "editorNoMusicHereYet": "No music here yet",
+  "editorNoMatchingMusic": "No matching music",
+  "homeMakeFirstVideo": "Make your first video",
+  "homeMyVideos": "My Videos",
+  "homeFromFriendsFamily": "From Friends & Family",
+  "homeLikeCount": "{count, plural, =1{# like} other{# likes}}",
+  "@homeLikeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "captureFinishSetupShareThisClip": "Finish parent setup before sharing this clip.",
+  "editorHubMusic": "Music",
+  "onboardingOpeningApp": "Opening Tubestr",
+  "onboardingScanBackupKey": "Scan Backup Key",
+  "onboardingRestoreFirst": "Restore first",
+  "onboardingCamera": "Camera",
+  "onboardingMicrophone": "Microphone",
+  "onboardingCameraPermissionDetail": "Use the camera for recording videos and scanning family invites.",
+  "onboardingMicrophonePermissionDetail": "Capture audio while recording videos.",
+  "onboardingAppPermissionsDetail": "Tubestr uses the camera for recording videos and scanning family invites, and the microphone for video sound.",
+  "parentResetApp": "Reset app",
+  "parentLeave": "Leave",
+  "parentSaveLocally": "Save locally",
+  "parentPublishProfile": "Publish profile",
+  "parentPinTitle": "Parent PIN",
+  "parentPermanentServerDeletion": "Permanent server-side deletion",
+  "parentRecoveryKey": "Recovery key",
+  "parentCannotUndoDevice": "This cannot be undone on this device",
+  "parentProfileDeleted": "Profile deleted. {count, plural, =1{# file removed} other{# files removed}} from Tubestr servers.",
+  "@parentProfileDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDiagnosticsReadingBuild": "Reading app build",
+  "parentFamilyConnection": "Family connection",
+  "parentQueueClear": "Queue is clear",
+  "parentNoChildProfiles": "No child profiles yet",
+  "parentDashboardReady": "Ready",
+  "parentDashboardNotSet": "Not set",
+  "parentDashboardFamilySpaces": "Family spaces",
+  "parentDashboardJoinCreate": "Join or create a family space",
+  "parentDashboardClear": "Everything is clear",
+  "parentDashboardOpenChildren": "Open Children",
+  "parentDashboardOpenNetwork": "Open Network",
+  "parentDashboardNeedsReview": "Needs review",
+  "onboardingScanBackupInstructions": "Point the camera at your saved parent backup QR code.",
+  "editorRemixSavedTitle": "Remix saved",
+  "editorReviewFirst": "Review first",
+
+  "captureMicrophoneNoticeOff": "Microphone access is off, so clips will save without sound. Turn microphone access on in Settings to add audio.",
+  "captureFinishingClipTitle": "Finishing your clip",
+  "captureFinishingClipDetail": "Preparing the video and thumbnail for your library.",
+  "captureSafetyScanDetail": "Running an on-device safety scan before sharing.",
+  "captureOpeningCamera": "Opening camera",
+  "captureGettingReadyDetail": "Getting everything ready so you can record a new clip.",
+  "captureMicSilent": "Silent",
+  "capturePreparingCamera": "Preparing camera",
+  "captureGettingReadyShort": "Getting everything ready.",
+
+  "editorHubNothingToRemix": "Nothing to remix yet",
+  "editorHubRecordFirstDetail": "Record something in Capture first, then come back here to add music, stickers, text, and trims.",
+  "editorHubFromLabel": "From {label}",
+  "@editorHubFromLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+
+  "editorStickerPreviewPrompt": "Looking good! Use it as a sticker?",
+
+  "homeFallbackName": "there",
+  "homeFirstSteps": "First steps",
+  "homeFirstStepsDetail": "This shelf stays simple until your family actually starts recording.",
+  "homeReadyToWatch": "Ready to watch",
+  "homeSavedFrom": "Saved from {source}",
+  "@homeSavedFrom": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+
+  "onboardingParentRestoredLocal": "Parent account restored on this device. In v2, child profiles are local, so you can add the children you want on this device next.",
+  "onboardingOpeningAppDetail": "Getting your family space ready on this device.",
+  "onboardingRoleSelectSubtitle": "First, we need to create your parent account. This only takes a minute.",
+  "onboardingParentKeyHelp": "Your parent key is like your family's master password. It proves you're the parent and lets you manage everything.",
+  "onboardingDisplayNameHint": "Lee & Emma",
+  "onboardingBirthYearHint": "1988",
+  "onboardingConsentLabel": "I am 18 or older and I agree to the Tubestr privacy policy on behalf of any children whose profiles I create.",
+  "onboardingBackupKeyCardTitle": "Parent backup key",
+  "onboardingBackupKeyCardDescription": "Save this before you continue. It is the recovery path for your parent account.",
+  "onboardingRestoreKeySubtitle": "Paste your saved `nsec1...` key or 64-character backup key. You can also scan the QR code if you saved one. If this device still has your parent account saved in secure storage or synced Apple Keychain, Tubestr will pick it up automatically on launch.",
+  "onboardingRestoringParentAccount": "Restoring your parent account",
+  "onboardingRecoveryComplete": "Recovery complete",
+  "onboardingRecoveryNeedsRetry": "Recovery needs another try",
+  "onboardingParentKeyRecovered": "Parent key recovered",
+  "onboardingChildNameHint": "Emma",
+  "onboardingOneLastThing": "One Last Thing",
+  "onboardingParentPublicKey": "Parent public key",
+
+  "parentInviteQrInstructions": "Have the other parent scan this from their Parent Zone. This will close automatically once they connect.",
+  "parentSafetyHqKeysRefreshing": "Safety HQ is temporarily unavailable while Tubestr refreshes the moderation service keys. Please try again later.",
+  "parentModerationLoadingDetail": "Moderation details need another moment to load.",
+  "parentModerationControls": "Moderation Controls",
+  "parentModerationControlsDetail": "Delete shared videos or remove family members. These are separate actions.",
+  "parentMembersTitle": "Members",
+  "parentNoMemberDetails": "No member details available yet.",
+  "parentNoSharedVideosFromFamily": "No shared videos from this family yet.",
+  "parentRemoveMemberCaveat": "Removing a member does not delete their past content automatically.",
+  "parentLeaveFamilySpaceAction": "Leave this family space",
+
+  "parentProfilePinCardTitle": "Parent Profile & PIN",
+  "parentDeleteAccountCardTitle": "Delete Parent Account",
+  "parentDeleteAccountCardDetail": "Permanently delete Tubestr account records tied to this parent address from Tubestr-operated backend systems, then sign this device out. Any App Store or Play subscription must still be cancelled separately with Apple or Google.",
+  "parentDeletingAccount": "Deleting parent account...",
+  "parentIdentityBackupTitle": "Identity & Backup",
+  "parentIdentityBackupDetail": "Keep your recovery details somewhere private so you can restore parent access if you switch devices.",
+  "parentIdentityMissing": "Parent identity missing",
+  "parentIdentityReady": "Parent account is ready",
+  "parentAddressLabel": "Parent address",
+  "parentPoliciesSupportTitle": "Policies & Support",
+  "parentPoliciesSupportDetail": "Open the public support, privacy, and terms pages that families and App Review should be able to find from inside the app.",
+  "parentResetDeviceTitle": "Reset This Device",
+  "parentResetDeviceDetail": "Reset Tubestr on this device and remove the saved parent account, cached media, queued actions, and Parent Zone PIN. This also clears the synced Apple-keychain copy Tubestr uses for automatic restore on this device.",
+  "parentResetDeviceWarning": "Make sure your parent recovery key is saved somewhere safe. After reset, this device will not auto-restore the parent account until you import that key again.",
+
+  "parentApprovalEmptySubtitle": "No clips are waiting for a parent review right now.",
+  "parentApprovalHasItemsSubtitle": "Review new clips before they can be shared outside the device.",
+  "parentApprovalEmptyDetail": "New videos are scanned automatically. Anything that needs your approval will appear here.",
+
+  "parentDashboardFamilyHealth": "Family Health",
+  "parentDashboardLoading": "Loading",
+  "parentDashboardNoFamilySpaceDetail": "You need at least one family space to share clips with. Scan a parent's invite QR or create a new space to invite someone.",
+  "parentDashboardOpenFamilySpaces": "Open Family Spaces",
+  "parentDashboardAllClearDetail": "No waiting approvals, pending reports, or offline retries right now.",
+  "parentDashboardApprovalsClear": "Approval queue is clear",
+  "parentDashboardClipsNeedReview": "{count, plural, =1{# clip needs review} other{# clips need review}}",
+  "@parentDashboardClipsNeedReview": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDashboardApprovalsClearDetail": "New kid clips can move ahead without a parent check right now.",
+  "parentDashboardApprovalsPendingDetail": "Open Children to approve or reject new clips before they can be shared.",
+  "parentDashboardReportsUpToDate": "Reports are up to date",
+  "parentDashboardReportsNeedAttention": "{count, plural, =1{# report needs attention} other{# reports need attention}}",
+  "@parentDashboardReportsNeedAttention": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDashboardReportsUpToDateDetail": "Family feedback and safety reports are up to date.",
+  "parentDashboardReportsPendingDetail": "Some reports are still being delivered or need follow-up.",
+  "parentDashboardConnectionHealthy": "Connection health looks good",
+  "parentDashboardActionsWaiting": "{count, plural, =1{# action is waiting offline} other{# actions are waiting offline}}",
+  "@parentDashboardActionsWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDashboardConnectionHealthyDetail": "Shares, reports, and relay activity are connected.",
+  "parentDashboardConnectionPendingDetail": "Open Network to retry queued work and reconnect relays if needed.",
+  "parentDashboardControlRoomFirstStep": "Your first step: join or create a family space so you can share clips with someone.",
+  "parentDashboardControlRoomSteady": "Everything looks steady. Review your family spaces or jump into settings when you need them.",
+  "parentDashboardControlRoomExplainer": "The decisions that need a parent are up top in Start Here; this is your connection and safety health at a glance.",
+
+  "parentDiagnosticsRefreshInFlight": "Refresh in flight",
+  "parentDiagnosticsGeneration": "Generation {value}",
+  "@parentDiagnosticsGeneration": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDiagnosticsRefreshTriggerDetail": "Trigger {trigger} · {subscriptions} active subscription(s) · {groups} tracked group(s)",
+  "@parentDiagnosticsRefreshTriggerDetail": {
+    "placeholders": {
+      "trigger": {
+        "type": "String"
+      },
+      "subscriptions": {
+        "type": "int"
+      },
+      "groups": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDiagnosticsLastRefresh": "Last refresh {time}",
+  "@parentDiagnosticsLastRefresh": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "parentDiagnosticsStats": "Requests {requests} · Coalesced {coalesced} · Stream errors {streamErrors} · Unsubscribe failures {unsubscribeFailures}",
+  "@parentDiagnosticsStats": {
+    "placeholders": {
+      "requests": {
+        "type": "int"
+      },
+      "coalesced": {
+        "type": "int"
+      },
+      "streamErrors": {
+        "type": "int"
+      },
+      "unsubscribeFailures": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDiagnosticsLastError": "Last error: {error}",
+  "@parentDiagnosticsLastError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "parentDiagnosticsPackageUnavailable": "Package identifier unavailable on this platform.",
+  "parentDiagnosticsLaunchTriage": "Launch Triage",
+  "parentDiagnosticsLaunchIssuesNeedAttention": "{count, plural, =1{# launch issue needs attention} other{# launch issues need attention}}",
+  "@parentDiagnosticsLaunchIssuesNeedAttention": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDiagnosticsNoLaunchIssues": "No queued launch issues right now",
+  "parentDiagnosticsLaunchDetail": "{actions} queued action(s) · {shares} share issue(s) · {reports} report issue(s) · {downloads} download issue(s)",
+  "@parentDiagnosticsLaunchDetail": {
+    "placeholders": {
+      "actions": {
+        "type": "int"
+      },
+      "shares": {
+        "type": "int"
+      },
+      "reports": {
+        "type": "int"
+      },
+      "downloads": {
+        "type": "int"
+      }
+    }
+  },
+  "parentDiagnosticsNoActiveSubscriptions": "No relay subscriptions are active right now.",
+  "parentDiagnosticsNoRetriesWaiting": "Nothing is waiting for retry from shares, reports, or remote downloads.",
+  "parentDiagnosticsReportsSection": "Reports",
+  "parentDiagnosticsRemoteDownloadsSection": "Remote downloads",
+
+  "parentJoiningEllipsis": "Joining…",
+  "parentPendingWelcomeDetail": "From {inviter} · {count, plural, =1{# member} other{# members}}",
+  "@parentPendingWelcomeDetail": {
+    "placeholders": {
+      "inviter": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "parentRetryWaitingDetail": "Retry when you want to push waiting work back through.",
+
+  "parentPinUnlockDetail": "Enter your four-digit PIN to open family settings, approvals, and safety controls.",
+  "parentFamilyControls": "Family controls",
+  "parentPinSetupRequired": "PIN setup required",
+  "parentProtectedByPin": "Protected by parent PIN",
+
+  "parentActivityRecentShares": "Recent Shares",
+  "parentActivityFamilyFeedback": "Family Feedback",
+  "parentActivityNoIncoming": "No incoming family feedback right now.",
+  "parentActivityOutbound": "Feedback You Shared",
+  "parentActivityNoReports": "No reports yet. If a child flags a video, you will see delivery status here.",
+  "parentActivityModeration": "Moderation Activity",
+  "parentActivityNoModeration": "No moderation actions yet.",
+  "playerSharingAction": "Sharing"
+}

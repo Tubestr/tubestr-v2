@@ -13,6 +13,7 @@ import '../../../domain/models/relay_entry.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_reaction_summary.dart';
 import '../../../services/mdk/mdk_service.dart';
+import '../../i18n/app_locale_preference.dart';
 import '../../theme/app_theme_mode.dart';
 import '../../theme/theme_descriptor.dart';
 import 'foundation_providers.dart';
@@ -286,6 +287,22 @@ final appearanceModeProvider = StreamProvider<AppThemeModePreference>((ref) {
 final activeAppearanceModeProvider = Provider<AppThemeModePreference>((ref) {
   return ref.watch(appearanceModeProvider).valueOrNull ??
       AppThemeModePreference.system;
+});
+
+final localePreferenceProvider = StreamProvider<AppLocalePreference>((ref) {
+  return ref
+      .watch(appDatabaseProvider)
+      .watchSetting(AppConstants.localePreferenceSettingKey)
+      .map(AppLocalePreferenceX.fromStorage);
+});
+
+final activeLocalePreferenceProvider = Provider<AppLocalePreference>((ref) {
+  return ref.watch(localePreferenceProvider).valueOrNull ??
+      AppLocalePreference.system;
+});
+
+final activeLocaleProvider = Provider<Locale?>((ref) {
+  return ref.watch(activeLocalePreferenceProvider).locale;
 });
 
 final activeBrightnessProvider = Provider<Brightness>((ref) {

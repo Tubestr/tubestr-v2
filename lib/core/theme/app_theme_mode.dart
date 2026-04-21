@@ -3,18 +3,6 @@ import 'package:flutter/material.dart';
 enum AppThemeModePreference { system, light, dark }
 
 extension AppThemeModePreferenceX on AppThemeModePreference {
-  String get label => switch (this) {
-    AppThemeModePreference.system => 'System',
-    AppThemeModePreference.light => 'Light',
-    AppThemeModePreference.dark => 'Dark',
-  };
-
-  String get description => switch (this) {
-    AppThemeModePreference.system => 'Follow device',
-    AppThemeModePreference.light => 'Keep it bright',
-    AppThemeModePreference.dark => 'Keep it cozy',
-  };
-
   IconData get icon => switch (this) {
     AppThemeModePreference.system => Icons.brightness_auto_rounded,
     AppThemeModePreference.light => Icons.light_mode_rounded,

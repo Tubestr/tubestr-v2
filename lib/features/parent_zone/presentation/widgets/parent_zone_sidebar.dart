@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../models/parent_zone_models.dart';
+import '../../../../l10n/app_localizations_x.dart';
+import '../../../../l10n/l10n.dart';
 
 class ParentZoneSidebar extends StatelessWidget {
   const ParentZoneSidebar({
@@ -61,7 +63,7 @@ class ParentZoneSidebar extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Parent Zone',
+                  context.l10n.parentZoneTitle,
                   style: TextStyle(
                     color: palette.ink,
                     fontSize: 20,
@@ -166,7 +168,7 @@ class _NavItem extends StatelessWidget {
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                       color: palette.ink,
                     ),
-                    child: Text(section.label),
+                    child: Text(context.l10n.parentZoneSectionLabel(section)),
                   ),
                 ],
               ),

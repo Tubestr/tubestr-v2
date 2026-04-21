@@ -3,13 +3,6 @@ import 'package:flutter/material.dart';
 enum ThemeDescriptor { campfire, treehouse, blanketFort, starlight }
 
 extension ThemeDescriptorX on ThemeDescriptor {
-  String get label => switch (this) {
-    ThemeDescriptor.campfire => 'Campfire',
-    ThemeDescriptor.treehouse => 'Treehouse',
-    ThemeDescriptor.blanketFort => 'Blanket Fort',
-    ThemeDescriptor.starlight => 'Starlight',
-  };
-
   String get defaultAvatarAsset => switch (this) {
     ThemeDescriptor.campfire => 'sun',
     ThemeDescriptor.treehouse => 'leaf',

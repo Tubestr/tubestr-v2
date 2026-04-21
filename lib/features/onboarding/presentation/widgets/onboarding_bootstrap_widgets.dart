@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../../../../shared_ui/components/nook_decorations.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/l10n.dart';
 
 class OnboardingLoadingScreen extends ConsumerWidget {
   const OnboardingLoadingScreen({super.key});
@@ -24,8 +25,8 @@ class OnboardingLoadingScreen extends ConsumerWidget {
             child: OnboardingBootstrapStatusCard(
               palette: palette,
               icon: Icons.hourglass_top_rounded,
-              title: 'Opening ${AppConstants.appName}',
-              message: 'Getting your family space ready on this device.',
+              title: context.l10n.onboardingOpeningApp,
+              message: context.l10n.onboardingOpeningAppDetail,
               child: const CircularProgressIndicator(),
             ),
           ),
@@ -54,15 +55,15 @@ class OnboardingErrorScreen extends ConsumerWidget {
             child: OnboardingBootstrapStatusCard(
               palette: palette,
               icon: Icons.refresh_rounded,
-              title: '${AppConstants.appName} needs another moment',
-              message: _friendlyBootstrapError(error),
+              title: context.l10n.onboardingBootstrapNeedsMoment,
+              message: _friendlyBootstrapError(error, context.l10n),
               child: FilledButton.icon(
                 onPressed: () {
                   ref.invalidate(parentIdentityProvider);
                   ref.invalidate(profilesProvider);
                 },
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try again'),
+                label: Text(context.l10n.actionTryAgain),
               ),
             ),
           ),
@@ -135,13 +136,13 @@ class OnboardingBootstrapStatusCard extends StatelessWidget {
   }
 }
 
-String _friendlyBootstrapError(Object error) {
+String _friendlyBootstrapError(Object error, AppLocalizations l10n) {
   final message = error.toString().toLowerCase();
   if (message.contains('secure') || message.contains('storage')) {
-    return 'We could not reach this device\'s saved family setup just yet. Please try again in a moment.';
+    return l10n.onboardingBootstrapReachFailed;
   }
   if (message.contains('database') || message.contains('sqlite')) {
-    return 'Your family library needs another moment to open on this device. Please try again.';
+    return l10n.onboardingBootstrapLibraryMoment;
   }
-  return 'We hit a setup snag while opening your family space. Nothing is lost. Please try again.';
+  return l10n.onboardingBootstrapGeneric;
 }

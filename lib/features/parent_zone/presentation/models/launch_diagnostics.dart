@@ -2,6 +2,7 @@ import '../../../../core/storage/app_database.dart';
 import '../../../../domain/models/offline_action.dart';
 import '../../../../domain/models/remote_share_projection.dart';
 import '../../../../domain/models/share_history_entry.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class LaunchDiagnosticsSnapshot {
   const LaunchDiagnosticsSnapshot({
@@ -39,6 +40,7 @@ LaunchDiagnosticsSnapshot buildLaunchDiagnosticsSnapshot({
   required List<ShareHistoryEntry> shareHistory,
   required List<Report> reports,
   required List<RemoteShareProjection> remoteShares,
+  required AppLocalizations l10n,
 }) {
   final counts = <OfflineActionType, int>{};
   for (final action in queuedActions) {
@@ -49,7 +51,7 @@ LaunchDiagnosticsSnapshot buildLaunchDiagnosticsSnapshot({
       counts.entries
           .map(
             (entry) => LaunchDiagnosticsCount(
-              label: describeOfflineActionType(entry.key),
+              label: describeOfflineActionType(entry.key, l10n),
               count: entry.value,
             ),
           )
@@ -84,56 +86,70 @@ LaunchDiagnosticsSnapshot buildLaunchDiagnosticsSnapshot({
   );
 }
 
-String describeOfflineActionType(OfflineActionType type) {
+String describeOfflineActionType(
+  OfflineActionType type,
+  AppLocalizations l10n,
+) {
   return switch (type) {
-    OfflineActionType.shareVideo => 'Queued shares',
-    OfflineActionType.sendLike => 'Queued likes',
-    OfflineActionType.sendReaction => 'Queued reactions',
-    OfflineActionType.submitReport => 'Queued reports',
-    OfflineActionType.publishParentProfile => 'Queued profile updates',
-    OfflineActionType.publishRelayList => 'Queued relay list updates',
-    OfflineActionType.publishBlossomServerList => 'Queued media server updates',
-    OfflineActionType.publishMuteList => 'Queued mute list updates',
+    OfflineActionType.shareVideo => l10n.launchQueuedShares,
+    OfflineActionType.sendLike => l10n.launchQueuedLikes,
+    OfflineActionType.sendReaction => l10n.launchQueuedReactions,
+    OfflineActionType.submitReport => l10n.launchQueuedReports,
+    OfflineActionType.publishParentProfile => l10n.launchQueuedProfileUpdates,
+    OfflineActionType.publishRelayList => l10n.launchQueuedRelayUpdates,
+    OfflineActionType.publishBlossomServerList =>
+      l10n.launchQueuedMediaServerUpdates,
+    OfflineActionType.publishMuteList => l10n.launchQueuedMuteUpdates,
   };
 }
 
-String describeShareStatus(String status) {
+String describeShareStatus(String status, AppLocalizations l10n) {
   return switch (status) {
-    'sent' => 'Delivered',
-    'queued' => 'Waiting for retry',
+    'sent' => l10n.launchDelivered,
+    'queued' => l10n.launchWaitingRetry,
     _ => status,
   };
 }
 
-String describeReportStatus(String status) {
+String describeReportStatus(String status, AppLocalizations l10n) {
   return switch (status) {
-    'delivered' => 'Delivered',
-    'queued_safety' => 'Waiting on Safety HQ copy',
-    'queued_offline' => 'Waiting for connection',
-    'pending_blob_hash' => 'Waiting for encrypted media reference',
-    'failed' => 'Delivery failed',
+    'delivered' => l10n.launchDelivered,
+    'queued_safety' => l10n.launchWaitingSafety,
+    'queued_offline' => l10n.launchWaitingConnection,
+    'pending_blob_hash' => l10n.launchWaitingMediaReference,
+    'failed' => l10n.launchDeliveryFailed,
     _ => status,
   };
 }
 
-String summarizeDownloadError(String? error) {
+String describeReportReason(String reason, AppLocalizations l10n) {
+  return switch (reason) {
+    'inappropriate' => l10n.reportReasonInappropriate,
+    'harassment' => l10n.reportReasonHarassment,
+    'unsafe' => l10n.reportReasonUnsafe,
+    'illegal' => l10n.reportReasonIllegal,
+    _ => reason,
+  };
+}
+
+String summarizeDownloadError(String? error, AppLocalizations l10n) {
   final lower = error?.trim().toLowerCase() ?? '';
   if (lower.isEmpty) {
-    return 'Download failed. Retry when the connection is stable.';
+    return l10n.launchDownloadFailed;
   }
   if (lower.contains('socket') ||
       lower.contains('network') ||
       lower.contains('timeout')) {
-    return 'Download failed because the relay or media server was unreachable.';
+    return l10n.launchDownloadRelayFailed;
   }
   if (lower.contains('decrypt') || lower.contains('mip-04')) {
-    return 'Download failed while unlocking the encrypted video package.';
+    return l10n.launchDownloadUnlockFailed;
   }
   if (lower.contains('cache') || lower.contains('expected')) {
-    return 'Download failed because the saved copy did not pass verification.';
+    return l10n.launchDownloadVerifyFailed;
   }
   if (lower.contains('metadata') || lower.contains('reference fields')) {
-    return 'Download failed because the shared clip metadata was incomplete.';
+    return l10n.launchDownloadMetadataFailed;
   }
-  return 'Download failed. Retry to fetch a fresh encrypted copy.';
+  return l10n.launchDownloadGenericFailed;
 }

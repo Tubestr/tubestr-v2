@@ -4,8 +4,11 @@ import 'package:mytube/domain/models/offline_action.dart';
 import 'package:mytube/domain/models/remote_share_projection.dart';
 import 'package:mytube/domain/models/share_history_entry.dart';
 import 'package:mytube/features/parent_zone/presentation/models/launch_diagnostics.dart';
+import 'package:mytube/l10n/app_localizations_en.dart';
 
 void main() {
+  final l10n = AppLocalizationsEn();
+
   test(
     'buildLaunchDiagnosticsSnapshot groups queued work and launch issues',
     () {
@@ -99,6 +102,7 @@ void main() {
             localThumbPath: null,
           ),
         ],
+        l10n: l10n,
       );
 
       expect(snapshot.hasIssues, isTrue);
@@ -113,19 +117,20 @@ void main() {
   );
 
   test('status helpers return launch-friendly labels', () {
-    expect(describeShareStatus('queued'), 'Waiting for retry');
+    expect(describeShareStatus('queued', l10n), 'Waiting for retry');
     expect(
-      describeReportStatus('pending_blob_hash'),
+      describeReportStatus('pending_blob_hash', l10n),
       'Waiting for encrypted media reference',
     );
     expect(
       summarizeDownloadError(
         'StateError: Downloaded video did not match expected video/mp4.',
+        l10n,
       ),
       'Download failed because the saved copy did not pass verification.',
     );
     expect(
-      summarizeDownloadError('SocketException: Network unreachable'),
+      summarizeDownloadError('SocketException: Network unreachable', l10n),
       'Download failed because the relay or media server was unreachable.',
     );
   });

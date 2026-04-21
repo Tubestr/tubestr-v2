@@ -7,6 +7,7 @@ import '../../../../core/di/providers.dart';
 import '../../../../core/theme/theme_descriptor.dart';
 import '../../../../shared_ui/components/kid_scaffold.dart';
 import '../models/parent_zone_models.dart';
+import '../../../../l10n/l10n.dart';
 
 class ParentZoneDashboardSection extends ConsumerWidget {
   const ParentZoneDashboardSection({super.key, required this.onSelectSection});
@@ -69,7 +70,7 @@ class ParentZoneDashboardSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Family Health',
+                context.l10n.parentDashboardFamilyHealth,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -78,13 +79,15 @@ class ParentZoneDashboardSection extends ConsumerWidget {
                     ? Icons.check_circle_rounded
                     : Icons.error_outline_rounded,
                 color: identity != null ? palette.success : palette.warning,
-                label: 'Parent account',
-                value: identity != null ? 'Ready' : 'Not set',
+                label: context.l10n.onboardingParentAccount,
+                value: identity != null
+                    ? context.l10n.parentDashboardReady
+                    : context.l10n.parentDashboardNotSet,
               ),
               _SummaryRow(
                 icon: Icons.people_rounded,
                 color: palette.accent,
-                label: 'Child profiles',
+                label: context.l10n.onboardingChildProfiles,
                 value: '${profiles.length}',
               ),
               _SummaryRow(
@@ -92,7 +95,7 @@ class ParentZoneDashboardSection extends ConsumerWidget {
                 color: groupSummaries.isEmpty
                     ? palette.warning
                     : palette.success,
-                label: 'Family spaces',
+                label: context.l10n.parentDashboardFamilySpaces,
                 value: '${groupSummaries.length}',
               ),
               _SummaryRow(
@@ -102,8 +105,9 @@ class ParentZoneDashboardSection extends ConsumerWidget {
                 color: safetyStatus?.isJoined == true
                     ? palette.success
                     : palette.warning,
-                label: 'Safety HQ',
-                value: safetyStatus?.label ?? 'Loading',
+                label: context.l10n.parentSafetyHq,
+                value:
+                    safetyStatus?.label ?? context.l10n.parentDashboardLoading,
               ),
             ],
           ),
@@ -142,27 +146,26 @@ class _StartHereCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Start Here', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            context.l10n.parentStartHere,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           if (needsFamilySpace)
             _AttentionRow(
               icon: Icons.group_add_rounded,
               color: palette.warning,
-              title: 'Join or create a family space',
-              detail:
-                  'You need at least one family space to share clips with. '
-                  'Scan a parent\'s invite QR or create a new space to invite '
-                  'someone.',
-              actionLabel: 'Open Family Spaces',
+              title: context.l10n.parentDashboardJoinCreate,
+              detail: context.l10n.parentDashboardNoFamilySpaceDetail,
+              actionLabel: context.l10n.parentDashboardOpenFamilySpaces,
               onTap: onOpenFamilySpaces,
             ),
           if (attentionCount == 0 && !needsFamilySpace)
             _AttentionRow(
               icon: Icons.verified_rounded,
               color: palette.success,
-              title: 'Everything is clear',
-              detail:
-                  'No waiting approvals, pending reports, or offline retries right now.',
+              title: context.l10n.parentDashboardClear,
+              detail: context.l10n.parentDashboardAllClearDetail,
             )
           else if (attentionCount > 0) ...[
             _AttentionRow(
@@ -171,12 +174,14 @@ class _StartHereCard extends StatelessWidget {
                   : Icons.pending_actions_rounded,
               color: pendingVideos == 0 ? palette.success : palette.warning,
               title: pendingVideos == 0
-                  ? 'Approval queue is clear'
-                  : '$pendingVideos clip(s) need review',
+                  ? context.l10n.parentDashboardApprovalsClear
+                  : context.l10n.parentDashboardClipsNeedReview(pendingVideos),
               detail: pendingVideos == 0
-                  ? 'New kid clips can move ahead without a parent check right now.'
-                  : 'Open Children to approve or reject new clips before they can be shared.',
-              actionLabel: pendingVideos == 0 ? null : 'Open Children',
+                  ? context.l10n.parentDashboardApprovalsClearDetail
+                  : context.l10n.parentDashboardApprovalsPendingDetail,
+              actionLabel: pendingVideos == 0
+                  ? null
+                  : context.l10n.parentDashboardOpenChildren,
               onTap: pendingVideos == 0 ? null : onOpenChildren,
             ),
             _AttentionRow(
@@ -185,11 +190,13 @@ class _StartHereCard extends StatelessWidget {
                   : Icons.mark_email_unread_rounded,
               color: pendingReports == 0 ? palette.success : palette.warning,
               title: pendingReports == 0
-                  ? 'Reports are up to date'
-                  : '$pendingReports report(s) need attention',
+                  ? context.l10n.parentDashboardReportsUpToDate
+                  : context.l10n.parentDashboardReportsNeedAttention(
+                      pendingReports,
+                    ),
               detail: pendingReports == 0
-                  ? 'Family feedback and safety reports are up to date.'
-                  : 'Some reports are still being delivered or need follow-up.',
+                  ? context.l10n.parentDashboardReportsUpToDateDetail
+                  : context.l10n.parentDashboardReportsPendingDetail,
             ),
             _AttentionRow(
               icon: queuedActions == 0
@@ -197,12 +204,14 @@ class _StartHereCard extends StatelessWidget {
                   : Icons.cloud_off_rounded,
               color: queuedActions == 0 ? palette.success : palette.warning,
               title: queuedActions == 0
-                  ? 'Connection health looks good'
-                  : '$queuedActions action(s) are waiting offline',
+                  ? context.l10n.parentDashboardConnectionHealthy
+                  : context.l10n.parentDashboardActionsWaiting(queuedActions),
               detail: queuedActions == 0
-                  ? 'Shares, reports, and relay activity are connected.'
-                  : 'Open Network to retry queued work and reconnect relays if needed.',
-              actionLabel: queuedActions == 0 ? null : 'Open Network',
+                  ? context.l10n.parentDashboardConnectionHealthyDetail
+                  : context.l10n.parentDashboardConnectionPendingDetail,
+              actionLabel: queuedActions == 0
+                  ? null
+                  : context.l10n.parentDashboardOpenNetwork,
               onTap: queuedActions == 0 ? null : onOpenNetwork,
             ),
           ],
@@ -233,14 +242,17 @@ class _ControlRoomCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Control Room', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            context.l10n.parentControlRoom,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 6),
           Text(
             needsFamilySpace
-                ? 'Your first step: join or create a family space so you can share clips with someone.'
+                ? context.l10n.parentDashboardControlRoomFirstStep
                 : attentionCount == 0
-                ? 'Everything looks steady. Review your family spaces or jump into settings when you need them.'
-                : 'The decisions that need a parent are up top in Start Here; this is your connection and safety health at a glance.',
+                ? context.l10n.parentDashboardControlRoomSteady
+                : context.l10n.parentDashboardControlRoomExplainer,
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
@@ -251,17 +263,17 @@ class _ControlRoomCard extends StatelessWidget {
             runSpacing: 10,
             children: [
               _ControlMetric(
-                label: 'Needs review',
+                label: context.l10n.parentDashboardNeedsReview,
                 value: '$attentionCount',
                 tone: attentionCount == 0 ? palette.success : palette.warning,
               ),
               _ControlMetric(
-                label: 'Children',
+                label: context.l10n.parentSectionChildren,
                 value: '$childCount',
                 tone: palette.ink,
               ),
               _ControlMetric(
-                label: 'Family spaces',
+                label: context.l10n.parentDashboardFamilySpaces,
                 value: '$familySpaceCount',
                 tone: palette.accent,
               ),

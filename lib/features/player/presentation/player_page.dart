@@ -23,6 +23,7 @@ import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../../shared_ui/reporting/feeling_report_sheet.dart';
 import 'player_route_state.dart';
+import '../../../l10n/l10n.dart';
 
 /// Full-screen video player matching v1 PlayerView design.
 class PlayerPage extends ConsumerStatefulWidget {
@@ -460,7 +461,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final remoteThumbFile = routeState.remoteThumbFile;
     final hasRemoteThumb = routeState.hasRemoteThumb;
     final title = routeState.title;
-    final subtitle = routeState.subtitle;
+    final subtitle = _localizedRouteSubtitle(routeState, context);
     final remoteLikeCount = routeState.remoteLikeCount;
     final remoteLikedByViewer = routeState.remoteLikedByViewer;
     final isLiked = routeState.isLiked;
@@ -704,12 +705,18 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                           ),
                                                     label: Text(
                                                       _isDownloadingRemote
-                                                          ? 'Downloading...'
+                                                          ? context
+                                                                .l10n
+                                                                .playerDownloading
                                                           : remoteShare
                                                                     .status ==
                                                                 'failed'
-                                                          ? 'Repair Download'
-                                                          : 'Download Now',
+                                                          ? context
+                                                                .l10n
+                                                                .playerRepairDownload
+                                                          : context
+                                                                .l10n
+                                                                .playerDownloadNow,
                                                     ),
                                                   ),
                                                 ],
@@ -850,6 +857,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                           onSubmit: (submission) async {
                                             final messenger =
                                                 ScaffoldMessenger.of(context);
+                                            final l10n = context.l10n;
                                             try {
                                               final result = await ref
                                                   .read(
@@ -865,7 +873,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                     reporterChildId:
                                                         selectedProfileId,
                                                     reason: submission.reason,
-                                                    note: submission.note,
+                                                    note: submission
+                                                        .localizedNote(l10n),
                                                     level: submission.level,
                                                     recipientType: submission
                                                         .recipientType,
@@ -882,8 +891,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                 SnackBar(
                                                   content: Text(
                                                     result.status == 'delivered'
-                                                        ? 'Report delivered'
-                                                        : 'Report saved (${result.status})',
+                                                        ? l10n.playerReportDelivered
+                                                        : l10n.playerReportSaved(
+                                                            describeReportStatus(
+                                                              result.status,
+                                                              l10n,
+                                                            ),
+                                                          ),
                                                   ),
                                                 ),
                                               );
@@ -1013,8 +1027,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                 const SizedBox(width: 4),
                                                 Text(
                                                   _sheetExpanded
-                                                      ? 'Hide details'
-                                                      : 'Show details',
+                                                      ? context
+                                                            .l10n
+                                                            .playerHideDetails
+                                                      : context
+                                                            .l10n
+                                                            .playerShowDetails,
                                                   style: TextStyle(
                                                     color: palette.ink,
                                                     fontSize: 12,
@@ -1148,7 +1166,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                       const SizedBox(height: 12),
                                       _ReactionSection(
                                         palette: palette,
-                                        title: 'React',
+                                        title: context.l10n.playerReact,
                                         reactions: reactionSummaries,
                                         selectedEmojis: viewerReactions,
                                         isSendingReaction: _isSendingReaction,
@@ -1208,8 +1226,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                           ),
                                                           child: Text(
                                                             remoteShare == null
-                                                                ? 'My clip'
-                                                                : 'Family share',
+                                                                ? context
+                                                                      .l10n
+                                                                      .playerMyClip
+                                                                : context
+                                                                      .l10n
+                                                                      .playerFamilyShare,
                                                             style: TextStyle(
                                                               color: palette
                                                                   .accent,
@@ -1478,6 +1500,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   Future<void> _downloadRemoteShare(RemoteShareProjection remoteShare) async {
     final messenger = ScaffoldMessenger.of(context);
+    final downloadedMessage = context.l10n.playerSharedDownloaded;
     setState(() => _isDownloadingRemote = true);
     try {
       await ref.read(remoteMediaServiceProvider).downloadVideo(remoteShare);
@@ -1485,9 +1508,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         return;
       }
       await HapticFeedback.lightImpact();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Shared video downloaded')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(downloadedMessage)));
     } catch (error) {
       if (!mounted) {
         return;
@@ -1514,6 +1535,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
 
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     setState(() => _isSharingLocal = true);
     try {
       final dispatchResult = await ref
@@ -1535,11 +1557,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       await HapticFeedback.mediumImpact();
       final count = dispatchResult.queuedGroupCount;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Sharing "${localVideo.title}" to $count family space${count == 1 ? '' : 's'}…',
-          ),
-        ),
+        SnackBar(content: Text(l10n.playerSharing(localVideo.title, count))),
       );
     } catch (error) {
       ref.invalidate(offlineActionsProvider);
@@ -1597,28 +1615,28 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   String _playerStatusTitle({required RemoteShareProjection? remoteShare}) {
     if (remoteShare == null) {
-      return 'This video isn\'t here yet';
+      return context.l10n.playerRemoteMissingTitle;
     }
     if (_isRepairingRemoteCache) {
-      return 'Getting your video ready';
+      return context.l10n.playerRemotePreparingTitle;
     }
     if (remoteShare.status == 'failed') {
-      return 'Let\'s try that download again';
+      return context.l10n.playerRemoteFailedTitle;
     }
-    return 'Family video ready to watch';
+    return context.l10n.playerRemoteReadyTitle;
   }
 
   String _playerStatusDetail({required RemoteShareProjection? remoteShare}) {
     if (remoteShare == null) {
-      return 'This clip is still getting ready on this device.';
+      return context.l10n.playerRemotePreparingDetail;
     }
     if (_isRepairingRemoteCache) {
-      return 'Checking the saved copy so playback stays smooth and safe.';
+      return context.l10n.playerRemoteCheckingDetail;
     }
     if (remoteShare.status == 'failed') {
-      return summarizeDownloadError(remoteShare.downloadError);
+      return summarizeDownloadError(remoteShare.downloadError, context.l10n);
     }
-    return 'Download this family clip and press play when it is ready.';
+    return context.l10n.playerRemoteReadyDetail;
   }
 
   String _downloadErrorMessage(
@@ -1629,29 +1647,30 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       remoteShare?.downloadError?.isNotEmpty == true
           ? remoteShare!.downloadError
           : '$error',
+      context.l10n,
     );
     if (summary.contains('relay or media server was unreachable')) {
-      return 'We couldn\'t download that clip right now. Check your connection and try again.';
+      return context.l10n.playerDownloadConnectionFailed;
     }
     if (summary.contains('unlocking the encrypted video package') ||
         summary.contains('saved copy did not pass verification')) {
-      return 'The saved copy needs another pass. Try the download again in a moment.';
+      return context.l10n.playerDownloadVerificationFailed;
     }
-    return 'We couldn\'t download that clip yet. Please try again.';
+    return context.l10n.playerDownloadFailed;
   }
 
   String _shareErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (message.contains('approval')) {
-      return 'This clip still needs a parent review before it can be shared.';
+      return context.l10n.playerShareNeedsReview;
     }
     if (_looksLikeShareUploadError(message)) {
-      return "We couldn't upload that clip to the family media server yet. Check your connection and try again.";
+      return context.l10n.playerShareUploadFailed;
     }
     if (message.contains('group') || message.contains('family')) {
-      return 'Connect with a family space first, then try sharing again.';
+      return context.l10n.playerShareConnectFamily;
     }
-    return 'We couldn\'t share that clip yet. It\'s still saved safely here.';
+    return context.l10n.playerShareFailed;
   }
 
   bool _looksLikeShareUploadError(String message) {
@@ -1665,16 +1684,39 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   String _reportErrorMessage(Object error) {
-    return 'We couldn\'t send that report just yet. Your note is still on this device, so please try again.';
+    return context.l10n.playerReportFailed;
   }
 
   String _likeErrorMessage(Object error) {
-    return 'That like didn\'t go through yet. Please try again in a moment.';
+    return context.l10n.playerLikeFailed;
   }
 
   String _reactionErrorMessage(Object error) {
-    return 'That reaction didn\'t go through yet. Please try again in a moment.';
+    return context.l10n.playerReactionFailed;
   }
+}
+
+String _localizedRouteSubtitle(
+  PlayerRouteState routeState,
+  BuildContext context,
+) {
+  final video = routeState.video;
+  if (video != null) {
+    return routeState.subtitle;
+  }
+  final remoteShare = routeState.remoteShare;
+  if (remoteShare == null) {
+    return '';
+  }
+  final sender = remoteShare.displayName;
+  final status = switch (remoteShare.status) {
+    'downloaded' => context.l10n.homeReady,
+    'downloading' => context.l10n.homeDownloading,
+    'failed' => context.l10n.homeNeedsRetry,
+    'deleted' => context.l10n.parentDeleted,
+    _ => remoteShare.status,
+  };
+  return '$sender · $status';
 }
 
 class _PlayerChromeButton extends StatelessWidget {
@@ -1757,7 +1799,9 @@ class _SharePillButton extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                isBusy ? 'Sharing' : 'Share',
+                isBusy
+                    ? context.l10n.playerSharingAction
+                    : context.l10n.actionShare,
                 style: TextStyle(
                   color: enabled ? palette.ink : palette.mutedInk,
                   fontWeight: FontWeight.w700,
@@ -1786,16 +1830,18 @@ class _PlaybackMetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chips = <String>[
-      '${metrics.playCount} ${metrics.playCount == 1 ? 'Play' : 'Plays'}',
-      '${(metrics.completionRate * 100).round()}% Completion',
-      '${(metrics.replayRate * 100).round()}% Replays',
+      context.l10n.playerPlayCount(metrics.playCount),
+      context.l10n.playerCompletion((metrics.completionRate * 100).round()),
+      context.l10n.playerReplays((metrics.replayRate * 100).round()),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isRemote ? 'Watching so far on this device' : 'Watching so far',
+          isRemote
+              ? context.l10n.playerWatchingSoFarDevice
+              : context.l10n.playerWatchingSoFar,
           style: TextStyle(
             color: palette.mutedInk,
             fontSize: 12,
@@ -1870,8 +1916,8 @@ class _PlaybackLikeSummary extends ConsumerWidget {
       children: [
         Text(
           likeCount == 0
-              ? 'No likes yet'
-              : '$likeCount ${likeCount == 1 ? 'Like' : 'Likes'}',
+              ? context.l10n.playerNoLikes
+              : context.l10n.playerLikeCount(likeCount),
           style: TextStyle(
             color: palette.ink,
             fontSize: 14,
@@ -1894,12 +1940,14 @@ class _PlaybackLikeSummary extends ConsumerWidget {
                           )
                           .valueOrNull
                           ?.displayName ??
-                      'A family',
+                      context.l10n.playerAFamily,
                 ),
               if (likeCount > visibleLikes.length)
                 _NameChip(
                   palette: palette,
-                  label: '+${likeCount - visibleLikes.length} more',
+                  label: context.l10n.playerMoreLikes(
+                    likeCount - visibleLikes.length,
+                  ),
                 ),
             ],
           ),
@@ -1916,7 +1964,7 @@ class _ReactionSection extends StatelessWidget {
     required this.selectedEmojis,
     required this.isSendingReaction,
     required this.onSelect,
-    this.title = 'Reactions',
+    this.title,
   });
 
   final KidPalette palette;
@@ -1924,7 +1972,7 @@ class _ReactionSection extends StatelessWidget {
   final List<String> selectedEmojis;
   final bool isSendingReaction;
   final ValueChanged<String> onSelect;
-  final String title;
+  final String? title;
 
   static const _emojiChoices = <String>['😂', '😮', '🎉', '🔥'];
 
@@ -1938,7 +1986,7 @@ class _ReactionSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          title,
+          title ?? context.l10n.playerReactions,
           style: TextStyle(
             color: palette.ink,
             fontSize: 14,
