@@ -428,7 +428,7 @@ class _FreshHomeState extends ConsumerWidget {
             label: Text(context.l10n.homeOpenCapture),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -533,7 +533,7 @@ class _HomeSceneHero extends StatelessWidget {
                               height: 1.02,
                             ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 320),
                     child: Text(
@@ -613,7 +613,7 @@ class _FirstVideoPanel extends StatelessWidget {
                         height: 1.15,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       context.l10n.homeFirstStepsDetail,
                       style: Theme.of(
@@ -716,10 +716,9 @@ class _MyVideosSection extends StatelessWidget {
               ),
               child: Text(
                 '${items.length}',
-                style: TextStyle(
-                  fontSize: AppTextSize.label,
-                  fontWeight: FontWeight.w700,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: palette.accent,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -1052,7 +1051,7 @@ class _StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(color: color, borderRadius: AppRadii.pillAll),
       child: Text(
         label,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontSize: AppTextSize.micro,
           color: Theme.of(context).colorScheme.onPrimary,
           fontWeight: FontWeight.w700,

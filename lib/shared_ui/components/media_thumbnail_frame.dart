@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../core/theme/radii.dart';
+
 /// Presents a local thumbnail without forcing portrait media into a landscape
 /// crop. The file is letterboxed inside a styled frame instead of stretched or
 /// aggressively cropped.
@@ -9,7 +11,7 @@ class MediaThumbnailFrame extends StatelessWidget {
   const MediaThumbnailFrame({
     super.key,
     required this.file,
-    this.borderRadius = const BorderRadius.all(Radius.circular(20)),
+    this.borderRadius = const BorderRadius.all(Radius.circular(AppRadii.xl)),
     this.background,
     this.padding = EdgeInsets.zero,
   });

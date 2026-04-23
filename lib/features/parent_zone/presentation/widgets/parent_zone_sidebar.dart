@@ -67,7 +67,7 @@ class ParentZoneSidebar extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   context.l10n.parentZoneTitle,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: palette.ink,
                     fontSize: AppTextSize.title,
                     fontWeight: FontWeight.w800,
@@ -76,18 +76,16 @@ class ParentZoneSidebar extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   parentLabel,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: palette.ink,
-                    fontSize: AppTextSize.body,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   accountHint,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: palette.mutedInk,
-                    fontSize: AppTextSize.label,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -117,10 +115,9 @@ class ParentZoneSidebar extends StatelessWidget {
             ),
             child: Text(
               '${AppConstants.appName} v2.0',
-              style: TextStyle(
-                fontSize: AppTextSize.label,
-                color: palette.mutedInk,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: palette.mutedInk),
             ),
           ),
         ],
@@ -187,7 +184,7 @@ class _NavItem extends StatelessWidget {
                       AppMotion.stateChange,
                     ),
                     curve: AppMotion.easeOutQuint,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                       color: palette.ink,
                     ),

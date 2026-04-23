@@ -420,12 +420,12 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: Theme.of(sheetContext).textTheme.titleLarge),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   sheetContext.l10n.parentInviteQrInstructions,
                   style: Theme.of(sheetContext).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 Center(
                   child: Container(
                     padding: const EdgeInsets.all(AppSpacing.lg),
@@ -445,7 +445,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 Builder(
                   builder: (buttonContext) => SizedBox(
                     width: double.infinity,
@@ -485,7 +485,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -1634,7 +1634,7 @@ class _ParentZoneContentState extends ConsumerState<ParentZoneContent> {
                                     color: palette.mutedInk,
                                   ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppSpacing.xs),
                             Text(context.l10n.parentZoneSectionLabel(_section)),
                           ],
                         ),
@@ -2102,21 +2102,21 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                       color: palette.mutedInk,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     widget.group.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     context.l10n.parentModerationControlsDetail,
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: palette.mutedInk),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.lg),
@@ -2132,7 +2132,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                           context.l10n.parentMembersTitle,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                         if (data.members.isEmpty)
                           Text(
                             context.l10n.parentNoMemberDetails,
@@ -2156,7 +2156,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.lg),
@@ -2172,7 +2172,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                           context.l10n.parentSharedVideos,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                         if (data.shares.isEmpty)
                           Text(
                             context.l10n.parentNoSharedVideosFromFamily,
@@ -2191,14 +2191,14 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     context.l10n.parentRemoveMemberCaveat,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: palette.mutedInk),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.lg),
@@ -2214,7 +2214,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                           context.l10n.parentLeaveFamilySpaceAction,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: AppSpacing.sm),
                         Text(
                           _leaveSubtitle(
                             identity: identity,
@@ -2223,7 +2223,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: palette.mutedInk),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpacing.sm),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: FilledButton.tonal(
@@ -2248,7 +2248,7 @@ class _GroupModerationSheetState extends ConsumerState<_GroupModerationSheet> {
                           ),
                         ),
                         if (_leaveError != null) ...[
-                          const SizedBox(height: 10),
+                          const SizedBox(height: AppSpacing.sm),
                           Text(
                             _leaveError!,
                             style: Theme.of(context).textTheme.bodySmall
@@ -2346,10 +2346,10 @@ class _MemberTile extends ConsumerWidget {
                   ? Icons.verified_user_rounded
                   : Icons.person_outline_rounded,
               color: isCurrentIdentity ? palette.success : palette.accent,
-              size: 20,
+              size: AppIconSize.lg,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2364,7 +2364,7 @@ class _MemberTile extends ConsumerWidget {
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
                     Flexible(
@@ -2377,7 +2377,7 @@ class _MemberTile extends ConsumerWidget {
                       ),
                     ),
                     if (memberIsAdmin) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.sm),
                       _AdminBadge(palette: palette),
                     ],
                   ],
@@ -2391,7 +2391,7 @@ class _MemberTile extends ConsumerWidget {
                 onPressed: working ? null : onPromote,
                 child: Text(context.l10n.parentMakeAdmin),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
             ],
             FilledButton.tonal(
               onPressed: working ? null : onRemove,
@@ -2470,10 +2470,10 @@ class _ModerationVideoRow extends StatelessWidget {
                   ? Icons.delete_outline_rounded
                   : Icons.play_circle_outline_rounded,
               color: tone,
-              size: 20,
+              size: AppIconSize.lg,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2484,7 +2484,7 @@ class _ModerationVideoRow extends StatelessWidget {
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   '${share.displayName} · ${_moderationShareStatusLabel(share.status, context)}',
                   style: Theme.of(context).textTheme.bodySmall,

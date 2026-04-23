@@ -258,7 +258,7 @@ class _CustomTabBar extends StatelessWidget {
                   color: palette.panelBorder,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
             ],
             Expanded(
               child: _TabButton(
@@ -387,8 +387,7 @@ class _TabButton extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: AppTextSize.caption,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                       color: color,
                       letterSpacing: 0.1,

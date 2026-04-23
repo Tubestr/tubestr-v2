@@ -319,7 +319,7 @@ class ParentZoneDiagnosticsSection extends ConsumerWidget {
                     context.l10n.parentDiagnosticsReportsSection,
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   for (final report in launchSnapshot.reportIssues)
                     Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),

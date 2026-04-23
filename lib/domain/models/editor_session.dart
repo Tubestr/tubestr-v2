@@ -167,6 +167,8 @@ class EditorSession {
     this.adjustments = const EditorAdjustments(),
     this.overlays = const <EditorOverlayItem>[],
     this.audioSelection,
+    this.arFilterId,
+    this.arTrackPath,
   });
 
   final String videoId;
@@ -177,6 +179,8 @@ class EditorSession {
   final EditorAdjustments adjustments;
   final List<EditorOverlayItem> overlays;
   final EditorAudioSelection? audioSelection;
+  final String? arFilterId;
+  final String? arTrackPath;
 
   EditorSession copyWith({
     String? videoId,
@@ -187,7 +191,11 @@ class EditorSession {
     EditorAdjustments? adjustments,
     List<EditorOverlayItem>? overlays,
     EditorAudioSelection? audioSelection,
+    String? arFilterId,
+    String? arTrackPath,
     bool clearAudioSelection = false,
+    bool clearArFilter = false,
+    bool clearArTrack = false,
   }) {
     return EditorSession(
       videoId: videoId ?? this.videoId,
@@ -200,6 +208,8 @@ class EditorSession {
       audioSelection: clearAudioSelection
           ? null
           : (audioSelection ?? this.audioSelection),
+      arFilterId: clearArFilter ? null : (arFilterId ?? this.arFilterId),
+      arTrackPath: clearArTrack ? null : (arTrackPath ?? this.arTrackPath),
     );
   }
 }

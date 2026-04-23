@@ -740,6 +740,32 @@ class AppLocalizationsEs extends AppLocalizations {
       'No pudimos terminar de guardar esa remezcla. Intenta de nuevo en un momento.';
 
   @override
+  String get editorExportTimeoutFailed =>
+      'Esa exportación tardó demasiado, así que la detuvimos. Tus ediciones siguen aquí.';
+
+  @override
+  String get editorExportInProgress =>
+      'Termina de exportar antes de salir de esta pantalla.';
+
+  @override
+  String get editorExportProgressTitle => 'Guardando remix';
+
+  @override
+  String get editorExportProgressArTitle => 'Aplicando filtro facial';
+
+  @override
+  String get editorExportProgressDetail =>
+      'Mantén esta pantalla abierta mientras Tubestr guarda tu remix.';
+
+  @override
+  String get editorExportProgressArDetail =>
+      'Los filtros faciales pueden tardar un poco más en integrarse al video.';
+
+  @override
+  String get editorExportProgressLongDetail =>
+      'Seguimos trabajando. Los clips grandes y los filtros faciales pueden tardar un momento más.';
+
+  @override
   String get editorShareNeedsReview =>
       'Esta remezcla necesita revisión de un padre antes de compartirse.';
 

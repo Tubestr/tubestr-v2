@@ -17,8 +17,10 @@ import '../../../domain/models/parent_identity.dart';
 import '../../../domain/models/remote_share_projection.dart';
 import '../../../domain/models/video_playback_metrics.dart';
 import '../../../domain/models/video_reaction_summary.dart';
+import '../../../services/editor/ar_filter_catalog.dart';
 import '../../../services/engagement/playback_metrics_coordinator.dart';
 import '../../../services/media/video_probe_service.dart';
+import '../../../shared_ui/components/ar_filter_track_overlay.dart';
 import '../../editor/presentation/editor_detail_page.dart';
 import '../../parent_zone/presentation/models/launch_diagnostics.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
@@ -460,6 +462,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final selectedProfileId = routeState.selectedProfileId;
     final videoProfile = routeState.videoProfile;
     final mediaPath = routeState.mediaPath;
+    final arFilterId = video == null
+        ? null
+        : ArFilterCatalog.idFromTags(video.tags);
+    final arTrackPath = video == null
+        ? null
+        : ArFilterCatalog.trackPathFromTags(video.tags);
     final remoteThumbFile = routeState.remoteThumbFile;
     final hasRemoteThumb = routeState.hasRemoteThumb;
     final title = routeState.title;
@@ -593,7 +601,22 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           child: ClipRRect(
                             borderRadius: AppRadii.cardAll,
                             child: mediaPath != null
-                                ? Video(controller: _videoController)
+                                ? Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Video(controller: _videoController),
+                                      ArFilterTrackOverlay(
+                                        filterId: arFilterId,
+                                        trackPath: arTrackPath,
+                                        position: _position,
+                                        loadFilterAsset: ref
+                                            .read(
+                                              arFilterLibraryServiceProvider,
+                                            )
+                                            .loadFilter,
+                                      ),
+                                    ],
+                                  )
                                 : Stack(
                                     fit: StackFit.expand,
                                     children: [
@@ -661,28 +684,41 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                   size: AppIconSize.billboard,
                                                   color: palette.accent,
                                                 ),
-                                                const SizedBox(height: 12),
+                                                const SizedBox(
+                                                  height: AppSpacing.md,
+                                                ),
                                                 Text(
                                                   statusTitle,
                                                   textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: palette.ink,
-                                                    fontSize: AppTextSize.title,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.copyWith(
+                                                        color: palette.ink,
+                                                        fontSize:
+                                                            AppTextSize.title,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
                                                 ),
-                                                const SizedBox(height: 8),
+                                                const SizedBox(
+                                                  height: AppSpacing.sm,
+                                                ),
                                                 Text(
                                                   statusDetail,
                                                   textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: palette.mutedInk,
-                                                    fontSize: AppTextSize.body,
-                                                    height: 1.35,
-                                                  ),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        color: palette.mutedInk,
+                                                        height: 1.35,
+                                                      ),
                                                 ),
                                                 if (remoteShare != null) ...[
-                                                  const SizedBox(height: 16),
+                                                  const SizedBox(
+                                                    height: AppSpacing.lg,
+                                                  ),
                                                   FilledButton.icon(
                                                     onPressed:
                                                         _isDownloadingRemote
@@ -1031,7 +1067,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                   size: AppIconSize.md,
                                                   color: palette.ink,
                                                 ),
-                                                const SizedBox(width: 4),
+                                                const SizedBox(
+                                                  width: AppSpacing.xs,
+                                                ),
                                                 Text(
                                                   _sheetExpanded
                                                       ? context
@@ -1040,11 +1078,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                       : context
                                                             .l10n
                                                             .playerShowDetails,
-                                                  style: TextStyle(
-                                                    color: palette.ink,
-                                                    fontSize: AppTextSize.label,
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelMedium
+                                                      ?.copyWith(
+                                                        color: palette.ink,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                      ),
                                                 ),
                                               ],
                                             ),
@@ -1052,7 +1093,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: AppSpacing.sm),
 
                                     // ── Collapsed: compact transport bar ──
                                     SliderTheme(
@@ -1080,13 +1121,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         // Time
                                         Text(
                                           _formatDuration(_position),
-                                          style: TextStyle(
-                                            color: palette.mutedInk,
-                                            fontSize: AppTextSize.label,
-                                            fontFeatures: const [
-                                              FontFeature.tabularFigures(),
-                                            ],
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                color: palette.mutedInk,
+                                                fontFeatures: const [
+                                                  FontFeature.tabularFigures(),
+                                                ],
+                                              ),
                                         ),
                                         const Spacer(),
 
@@ -1105,7 +1148,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                             minHeight: 36,
                                           ),
                                         ),
-                                        const SizedBox(width: 4),
+                                        const SizedBox(width: AppSpacing.xs),
                                         GestureDetector(
                                           onTap: _togglePlay,
                                           child: Container(
@@ -1137,7 +1180,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 4),
+                                        const SizedBox(width: AppSpacing.xs),
                                         IconButton(
                                           onPressed: () {},
                                           icon: const Icon(
@@ -1158,19 +1201,21 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                         // Time remaining
                                         Text(
                                           _formatDuration(_duration),
-                                          style: TextStyle(
-                                            color: palette.mutedInk,
-                                            fontSize: AppTextSize.label,
-                                            fontFeatures: const [
-                                              FontFeature.tabularFigures(),
-                                            ],
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                color: palette.mutedInk,
+                                                fontFeatures: const [
+                                                  FontFeature.tabularFigures(),
+                                                ],
+                                              ),
                                         ),
                                       ],
                                     ),
                                     if (remoteShare != null &&
                                         !_sheetExpanded) ...[
-                                      const SizedBox(height: 12),
+                                      const SizedBox(height: AppSpacing.md),
                                       _ReactionSection(
                                         palette: palette,
                                         title: context.l10n.playerReact,
@@ -1203,7 +1248,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const SizedBox(height: 14),
+                                              const SizedBox(
+                                                height: AppSpacing.md,
+                                              ),
                                               Row(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
@@ -1244,31 +1291,36 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                                 : context
                                                                       .l10n
                                                                       .playerFamilyShare,
-                                                            style: TextStyle(
-                                                              color: palette
-                                                                  .accent,
-                                                              fontSize:
-                                                                  AppTextSize
-                                                                      .caption,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w800,
-                                                            ),
+                                                            style: Theme.of(context)
+                                                                .textTheme
+                                                                .labelSmall
+                                                                ?.copyWith(
+                                                                  color: palette
+                                                                      .accent,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w800,
+                                                                ),
                                                           ),
                                                         ),
                                                         const SizedBox(
-                                                          height: 10,
+                                                          height: AppSpacing.sm,
                                                         ),
                                                         Text(
                                                           title,
-                                                          style: TextStyle(
-                                                            color: palette.ink,
-                                                            fontSize:
-                                                                AppTextSize
-                                                                    .title,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                          ),
+                                                          style: Theme.of(context)
+                                                              .textTheme
+                                                              .titleMedium
+                                                              ?.copyWith(
+                                                                color:
+                                                                    palette.ink,
+                                                                fontSize:
+                                                                    AppTextSize
+                                                                        .title,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                              ),
                                                           maxLines: 2,
                                                           overflow: TextOverflow
                                                               .ellipsis,
@@ -1280,19 +1332,21 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                             overflow:
                                                                 TextOverflow
                                                                     .ellipsis,
-                                                            style: TextStyle(
-                                                              color: palette
-                                                                  .mutedInk,
-                                                              fontSize:
-                                                                  AppTextSize
-                                                                      .label,
-                                                              height: 1.3,
-                                                            ),
+                                                            style: Theme.of(context)
+                                                                .textTheme
+                                                                .labelMedium
+                                                                ?.copyWith(
+                                                                  color: palette
+                                                                      .mutedInk,
+                                                                  height: 1.3,
+                                                                ),
                                                           ),
                                                       ],
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 12),
+                                                  const SizedBox(
+                                                    width: AppSpacing.md,
+                                                  ),
                                                   GestureDetector(
                                                     onTap: () async {
                                                       if (video != null) {
@@ -1439,16 +1493,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                                 ),
                                                                 child: Text(
                                                                   '$remoteLikeCount',
-                                                                  style: TextStyle(
-                                                                    color:
-                                                                        palette
+                                                                  style: Theme.of(context)
+                                                                      .textTheme
+                                                                      .labelMedium
+                                                                      ?.copyWith(
+                                                                        color: palette
                                                                             .ink,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w800,
-                                                                  ),
+                                                                        fontWeight:
+                                                                            FontWeight.w800,
+                                                                      ),
                                                                 ),
                                                               ),
                                                           ],
@@ -1458,20 +1511,26 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                                   ),
                                                 ],
                                               ),
-                                              const SizedBox(height: 14),
+                                              const SizedBox(
+                                                height: AppSpacing.md,
+                                              ),
                                               _PlaybackMetricRow(
                                                 palette: palette,
                                                 metrics: playbackMetrics,
                                                 isRemote: remoteShare != null,
                                               ),
                                               if (remoteShare != null) ...[
-                                                const SizedBox(height: 14),
+                                                const SizedBox(
+                                                  height: AppSpacing.md,
+                                                ),
                                                 _PlaybackLikeSummary(
                                                   likes: likes,
                                                   likeCount: remoteLikeCount,
                                                   palette: palette,
                                                 ),
-                                                const SizedBox(height: 14),
+                                                const SizedBox(
+                                                  height: AppSpacing.md,
+                                                ),
                                                 _ReactionSection(
                                                   palette: palette,
                                                   reactions: reactionSummaries,
@@ -1821,10 +1880,9 @@ class _SharePillButton extends StatelessWidget {
                 isBusy
                     ? context.l10n.playerSharingAction
                     : context.l10n.actionShare,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: enabled ? palette.ink : palette.mutedInk,
                   fontWeight: FontWeight.w700,
-                  fontSize: AppTextSize.body,
                 ),
               ),
             ],
@@ -1861,16 +1919,15 @@ class _PlaybackMetricRow extends StatelessWidget {
           isRemote
               ? context.l10n.playerWatchingSoFarDevice
               : context.l10n.playerWatchingSoFar,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: palette.mutedInk,
-            fontSize: AppTextSize.label,
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
             for (final label in chips)
               _MetricChip(palette: palette, label: label),
@@ -1904,9 +1961,8 @@ class _MetricChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
           color: palette.onAccent,
-          fontSize: AppTextSize.label,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -1940,17 +1996,16 @@ class _PlaybackLikeSummary extends ConsumerWidget {
           likeCount == 0
               ? context.l10n.playerNoLikes
               : context.l10n.playerLikeCount(likeCount),
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: palette.ink,
-            fontSize: AppTextSize.body,
             fontWeight: FontWeight.w800,
           ),
         ),
         if (visibleLikes.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
               for (final like in visibleLikes)
                 _NameChip(
@@ -2009,16 +2064,15 @@ class _ReactionSection extends StatelessWidget {
       children: [
         Text(
           title ?? context.l10n.playerReactions,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: palette.ink,
-            fontSize: AppTextSize.body,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
             for (final emoji in _emojiChoices)
               _ReactionChip(
@@ -2081,12 +2135,11 @@ class _ReactionChip extends StatelessWidget {
                 emoji,
                 style: const TextStyle(fontSize: AppTextSize.bodyLarge),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpacing.sm),
               Text(
                 '$count',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: palette.ink,
-                  fontSize: AppTextSize.label,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -2118,9 +2171,8 @@ class _NameChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
           color: palette.ink,
-          fontSize: AppTextSize.label,
           fontWeight: FontWeight.w700,
         ),
       ),

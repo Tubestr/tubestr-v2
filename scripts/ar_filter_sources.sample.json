@@ -1,0 +1,69 @@
+[
+  {
+    "id": "classic-shades",
+    "label": "Classic Shades",
+    "category": "face",
+    "description": "Transparent eyewear art staged from a CC0 Openclipart source.",
+    "sourceName": "Openclipart: Eyeglasses (#2)",
+    "sourceUrl": "https://openclipart.org/detail/300516/eyeglasses-2",
+    "license": "CC0",
+    "licenseUrl": "https://openclipart.org/share",
+    "attribution": "Openclipart / oksmith; source description credits Pixabay user GG-125.",
+    "parts": [
+      {
+        "url": "https://openclipart.org/image/2000px/300516",
+        "anchor": "eyesBridge",
+        "widthScale": 1.18,
+        "offsetX": 0,
+        "offsetY": 0.01,
+        "rotationDegrees": 0,
+        "opacity": 1
+      }
+    ]
+  },
+  {
+    "id": "pixel-helmet",
+    "label": "Pixel Helmet",
+    "category": "headwear",
+    "description": "A CC0 OpenGameArt helmet accessory, normalized for face tracking.",
+    "sourceName": "OpenGameArt: helmet",
+    "sourceUrl": "https://opengameart.org/content/helmet-0",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attribution": "Xevin on OpenGameArt.",
+    "parts": [
+      {
+        "url": "https://opengameart.org/sites/default/files/helmet_v03_0.png",
+        "anchor": "forehead",
+        "widthScale": 0.72,
+        "offsetX": 0,
+        "offsetY": -0.5,
+        "rotationDegrees": 0,
+        "opacity": 1
+      }
+    ]
+  },
+  {
+    "id": "kenney-demo-item",
+    "label": "Kenney Demo Item",
+    "category": "effects",
+    "description": "Example of importing a named file from a Kenney CC0 zip pack.",
+    "sourceName": "Kenney Generic Items",
+    "sourceUrl": "https://kenney.nl/assets/generic-items",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attribution": "Kenney",
+    "parts": [
+      {
+        "archiveUrl": "https://kenney.nl/media/pages/assets/generic-items/5ae90c9fdc-1677667000/kenney_generic-items.zip",
+        "archivePath": "PNG/Colored/genericItem_color_102.png",
+        "anchor": "forehead",
+        "widthScale": 0.32,
+        "offsetX": 0.42,
+        "offsetY": -0.5,
+        "rotationDegrees": 12,
+        "opacity": 1
+      }
+    ]
+  }
+]

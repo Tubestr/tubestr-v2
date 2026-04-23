@@ -10,6 +10,8 @@ import 'package:mytube/domain/models/editor_session.dart';
 import 'package:mytube/services/approval/content_scan_service.dart';
 import 'package:mytube/services/approval/media_signal_extraction_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
+import 'package:mytube/services/editor/ar_face_track_service.dart';
+import 'package:mytube/services/editor/ar_filter_catalog.dart';
 import 'package:mytube/services/editor/editor_export_service.dart';
 import 'package:mytube/services/media/local_media_library_service.dart';
 import 'package:mytube/services/media/thumbnail_service.dart';
@@ -60,6 +62,33 @@ class _FakeAssetBundle extends CachingAssetBundle {
 }
 
 void main() {
+  test('EditorSession.copyWith preserves and clears AR filter selection', () {
+    const session = EditorSession(
+      videoId: 'video-1',
+      sourcePath: '/tmp/input.mp4',
+      videoDuration: Duration(seconds: 10),
+      trimRange: EditorTrimRange(
+        start: Duration.zero,
+        end: Duration(seconds: 10),
+      ),
+      arFilterId: 'crown',
+      arTrackPath: '/tmp/track.json',
+    );
+
+    expect(session.copyWith(filterPresetId: 'warm').arFilterId, 'crown');
+    expect(
+      session.copyWith(filterPresetId: 'warm').arTrackPath,
+      '/tmp/track.json',
+    );
+    expect(session.copyWith(clearArFilter: true).arFilterId, isNull);
+    expect(session.copyWith(clearArTrack: true).arTrackPath, isNull);
+    expect(session.copyWith(arFilterId: 'sparkles').arFilterId, 'sparkles');
+    expect(
+      session.copyWith(arTrackPath: '/tmp/next.json').arTrackPath,
+      '/tmp/next.json',
+    );
+  });
+
   test(
     'buildEditorExportPlan creates trim, lut, and soundtrack arguments',
     () async {
@@ -320,6 +349,196 @@ void main() {
     },
   );
 
+  test('buildEditorExportPlan overlays an AR PNG sequence', () async {
+    final plan = await buildEditorExportPlan(
+      session: const EditorSession(
+        videoId: 'video-1',
+        sourcePath: '/tmp/input.mp4',
+        videoDuration: Duration(seconds: 10),
+        trimRange: EditorTrimRange(
+          start: Duration.zero,
+          end: Duration(seconds: 10),
+        ),
+      ),
+      outputPath: '/tmp/output.mp4',
+      stagingDir: '/tmp/editor-staging',
+      assetBundle: _FakeAssetBundle(),
+      arFilterPngPattern: '/tmp/ar/filter_%05d.png',
+      arFilterFrameRate: 30,
+      renderSize: const ui.Size(720, 1280),
+      sourceRotationDegrees: 0,
+    );
+
+    expect(
+      plan.arguments,
+      containsAllInOrder([
+        '-framerate',
+        '30',
+        '-start_number',
+        '0',
+        '-t',
+        '10.000',
+        '-i',
+        '/tmp/ar/filter_%05d.png',
+      ]),
+    );
+    final filterComplex =
+        plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+    expect(
+      filterComplex,
+      contains('[vfiltered][1:v]overlay=0:0:format=auto[var]'),
+    );
+    expect(plan.arguments, containsAllInOrder(['-map', '[var]', '-shortest']));
+  });
+
+  test('buildEditorExportPlan positions cropped AR PNG sequence', () async {
+    final plan = await buildEditorExportPlan(
+      session: const EditorSession(
+        videoId: 'video-1',
+        sourcePath: '/tmp/input.mp4',
+        videoDuration: Duration(seconds: 10),
+        trimRange: EditorTrimRange(
+          start: Duration.zero,
+          end: Duration(seconds: 10),
+        ),
+      ),
+      outputPath: '/tmp/output.mp4',
+      stagingDir: '/tmp/editor-staging',
+      assetBundle: _FakeAssetBundle(),
+      arFilterPngPattern: '/tmp/ar/filter_%05d.png',
+      arFilterFrameRate: 20,
+      arFilterOverlayOffset: const ui.Offset(112, 240),
+      renderSize: const ui.Size(720, 1280),
+      sourceRotationDegrees: 0,
+    );
+
+    final filterComplex =
+        plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+    expect(
+      filterComplex,
+      contains('[vfiltered][1:v]overlay=112:240:format=auto[var]'),
+    );
+  });
+
+  test(
+    'buildEditorExportPlan layers AR sequence before static overlays',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        arFilterPngPattern: '/tmp/ar/filter_%05d.png',
+        stagedOverlayImagePath: '/tmp/overlay.png',
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+      );
+
+      final filterComplex =
+          plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+      expect(
+        filterComplex,
+        contains('[vfiltered][1:v]overlay=0:0:format=auto[var]'),
+      );
+      expect(
+        filterComplex,
+        contains('[var][2:v]overlay=0:0:format=auto[vout]'),
+      );
+      expect(plan.arguments, containsAllInOrder(['-map', '[vout]']));
+    },
+  );
+
+  test('buildEditorExportPlan combines AR sequence and soundtrack', () async {
+    final plan = await buildEditorExportPlan(
+      session: const EditorSession(
+        videoId: 'video-1',
+        sourcePath: '/tmp/input.mp4',
+        videoDuration: Duration(seconds: 12),
+        trimRange: EditorTrimRange(
+          start: Duration(seconds: 1),
+          end: Duration(seconds: 9),
+        ),
+        audioSelection: EditorAudioSelection(
+          trackId: 'track_01',
+          assetPath: 'assets/editor/music/track_01.mp3',
+          volume: 0.5,
+        ),
+      ),
+      outputPath: '/tmp/output.mp4',
+      stagingDir: '/tmp/editor-staging',
+      assetBundle: _FakeAssetBundle(),
+      arFilterPngPattern: '/tmp/ar/filter_%05d.png',
+      sourceHasAudio: true,
+      renderSize: const ui.Size(720, 1280),
+      sourceRotationDegrees: 0,
+    );
+
+    final filterComplex =
+        plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+    expect(
+      filterComplex,
+      contains('[vfiltered][2:v]overlay=0:0:format=auto[var]'),
+    );
+    expect(filterComplex, contains('[0:a]volume=1.000[original]'));
+    expect(
+      plan.arguments,
+      containsAllInOrder(['-map', '[var]', '-map', '[aout]', '-shortest']),
+    );
+  });
+
+  test(
+    'buildEditorExportPlan combines AR sequence, static overlay, and soundtrack',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 12),
+          trimRange: EditorTrimRange(
+            start: Duration(seconds: 1),
+            end: Duration(seconds: 9),
+          ),
+          audioSelection: EditorAudioSelection(
+            trackId: 'track_01',
+            assetPath: 'assets/editor/music/track_01.mp3',
+            volume: 0.5,
+          ),
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        arFilterPngPattern: '/tmp/ar/filter_%05d.png',
+        stagedOverlayImagePath: '/tmp/overlay.png',
+        sourceHasAudio: true,
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+      );
+
+      final filterComplex =
+          plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+      expect(
+        filterComplex,
+        contains('[vfiltered][2:v]overlay=0:0:format=auto[var]'),
+      );
+      expect(
+        filterComplex,
+        contains('[var][3:v]overlay=0:0:format=auto[vout]'),
+      );
+      expect(
+        plan.arguments,
+        containsAllInOrder(['-map', '[vout]', '-map', '[aout]', '-shortest']),
+      );
+    },
+  );
+
   test('normalizeEditorRenderSize keeps output even and capped', () {
     expect(
       normalizeEditorRenderSize(const ui.Size(2160, 3840)),
@@ -570,6 +789,249 @@ void main() {
 
       expect(result.outputPath, contains('${documentsDir.path}/videos/'));
       expect(saved?.filePath, result.outputPath);
+    },
+  );
+
+  test(
+    'EditorExportService requests AR sequence for AR filtered remixes',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'profile-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'assets/avatar.png',
+      );
+
+      final tempRoot = await Directory.systemTemp.createTemp(
+        'editor-export-ar-test',
+      );
+      addTearDown(() async {
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      });
+      final documentsDir = Directory('${tempRoot.path}/documents')
+        ..createSync(recursive: true);
+      final supportDir = Directory('${tempRoot.path}/support')
+        ..createSync(recursive: true);
+      final mediaLibrary = LocalMediaLibraryService(
+        documentsDirectoryProvider: () async => documentsDir,
+        supportDirectoryProvider: () async => supportDir,
+      );
+      var builtSequence = false;
+      final service = EditorExportService(
+        database: database,
+        thumbnailService: _FakeThumbnailService(),
+        videoApprovalService: _FakeVideoApprovalService(database: database),
+        localMediaLibraryService: mediaLibrary,
+        assetBundle: _FakeAssetBundle(),
+        executeFfmpeg: (arguments) async =>
+            const FfmpegExecutionResult(success: true),
+        probeSourceMediaInfo: (path) async =>
+            const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false),
+        buildArFilterSequence:
+            ({
+              required EditorSession session,
+              required ui.Size renderSize,
+              required String stagingDir,
+              required AssetBundle assetBundle,
+              required ArFilterAssetLoader loadArFilterAsset,
+              EditorExportCancellationToken? cancellationToken,
+            }) async {
+              builtSequence = true;
+              return const ArFilterSequence(
+                pattern: '/tmp/ar/filter_%05d.png',
+                frameRate: 30,
+              );
+            },
+      );
+
+      final result = await service.export(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+          arFilterId: 'crown',
+        ),
+        profileId: 'profile-1',
+        title: 'Remix',
+      );
+
+      expect(builtSequence, isTrue);
+      expect(result.arguments, contains('/tmp/ar/filter_%05d.png'));
+      expect(
+        result.arguments,
+        containsAllInOrder(['-c:v', 'mpeg4', '-q:v', '4']),
+      );
+      final saved = await database.getLocalVideoById(result.videoId);
+      expect(saved?.tags, contains(ArFilterCatalog.tagFor('crown')));
+    },
+  );
+
+  test(
+    'EditorExportService reuses AR sequence when retrying same render size',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'profile-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'assets/avatar.png',
+      );
+
+      final tempRoot = await Directory.systemTemp.createTemp(
+        'editor-export-ar-cache-test',
+      );
+      addTearDown(() async {
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      });
+      final documentsDir = Directory('${tempRoot.path}/documents')
+        ..createSync(recursive: true);
+      final supportDir = Directory('${tempRoot.path}/support')
+        ..createSync(recursive: true);
+      final mediaLibrary = LocalMediaLibraryService(
+        documentsDirectoryProvider: () async => documentsDir,
+        supportDirectoryProvider: () async => supportDir,
+      );
+      final builtRenderSizes = <ui.Size>[];
+      var ffmpegCalls = 0;
+      final service = EditorExportService(
+        database: database,
+        thumbnailService: _FakeThumbnailService(),
+        videoApprovalService: _FakeVideoApprovalService(database: database),
+        localMediaLibraryService: mediaLibrary,
+        assetBundle: _FakeAssetBundle(),
+        executeFfmpeg: (arguments) async {
+          ffmpegCalls += 1;
+          return FfmpegExecutionResult(success: ffmpegCalls == 3);
+        },
+        probeSourceMediaInfo: (path) async =>
+            const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false),
+        buildArFilterSequence:
+            ({
+              required EditorSession session,
+              required ui.Size renderSize,
+              required String stagingDir,
+              required AssetBundle assetBundle,
+              required ArFilterAssetLoader loadArFilterAsset,
+              EditorExportCancellationToken? cancellationToken,
+            }) async {
+              builtRenderSizes.add(renderSize);
+              return const ArFilterSequence(
+                pattern: '/tmp/ar/filter_%05d.png',
+                frameRate: 30,
+              );
+            },
+      );
+
+      await service.export(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+          arFilterId: 'crown',
+        ),
+        profileId: 'profile-1',
+        title: 'Remix',
+      );
+
+      expect(ffmpegCalls, 3);
+      expect(builtRenderSizes, const <ui.Size>[
+        ui.Size(720, 1280),
+        ui.Size(576, 1024),
+      ]);
+    },
+  );
+
+  test(
+    'EditorExportService fails AR filtered remixes when no AR sequence is built',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertProfile(
+        id: 'profile-1',
+        name: 'Emma',
+        theme: 'campfire',
+        avatarAsset: 'assets/avatar.png',
+      );
+
+      final tempRoot = await Directory.systemTemp.createTemp(
+        'editor-export-missing-ar-test',
+      );
+      addTearDown(() async {
+        if (tempRoot.existsSync()) {
+          await tempRoot.delete(recursive: true);
+        }
+      });
+      final documentsDir = Directory('${tempRoot.path}/documents')
+        ..createSync(recursive: true);
+      final supportDir = Directory('${tempRoot.path}/support')
+        ..createSync(recursive: true);
+      final mediaLibrary = LocalMediaLibraryService(
+        documentsDirectoryProvider: () async => documentsDir,
+        supportDirectoryProvider: () async => supportDir,
+      );
+      var ffmpegCalled = false;
+      final service = EditorExportService(
+        database: database,
+        thumbnailService: _FakeThumbnailService(),
+        videoApprovalService: _FakeVideoApprovalService(database: database),
+        localMediaLibraryService: mediaLibrary,
+        assetBundle: _FakeAssetBundle(),
+        executeFfmpeg: (arguments) async {
+          ffmpegCalled = true;
+          return const FfmpegExecutionResult(success: true);
+        },
+        probeSourceMediaInfo: (path) async =>
+            const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false),
+        buildArFilterSequence:
+            ({
+              required EditorSession session,
+              required ui.Size renderSize,
+              required String stagingDir,
+              required AssetBundle assetBundle,
+              required ArFilterAssetLoader loadArFilterAsset,
+              EditorExportCancellationToken? cancellationToken,
+            }) async => null,
+      );
+
+      await expectLater(
+        service.export(
+          session: const EditorSession(
+            videoId: 'video-1',
+            sourcePath: '/tmp/input.mp4',
+            videoDuration: Duration(seconds: 10),
+            trimRange: EditorTrimRange(
+              start: Duration.zero,
+              end: Duration(seconds: 10),
+            ),
+            arFilterId: 'crown',
+          ),
+          profileId: 'profile-1',
+          title: 'Remix',
+        ),
+        throwsA(
+          isA<EditorExportException>().having(
+            (error) => error.message,
+            'message',
+            contains('Diagnostics saved'),
+          ),
+        ),
+      );
+      expect(ffmpegCalled, isFalse);
     },
   );
 }

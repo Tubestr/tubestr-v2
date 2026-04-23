@@ -67,6 +67,7 @@ dependencies:
   google_mlkit_selfie_segmentation: ^0.10.1
   google_mlkit_face_detection: ^0.13.2
   google_mlkit_barcode_scanning: ^0.14.0
+  mediapipe_face_mesh: ^1.2.6
   rust_lib_mytube:
     path: rust_builder
   url_launcher: ^6.3.2

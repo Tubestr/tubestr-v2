@@ -334,7 +334,7 @@ class _OutboundReportRow extends StatelessWidget {
           Container(
             width: 10,
             height: 10,
-            margin: const EdgeInsets.only(top: 4),
+            margin: const EdgeInsets.only(top: AppSpacing.xs),
             decoration: BoxDecoration(
               color: statusColor,
               shape: BoxShape.circle,

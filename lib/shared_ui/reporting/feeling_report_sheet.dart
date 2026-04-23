@@ -222,7 +222,9 @@ class _FeelingReportSheetState extends ConsumerState<FeelingReportSheet> {
                         return Container(
                           width: 8,
                           height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                          ),
                           decoration: BoxDecoration(
                             color: active
                                 ? palette.accent
@@ -541,7 +543,10 @@ class _FeelingButton extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Text(
               feeling.localizedLabel(context.l10n),
-              style: TextStyle(color: palette.ink, fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: palette.ink,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -588,7 +593,7 @@ class _ActionButton extends StatelessWidget {
                     children: [
                       Text(
                         option.localizedTitle(context.l10n),
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: palette.ink,
                           fontWeight: FontWeight.w700,
                         ),
@@ -596,10 +601,8 @@ class _ActionButton extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         option.localizedSubtitle(context.l10n),
-                        style: TextStyle(
-                          color: palette.mutedInk,
-                          fontSize: AppTextSize.label,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: palette.mutedInk),
                       ),
                     ],
                   ),

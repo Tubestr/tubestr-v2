@@ -35,8 +35,7 @@ class LocalMediaLibraryService {
     if (idx < 0) return storedPath;
 
     final relativePart = storedPath.substring(idx + marker.length);
-    _cachedDocumentsPath ??=
-        (await _documentsDirectoryProvider()).path;
+    _cachedDocumentsPath ??= (await _documentsDirectoryProvider()).path;
     return p.join(_cachedDocumentsPath!, relativePart);
   }
 
@@ -59,6 +58,42 @@ class LocalMediaLibraryService {
     final directory = Directory(p.join(support.path, 'editor_staging'));
     await directory.create(recursive: true);
     return directory;
+  }
+
+  Future<void> cleanupEditorStagingDirectory({
+    Duration maxAge = const Duration(days: 1),
+    DateTime? now,
+  }) async {
+    final directory = await ensureEditorStagingDirectory();
+    final cutoff = (now ?? DateTime.now()).subtract(maxAge);
+    await for (final entity in directory.list(followLinks: false)) {
+      try {
+        final modified = await _lastModifiedForCleanup(entity);
+        if (modified.isBefore(cutoff)) {
+          await entity.delete(recursive: true);
+        }
+      } catch (_) {
+        // Best-effort cleanup; export should not fail because staging cleanup did.
+      }
+    }
+  }
+
+  Future<DateTime> _lastModifiedForCleanup(FileSystemEntity entity) async {
+    final stat = await entity.stat();
+    if (entity is! Directory) {
+      return stat.modified;
+    }
+    DateTime? newestChild;
+    await for (final child in entity.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      final childModified = (await child.stat()).modified;
+      if (newestChild == null || childModified.isAfter(newestChild)) {
+        newestChild = childModified;
+      }
+    }
+    return newestChild ?? stat.modified;
   }
 
   Future<String> createManagedVideoPath({

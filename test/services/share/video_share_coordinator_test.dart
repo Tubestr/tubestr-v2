@@ -10,6 +10,7 @@ import 'package:mytube/domain/models/parent_identity.dart';
 import 'package:mytube/services/approval/content_scan_service.dart';
 import 'package:mytube/services/approval/media_signal_extraction_service.dart';
 import 'package:mytube/services/approval/video_approval_service.dart';
+import 'package:mytube/services/editor/ar_filter_catalog.dart';
 import 'package:mytube/services/offline/offline_action_store.dart';
 import 'package:mytube/services/share/managed_video_upload_service.dart';
 import 'package:mytube/services/share/share_history_service.dart';
@@ -323,6 +324,84 @@ void main() {
       );
     },
   );
+
+  test('createUploadedShareMessage rejects unbaked AR captures', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'video-share-ar-guard-test',
+    );
+    addTearDown(() async {
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final videoFile = File('${tempDir.path}/clip.mp4')
+      ..writeAsBytesSync(List<int>.from('video-bytes'.codeUnits));
+    final thumbFile = File('${tempDir.path}/thumb.jpg')
+      ..writeAsBytesSync(List<int>.from('thumb-bytes'.codeUnits));
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    final coordinator = VideoShareCoordinator(
+      database: database,
+      videoApprovalService: buildApprovalService(database),
+      blossomClient: FakeBlossomClient(unavailableServer: 'unused'),
+      mdkService: FakeMdkService(),
+      nostrService: FakeNostrService()
+        ..blossomServers = const ['https://blossom.example'],
+      offlineActionStore: OfflineActionStore(database: database),
+      shareHistoryService: ShareHistoryService(database: database),
+      managedVideoUploadService: ManagedVideoUploadService(database: database),
+    );
+    final localVideo = LocalVideo(
+      id: 'video-1',
+      profileId: 'child-1',
+      filePath: videoFile.path,
+      thumbPath: thumbFile.path,
+      title: 'Crown test',
+      durationSeconds: 6,
+      createdAt: DateTime.utc(2026, 2, 1, 12),
+      lastPlayedAt: null,
+      playCount: 0,
+      completionRate: 0,
+      replayRate: 0,
+      liked: false,
+      hidden: false,
+      tags: [
+        ArFilterCatalog.tagFor('crown'),
+        ArFilterCatalog.trackTagFor('/tmp/ar-track.json'),
+      ],
+      cvLabels: const <String>[],
+      faceCount: 0,
+      loudness: 0,
+      reportedAt: null,
+      reportReason: null,
+      approvalStatus: 'approved',
+      approvedAt: null,
+      approvedByParentKey: null,
+      scanVersion: 0,
+      highestRiskCategory: null,
+      scanConfidence: null,
+      reviewReasons: const <String>[],
+      scanResults: '{}',
+      scanCompletedAt: DateTime.utc(2026, 2, 1, 12),
+    );
+
+    await expectLater(
+      coordinator.createUploadedShareMessage(
+        identity: identity,
+        localVideo: localVideo,
+        childDisplayName: 'Emma',
+        mlsGroupIdHex: 'group-1',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('Export this AR-filtered video'),
+        ),
+      ),
+    );
+  });
 
   test(
     'shareLocalVideo still records the native share when WhiteNoise companion publish fails',

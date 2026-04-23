@@ -11,6 +11,7 @@ import '../../../services/approval/content_scan_service.dart';
 import '../../../services/approval/media_signal_extraction_service.dart';
 import '../../../services/approval/video_approval_service.dart';
 import '../../../services/connections/family_connection_service.dart';
+import '../../../services/editor/ar_filter_library_service.dart';
 import '../../../services/editor/editor_audio_library_service.dart';
 import '../../../services/editor/editor_export_service.dart';
 import '../../../services/engagement/beta_funnel_service.dart';
@@ -60,6 +61,7 @@ final editorExportServiceProvider = Provider<EditorExportService>((ref) {
     thumbnailService: ref.watch(thumbnailServiceProvider),
     videoApprovalService: ref.watch(videoApprovalServiceProvider),
     localMediaLibraryService: ref.watch(localMediaLibraryServiceProvider),
+    loadArFilterAsset: ref.watch(arFilterLibraryServiceProvider).loadFilter,
   );
 });
 
@@ -100,6 +102,12 @@ final editorAudioLibraryServiceProvider = Provider<EditorAudioLibraryService>((
   ref,
 ) {
   return EditorAudioLibraryService(
+    blossomClient: ref.watch(blossomClientProvider),
+  );
+});
+
+final arFilterLibraryServiceProvider = Provider<ArFilterLibraryService>((ref) {
+  return ArFilterLibraryService(
     blossomClient: ref.watch(blossomClientProvider),
   );
 });

@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
+import 'package:ffmpeg_kit_flutter_new_video/ffmpeg_kit.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,9 +25,12 @@ import '../../../services/editor/editor_audio_library_service.dart';
 import '../../../domain/models/editor_session.dart';
 import '../../../services/editor/editor_audio_preview_service.dart';
 import '../../../services/editor/editor_export_service.dart';
+import '../../../services/editor/ar_filter_catalog.dart';
+import '../../../services/editor/ar_filter_library_service.dart';
 import '../../../services/editor/editor_resource_catalog.dart';
 import '../../../services/editor/editor_sticker_library.dart';
 import '../../../services/media/video_probe_service.dart';
+import '../../../shared_ui/components/ar_filter_track_overlay.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
 import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/motion/app_motion.dart';
@@ -36,13 +41,28 @@ import 'selfie_sticker_capture_page.dart';
 import '../../../l10n/l10n.dart';
 
 class EditorDetailPage extends ConsumerStatefulWidget {
-  const EditorDetailPage({super.key, required this.source});
+  const EditorDetailPage({
+    super.key,
+    required this.source,
+    this.initialArFilterId,
+    this.initialArTrackPath,
+  });
 
   /// Convenience constructor that wraps a [LocalVideo] in an [EditorSource].
-  EditorDetailPage.fromVideo({super.key, required LocalVideo video})
-    : source = EditorSource.fromLocalVideo(video);
+  EditorDetailPage.fromVideo({
+    super.key,
+    required LocalVideo video,
+    String? initialArFilterId,
+    String? initialArTrackPath,
+  }) : source = EditorSource.fromLocalVideo(video),
+       initialArFilterId =
+           initialArFilterId ?? ArFilterCatalog.idFromTags(video.tags),
+       initialArTrackPath =
+           initialArTrackPath ?? ArFilterCatalog.trackPathFromTags(video.tags);
 
   final EditorSource source;
+  final String? initialArFilterId;
+  final String? initialArTrackPath;
 
   @override
   ConsumerState<EditorDetailPage> createState() => _EditorDetailPageState();
@@ -60,11 +80,15 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   ];
 
   static final _fontFamilies = <String>['Fredoka', 'Baloo', 'Bubblegum Sans'];
+  static const _exportTimeout = Duration(minutes: 4);
+  static const _exportSlowThreshold = Duration(seconds: 20);
 
   late final Player _player;
   late final VideoController _videoController;
   late final EditorAudioPreviewService _audioPreviewService;
   late final EditorAudioLibraryService _audioLibraryService;
+  ArFilterLibraryService get _arFilterLibraryService =>
+      ref.read(arFilterLibraryServiceProvider);
   late final EditorStickerLibrary _stickerLibrary;
   late final AnimationController _overlayAnimController;
   late final Animation<Offset> _overlaySlide;
@@ -79,14 +103,20 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   Offset? _gestureStartFocalPoint;
   String? _selectedOverlayId;
   String? _previewingTrackId;
-  Duration _previewPosition = Duration.zero;
+  final ValueNotifier<Duration> _previewPositionNotifier =
+      ValueNotifier<Duration>(Duration.zero);
   bool _previewPlaying = false;
   EditorTool? _activeTool;
   bool _isExporting = false;
+  bool _exportIsTakingLong = false;
+  Timer? _exportSlowTimer;
   bool _loopSeekInFlight = false;
   List<EditorStickerAsset> _userStickers = const [];
   Set<String> _cachedAudioTrackIds = const {};
   final Set<String> _downloadingAudioTrackIds = {};
+  List<ArFilterDefinition> _availableArFilters = ArFilterCatalog.builtInFilters;
+  Set<String> _cachedArFilterIds = const {};
+  final Set<String> _downloadingArFilterIds = {};
   int? _videoWidth;
   int? _videoHeight;
   double? _probeDisplayAspectRatio;
@@ -134,6 +164,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       sourcePath: widget.source.filePath,
       videoDuration: normalizedTrim.videoDuration,
       trimRange: normalizedTrim.trimRange,
+      arFilterId: widget.initialArFilterId,
+      arTrackPath: widget.initialArTrackPath,
     );
     _playingSubscription = _player.stream.playing.listen((playing) {
       if (!mounted) return;
@@ -169,20 +201,27 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     _probeAndOpen();
     unawaited(_loadUserStickers());
     unawaited(_refreshAudioCacheState());
+    unawaited(_refreshArFilterLibraryState());
   }
 
   @override
   void dispose() {
     _overlayAnimController.dispose();
+    _exportSlowTimer?.cancel();
     unawaited(_audioPreviewService.dispose());
     unawaited(_playingSubscription?.cancel());
     unawaited(_positionSubscription?.cancel());
     unawaited(_videoParamsSubscription?.cancel());
+    _previewPositionNotifier.dispose();
     _player.dispose();
     super.dispose();
   }
 
   void _setActiveTool(EditorTool? tool) {
+    if (_isExporting) {
+      _showExportInProgressMessage();
+      return;
+    }
     setState(() {
       if (_activeTool == tool) {
         _activeTool = null;
@@ -209,156 +248,187 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     final palette = ref.watch(activePaletteProvider);
     final isTrimActive = _activeTool == EditorTool.trim;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final layout = KidLayoutSpec.fromWidth(constraints.maxWidth);
-            final isCompactLandscape =
-                !layout.isTablet &&
-                constraints.maxWidth > constraints.maxHeight;
-            final edgeInset = layout.isTablet ? 24.0 : 12.0;
-            final sidebarWidth = layout.isTablet ? 72.0 : 64.0;
-            final sidebarRight = layout.isTablet ? 20.0 : 12.0;
-            final overlayMaxWidth = layout.isTablet ? 680.0 : double.infinity;
-            final timelineMaxWidth = layout.isTablet ? 800.0 : double.infinity;
-            final timelineHeight = isTrimActive ? 96.0 : 54.0;
-            final overlayBottom = isTrimActive ? 104.0 : 62.0;
-            final toolbarTop = isCompactLandscape ? edgeInset + 58.0 : 0.0;
-            final toolbarBottom = isCompactLandscape
-                ? timelineHeight + 10.0
-                : 0.0;
+    return PopScope<void>(
+      canPop: !_isExporting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isExporting) {
+          _showExportInProgressMessage();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final layout = KidLayoutSpec.fromWidth(constraints.maxWidth);
+              final isCompactLandscape =
+                  !layout.isTablet &&
+                  constraints.maxWidth > constraints.maxHeight;
+              final edgeInset = layout.isTablet ? 24.0 : 12.0;
+              final sidebarWidth = layout.isTablet ? 72.0 : 64.0;
+              final sidebarRight = layout.isTablet ? 20.0 : 12.0;
+              final overlayMaxWidth = layout.isTablet ? 680.0 : double.infinity;
+              final timelineMaxWidth = layout.isTablet
+                  ? 800.0
+                  : double.infinity;
+              final timelineHeight = isTrimActive ? 96.0 : 54.0;
+              final overlayBottom = isTrimActive ? 104.0 : 62.0;
+              final toolbarTop = isCompactLandscape ? edgeInset + 58.0 : 0.0;
+              final toolbarBottom = isCompactLandscape
+                  ? timelineHeight + 10.0
+                  : 0.0;
 
-            return Stack(
-              children: [
-                // Full-screen video preview
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTap: _dismissToolOverlay,
-                    child: _PreviewPane(
-                      palette: palette,
-                      videoController: _videoController,
-                      session: _session,
-                      videoAspectRatio: _resolvedVideoAspectRatio(),
-                      selectedOverlayId: _selectedOverlayId,
-                      isPlaying: _previewPlaying,
-                      onTogglePlayback: _togglePreviewPlayback,
-                      onOverlaySelected: (overlayId) {
-                        setState(() => _selectedOverlayId = overlayId);
-                      },
-                      onOverlayScaleStart: _handleStickerScaleStart,
-                      onOverlayScaleUpdate: (details, size, overlay) {
-                        _handleStickerScaleUpdate(details, size, overlay);
-                      },
-                      onOverlayDeleted: _removeOverlay,
-                    ),
-                  ),
-                ),
-
-                // Timeline bar (always visible at bottom)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: timelineMaxWidth),
-                      child: _TimelineBar(
+              return Stack(
+                children: [
+                  // Full-screen video preview
+                  Positioned.fill(
+                    child: GestureDetector(
+                      onTap: _dismissToolOverlay,
+                      child: _PreviewPane(
                         palette: palette,
-                        thumbPath: widget.source.thumbPath,
+                        videoController: _videoController,
                         session: _session,
-                        isTrimActive: isTrimActive,
-                        previewPosition: _previewPosition,
-                        onTrimChanged: _updateTrimRange,
+                        previewPositionListenable: _previewPositionNotifier,
+                        videoAspectRatio: _resolvedVideoAspectRatio(),
+                        selectedOverlayId: _selectedOverlayId,
+                        isPlaying: _previewPlaying,
+                        onTogglePlayback: _togglePreviewPlayback,
+                        onOverlaySelected: (overlayId) {
+                          setState(() => _selectedOverlayId = overlayId);
+                        },
+                        onOverlayScaleStart: _handleStickerScaleStart,
+                        onOverlayScaleUpdate: (details, size, overlay) {
+                          _handleStickerScaleUpdate(details, size, overlay);
+                        },
+                        onOverlayDeleted: _removeOverlay,
+                        loadArFilterAsset: _arFilterLibraryService.loadFilter,
                       ),
                     ),
                   ),
-                ),
 
-                // Right side toolbar
-                Positioned(
-                  right: sidebarRight,
-                  top: toolbarTop,
-                  bottom: toolbarBottom,
-                  child: _SideToolbar(
-                    palette: palette,
-                    activeTool: _activeTool,
-                    onToolTap: _setActiveTool,
-                    isTablet: layout.isTablet,
-                    isCompact: isCompactLandscape,
-                  ),
-                ),
-
-                // Contextual tool overlay (above timeline)
-                if (_activeTool != null && _activeTool != EditorTool.trim)
+                  // Timeline bar (always visible at bottom)
                   Positioned(
-                    left: edgeInset,
-                    right: sidebarRight + sidebarWidth,
-                    bottom: overlayBottom,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: overlayMaxWidth),
-                        child: SlideTransition(
-                          position: _overlaySlide,
-                          child: FadeTransition(
-                            opacity: _overlayFade,
-                            child: _ActiveToolOverlay(
-                              palette: palette,
-                              activeTool: _activeTool!,
-                              session: _session,
-                              isTablet: layout.isTablet,
-                              onFilterChanged: (filterId) {
-                                setState(() {
-                                  _session = _session.copyWith(
-                                    filterPresetId: filterId,
-                                  );
-                                });
-                              },
-                              onAdjustmentsChanged: (adjustments) {
-                                setState(() {
-                                  _session = _session.copyWith(
-                                    adjustments: adjustments,
-                                  );
-                                });
-                              },
-                              onStickerSelected: _selectSticker,
-                              onOpenSelfieStickerCapture:
-                                  _openSelfieStickerCapture,
-                              userStickers: _userStickers,
-                              onDeleteUserSticker: _deleteUserSticker,
-                              onMusicSelected: _selectMusicTrack,
-                              onMusicRemoved: _removeMusicTrack,
-                              onMusicVolumeChanged: _updateMusicVolume,
-                              onMusicPreviewToggled: _toggleMusicPreview,
-                              previewingTrackId: _previewingTrackId,
-                              cachedAudioTrackIds: _cachedAudioTrackIds,
-                              downloadingAudioTrackIds:
-                                  _downloadingAudioTrackIds,
-                              selectedOverlayId: _selectedOverlayId,
-                              onAddTextOverlay: _addTextOverlay,
-                              onTextChanged: _updateTextOverlay,
-                            ),
-                          ),
+                        constraints: BoxConstraints(maxWidth: timelineMaxWidth),
+                        child: _TimelineBar(
+                          palette: palette,
+                          thumbPath: widget.source.thumbPath,
+                          session: _session,
+                          isTrimActive: isTrimActive,
+                          previewPositionListenable: _previewPositionNotifier,
+                          onTrimChanged: _updateTrimRange,
                         ),
                       ),
                     ),
                   ),
 
-                // Minimal header
-                Positioned(
-                  top: edgeInset,
-                  left: edgeInset,
-                  right: edgeInset,
-                  child: _MinimalHeader(
-                    palette: palette,
-                    isExporting: _isExporting,
-                    onExport: _exportEdit,
+                  // Right side toolbar
+                  Positioned(
+                    right: sidebarRight,
+                    top: toolbarTop,
+                    bottom: toolbarBottom,
+                    child: _SideToolbar(
+                      palette: palette,
+                      activeTool: _activeTool,
+                      onToolTap: _setActiveTool,
+                      isTablet: layout.isTablet,
+                      isCompact: isCompactLandscape,
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+
+                  // Contextual tool overlay (above timeline)
+                  if (_activeTool != null && _activeTool != EditorTool.trim)
+                    Positioned(
+                      left: edgeInset,
+                      right: sidebarRight + sidebarWidth,
+                      bottom: overlayBottom,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: overlayMaxWidth,
+                          ),
+                          child: SlideTransition(
+                            position: _overlaySlide,
+                            child: FadeTransition(
+                              opacity: _overlayFade,
+                              child: _ActiveToolOverlay(
+                                palette: palette,
+                                activeTool: _activeTool!,
+                                session: _session,
+                                isTablet: layout.isTablet,
+                                onFilterChanged: (filterId) {
+                                  if (_isExporting) return;
+                                  setState(() {
+                                    _session = _session.copyWith(
+                                      filterPresetId: filterId,
+                                    );
+                                  });
+                                },
+                                onArFilterChanged: _selectArFilter,
+                                onAdjustmentsChanged: (adjustments) {
+                                  if (_isExporting) return;
+                                  setState(() {
+                                    _session = _session.copyWith(
+                                      adjustments: adjustments,
+                                    );
+                                  });
+                                },
+                                onStickerSelected: _selectSticker,
+                                onOpenSelfieStickerCapture:
+                                    _openSelfieStickerCapture,
+                                userStickers: _userStickers,
+                                onDeleteUserSticker: _deleteUserSticker,
+                                onMusicSelected: _selectMusicTrack,
+                                onMusicRemoved: _removeMusicTrack,
+                                onMusicVolumeChanged: _updateMusicVolume,
+                                onMusicPreviewToggled: _toggleMusicPreview,
+                                previewingTrackId: _previewingTrackId,
+                                cachedAudioTrackIds: _cachedAudioTrackIds,
+                                downloadingAudioTrackIds:
+                                    _downloadingAudioTrackIds,
+                                availableArFilters: _availableArFilters,
+                                cachedArFilterIds: _cachedArFilterIds,
+                                downloadingArFilterIds: _downloadingArFilterIds,
+                                selectedOverlayId: _selectedOverlayId,
+                                onAddTextOverlay: _addTextOverlay,
+                                onTextChanged: _updateTextOverlay,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Minimal header
+                  Positioned(
+                    top: edgeInset,
+                    left: edgeInset,
+                    right: edgeInset,
+                    child: _MinimalHeader(
+                      palette: palette,
+                      isExporting: _isExporting,
+                      onBack: _isExporting
+                          ? _showExportInProgressMessage
+                          : () => Navigator.of(context).pop(),
+                      onExport: _exportEdit,
+                    ),
+                  ),
+                  if (_isExporting)
+                    Positioned.fill(
+                      child: _ExportProgressOverlay(
+                        palette: palette,
+                        hasFaceFilter: _session.arFilterId != null,
+                        isTakingLong: _exportIsTakingLong,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -367,6 +437,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   // ── Business logic (unchanged) ──────────────────────────────────────
 
   void _updateTrimRange(RangeValues values) {
+    if (_isExporting) return;
     final totalMs = math.max(_session.videoDuration.inMilliseconds, 1);
     final minGapMs = totalMs < 250 ? 1 : 250;
     final maxStartMs = math.max(totalMs - minGapMs, 0);
@@ -389,13 +460,11 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   Future<void> _seekPreviewToTrimStart() async {
     await _player.seek(_session.trimRange.start);
     if (!mounted) return;
-    setState(() => _previewPosition = _session.trimRange.start);
+    _previewPositionNotifier.value = _session.trimRange.start;
   }
 
   void _handlePreviewPosition(Duration position) {
-    if (mounted) {
-      setState(() => _previewPosition = position);
-    }
+    _previewPositionNotifier.value = position;
     if (!_previewPlaying ||
         _loopSeekInFlight ||
         _session.trimRange.duration <= const Duration(milliseconds: 300)) {
@@ -416,14 +485,16 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   Future<void> _togglePreviewPlayback() async {
+    if (_isExporting) return;
     final trimRange = _session.trimRange;
-    if (_previewPosition >= trimRange.end) {
+    if (_previewPositionNotifier.value >= trimRange.end) {
       await _player.seek(trimRange.start);
     }
     await _player.playOrPause();
   }
 
   void _selectSticker(String stickerId, String assetPath) {
+    if (_isExporting) return;
     final sticker = EditorOverlayItem(
       id: 'sticker:$stickerId:${DateTime.now().microsecondsSinceEpoch}',
       type: EditorOverlayType.sticker,
@@ -439,6 +510,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   void _removeOverlay(String overlayId) {
+    if (_isExporting) return;
     setState(() {
       _session = _session.copyWith(
         overlays: _session.overlays
@@ -452,6 +524,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   Future<void> _selectMusicTrack(EditorMusicTrackAsset track) async {
+    if (_isExporting) return;
     try {
       final playablePath = await _ensureAudioTrackAvailable(track);
       if (!mounted) return;
@@ -470,6 +543,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   void _removeMusicTrack() {
+    if (_isExporting) return;
     unawaited(_audioPreviewService.stop());
     setState(() {
       _previewingTrackId = null;
@@ -478,6 +552,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   void _updateMusicVolume(double volume) {
+    if (_isExporting) return;
     final selection = _session.audioSelection;
     if (selection == null) return;
     unawaited(_audioPreviewService.updateVolume(volume));
@@ -489,6 +564,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   Future<void> _toggleMusicPreview(EditorMusicTrackAsset track) async {
+    if (_isExporting) return;
     final audioSelection = _session.audioSelection;
     final volume = audioSelection?.trackId == track.id
         ? audioSelection!.volume
@@ -542,6 +618,55 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     setState(() => _cachedAudioTrackIds = cached);
   }
 
+  Future<void> _refreshArFilterLibraryState() async {
+    final filters = _arFilterLibraryService.availableFilters();
+    if (mounted) {
+      setState(() => _availableArFilters = filters);
+    }
+    final cached = await _arFilterLibraryService.cachedFilterIds(filters);
+    if (!mounted) return;
+    setState(() => _cachedArFilterIds = cached);
+  }
+
+  Future<void> _selectArFilter(String? filterId) async {
+    if (_isExporting) return;
+    if (filterId == null || filterId == ArFilterCatalog.noneId) {
+      setState(() {
+        _session = _session.copyWith(arFilterId: null, clearArFilter: true);
+      });
+      return;
+    }
+    if (_downloadingArFilterIds.contains(filterId)) {
+      return;
+    }
+
+    setState(() {
+      _downloadingArFilterIds.add(filterId);
+    });
+    try {
+      await _arFilterLibraryService.ensureFilterAvailable(filterId);
+      if (!mounted) return;
+      setState(() {
+        _cachedArFilterIds = {..._cachedArFilterIds, filterId};
+        _session = _session.copyWith(arFilterId: filterId);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Face filter could not be downloaded.'),
+          backgroundColor: ref.read(activePaletteProvider).danger,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _downloadingArFilterIds.remove(filterId);
+        });
+      }
+    }
+  }
+
   void _showAudioError(EditorMusicTrackAsset track, Object error) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -551,9 +676,26 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     );
   }
 
+  void _showExportInProgressMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.editorExportInProgress)),
+    );
+  }
+
   Future<void> _exportEdit() async {
     if (_isExporting) return;
-    setState(() => _isExporting = true);
+    _exportSlowTimer?.cancel();
+    setState(() {
+      _isExporting = true;
+      _exportIsTakingLong = false;
+    });
+    _exportSlowTimer = Timer(_exportSlowThreshold, () {
+      if (!mounted || !_isExporting) {
+        return;
+      }
+      setState(() => _exportIsTakingLong = true);
+    });
+    final cancellationToken = EditorExportCancellationToken();
     try {
       await _audioPreviewService.stop();
       await _player.pause();
@@ -568,6 +710,15 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
             title: context.l10n.editorRemixTitle(widget.source.title),
             preferredDisplaySize: preferredDisplaySize,
             preferredRotationDegrees: preferredRotationDegrees,
+            cancellationToken: cancellationToken,
+          )
+          .timeout(
+            _exportTimeout,
+            onTimeout: () async {
+              cancellationToken.cancel();
+              await FFmpegKit.cancel();
+              throw TimeoutException('editor export timed out');
+            },
           );
       if (!mounted) return;
       ref.invalidate(videosForSelectedProfileProvider);
@@ -588,15 +739,25 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
         SnackBar(
           content: Text(_exportErrorMessage(error)),
           backgroundColor: ref.read(activePaletteProvider).danger,
+          action: SnackBarAction(
+            label: context.l10n.actionTryAgain,
+            textColor: ref.read(activePaletteProvider).mediaInk,
+            onPressed: _exportEdit,
+          ),
         ),
       );
     } finally {
+      _exportSlowTimer?.cancel();
+      _exportSlowTimer = null;
       if (mounted) {
         await _player.open(Media(widget.source.filePath), play: false);
         await _seekPreviewToTrimStart();
       }
       if (mounted) {
-        setState(() => _isExporting = false);
+        setState(() {
+          _isExporting = false;
+          _exportIsTakingLong = false;
+        });
       }
     }
   }
@@ -610,6 +771,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   Future<void> _openSelfieStickerCapture() async {
+    if (_isExporting) return;
     HapticFeedback.selectionClick();
     final createdSticker = await Navigator.of(context).push<EditorStickerAsset>(
       AppMotion.modalRoute(
@@ -628,6 +790,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   Future<void> _deleteUserSticker(EditorStickerAsset sticker) async {
+    if (_isExporting) return;
     if (!sticker.isUserCreated) return;
     await _stickerLibrary.deleteSticker(
       profileId: widget.source.profileId,
@@ -854,7 +1017,13 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   String _exportErrorMessage(Object error) {
+    if (error is TimeoutException) {
+      return context.l10n.editorExportTimeoutFailed;
+    }
     final message = error.toString().toLowerCase();
+    if (message.contains('timed out') || message.contains('timeout')) {
+      return context.l10n.editorExportTimeoutFailed;
+    }
     if (message.contains('ffmpeg') || message.contains('export')) {
       return context.l10n.editorExportSaveFailed;
     }
@@ -886,6 +1055,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   }
 
   void _addTextOverlay() {
+    if (_isExporting) return;
     final overlay = EditorOverlayItem(
       id: 'text:${DateTime.now().microsecondsSinceEpoch}',
       type: EditorOverlayType.text,
@@ -908,6 +1078,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     Color? color,
     double? textSize,
   }) {
+    if (_isExporting) return;
     final overlays = _session.overlays
         .map(
           (item) => item.id == overlayId
@@ -930,6 +1101,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     Size previewSize,
     EditorOverlayItem overlay,
   ) {
+    if (_isExporting) return;
     _gestureStartScale = overlay.transform.scale;
     _gestureStartRotation = overlay.transform.rotationDegrees;
     _gestureStartPosition = overlay.transform.position;
@@ -941,6 +1113,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     Size previewSize,
     EditorOverlayItem overlay,
   ) {
+    if (_isExporting) return;
     if (previewSize.width == 0 || previewSize.height == 0) return;
     final startFocalPoint = _gestureStartFocalPoint ?? details.focalPoint;
     final normalizedDx =
@@ -1074,11 +1247,13 @@ class _MinimalHeader extends StatelessWidget {
   const _MinimalHeader({
     required this.palette,
     required this.isExporting,
+    required this.onBack,
     required this.onExport,
   });
 
   final KidPalette palette;
   final bool isExporting;
+  final VoidCallback onBack;
   final VoidCallback onExport;
 
   @override
@@ -1087,7 +1262,7 @@ class _MinimalHeader extends StatelessWidget {
       children: [
         _FrostedCircleButton(
           palette: palette,
-          onTap: () => Navigator.of(context).pop(),
+          onTap: onBack,
           child: Icon(
             Icons.arrow_back_rounded,
             color: palette.mediaInk,
@@ -1121,6 +1296,99 @@ class _MinimalHeader extends StatelessWidget {
           label: isExporting
               ? context.l10n.editorActionExporting
               : context.l10n.editorActionExport,
+        ),
+      ],
+    );
+  }
+}
+
+class _ExportProgressOverlay extends StatelessWidget {
+  const _ExportProgressOverlay({
+    required this.palette,
+    required this.hasFaceFilter,
+    required this.isTakingLong,
+  });
+
+  final KidPalette palette;
+  final bool hasFaceFilter;
+  final bool isTakingLong;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = hasFaceFilter
+        ? context.l10n.editorExportProgressArTitle
+        : context.l10n.editorExportProgressTitle;
+    final detail = isTakingLong
+        ? context.l10n.editorExportProgressLongDetail
+        : hasFaceFilter
+        ? context.l10n.editorExportProgressArDetail
+        : context.l10n.editorExportProgressDetail;
+
+    return Stack(
+      children: [
+        ModalBarrier(
+          dismissible: false,
+          color: Colors.black.withValues(alpha: 0.58),
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: palette.mediaSurfaceStrong,
+                  borderRadius: AppRadii.xlAll,
+                  border: Border.all(color: palette.mediaBorder),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 42,
+                        height: 42,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 4,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            palette.accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: palette.mediaInk,
+                          fontSize: AppTextSize.title,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        detail,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: palette.mediaMutedInk,
+                          fontSize: AppTextSize.body,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -1406,7 +1674,7 @@ class _TimelineBar extends StatelessWidget {
     required this.thumbPath,
     required this.session,
     required this.isTrimActive,
-    required this.previewPosition,
+    required this.previewPositionListenable,
     required this.onTrimChanged,
   });
 
@@ -1414,7 +1682,7 @@ class _TimelineBar extends StatelessWidget {
   final String? thumbPath;
   final EditorSession session;
   final bool isTrimActive;
-  final Duration previewPosition;
+  final ValueListenable<Duration> previewPositionListenable;
   final ValueChanged<RangeValues> onTrimChanged;
 
   @override
@@ -1423,12 +1691,6 @@ class _TimelineBar extends StatelessWidget {
       rawVideoDuration: session.videoDuration,
       rawTrimRange: session.trimRange,
     );
-    final progressFraction = session.videoDuration.inMilliseconds > 0
-        ? (previewPosition.inMilliseconds /
-                  session.videoDuration.inMilliseconds)
-              .clamp(0.0, 1.0)
-        : 0.0;
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
@@ -1528,7 +1790,8 @@ class _TimelineBar extends StatelessWidget {
                     child: _TimelineStripContent(
                       thumbPath: thumbPath,
                       palette: palette,
-                      progressFraction: progressFraction,
+                      videoDuration: session.videoDuration,
+                      previewPositionListenable: previewPositionListenable,
                     ),
                   ),
               ],
@@ -1550,12 +1813,14 @@ class _TimelineStripContent extends StatelessWidget {
   const _TimelineStripContent({
     required this.thumbPath,
     required this.palette,
-    required this.progressFraction,
+    required this.videoDuration,
+    required this.previewPositionListenable,
   });
 
   final String? thumbPath;
   final KidPalette palette;
-  final double progressFraction;
+  final Duration videoDuration;
+  final ValueListenable<Duration> previewPositionListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -1616,20 +1881,30 @@ class _TimelineStripContent extends StatelessWidget {
                 }),
               ),
             ),
-            Positioned(
-              left: 8 + (progressFraction * (constraints.maxWidth - 16)),
-              top: 4,
-              bottom: 4,
-              child: Container(
-                width: 2.5,
-                decoration: BoxDecoration(
-                  color: palette.mediaInk,
-                  borderRadius: AppRadii.pillAll,
-                  boxShadow: [
-                    BoxShadow(color: palette.mediaScrim, blurRadius: 4),
-                  ],
-                ),
-              ),
+            ValueListenableBuilder<Duration>(
+              valueListenable: previewPositionListenable,
+              builder: (context, previewPosition, _) {
+                final progressFraction = videoDuration.inMilliseconds > 0
+                    ? (previewPosition.inMilliseconds /
+                              videoDuration.inMilliseconds)
+                          .clamp(0.0, 1.0)
+                    : 0.0;
+                return Positioned(
+                  left: 8 + (progressFraction * (constraints.maxWidth - 16)),
+                  top: 4,
+                  bottom: 4,
+                  child: Container(
+                    width: 2.5,
+                    decoration: BoxDecoration(
+                      color: palette.mediaInk,
+                      borderRadius: AppRadii.pillAll,
+                      boxShadow: [
+                        BoxShadow(color: palette.mediaScrim, blurRadius: 4),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         );
@@ -1646,6 +1921,7 @@ class _ActiveToolOverlay extends StatelessWidget {
     required this.activeTool,
     required this.session,
     required this.onFilterChanged,
+    required this.onArFilterChanged,
     required this.onAdjustmentsChanged,
     required this.onStickerSelected,
     required this.onOpenSelfieStickerCapture,
@@ -1658,6 +1934,9 @@ class _ActiveToolOverlay extends StatelessWidget {
     required this.previewingTrackId,
     required this.cachedAudioTrackIds,
     required this.downloadingAudioTrackIds,
+    required this.availableArFilters,
+    required this.cachedArFilterIds,
+    required this.downloadingArFilterIds,
     required this.selectedOverlayId,
     required this.onAddTextOverlay,
     required this.onTextChanged,
@@ -1668,6 +1947,7 @@ class _ActiveToolOverlay extends StatelessWidget {
   final EditorTool activeTool;
   final EditorSession session;
   final ValueChanged<String> onFilterChanged;
+  final ValueChanged<String?> onArFilterChanged;
   final ValueChanged<EditorAdjustments> onAdjustmentsChanged;
   final void Function(String stickerId, String assetPath) onStickerSelected;
   final Future<void> Function() onOpenSelfieStickerCapture;
@@ -1681,6 +1961,9 @@ class _ActiveToolOverlay extends StatelessWidget {
   final String? previewingTrackId;
   final Set<String> cachedAudioTrackIds;
   final Set<String> downloadingAudioTrackIds;
+  final List<ArFilterDefinition> availableArFilters;
+  final Set<String> cachedArFilterIds;
+  final Set<String> downloadingArFilterIds;
   final String? selectedOverlayId;
   final VoidCallback onAddTextOverlay;
   final void Function({
@@ -1705,6 +1988,8 @@ class _ActiveToolOverlay extends StatelessWidget {
                 activeTool == EditorTool.overlays ||
                     activeTool == EditorTool.audio
                 ? (isTablet ? 360 : 310)
+                : activeTool == EditorTool.effects
+                ? (isTablet ? 320 : 280)
                 : (isTablet ? 260 : 210),
           ),
           decoration: BoxDecoration(
@@ -1729,7 +2014,11 @@ class _ActiveToolOverlay extends StatelessWidget {
         palette: palette,
         session: session,
         onFilterChanged: onFilterChanged,
+        onArFilterChanged: onArFilterChanged,
         onAdjustmentsChanged: onAdjustmentsChanged,
+        availableArFilters: availableArFilters,
+        cachedArFilterIds: cachedArFilterIds,
+        downloadingArFilterIds: downloadingArFilterIds,
       ),
       EditorTool.overlays => _CompactOverlayTool(
         key: const ValueKey('overlays'),
@@ -1772,13 +2061,21 @@ class _CompactEffectsTool extends StatelessWidget {
     required this.palette,
     required this.session,
     required this.onFilterChanged,
+    required this.onArFilterChanged,
     required this.onAdjustmentsChanged,
+    required this.availableArFilters,
+    required this.cachedArFilterIds,
+    required this.downloadingArFilterIds,
   });
 
   final KidPalette palette;
   final EditorSession session;
   final ValueChanged<String> onFilterChanged;
+  final ValueChanged<String?> onArFilterChanged;
   final ValueChanged<EditorAdjustments> onAdjustmentsChanged;
+  final List<ArFilterDefinition> availableArFilters;
+  final Set<String> cachedArFilterIds;
+  final Set<String> downloadingArFilterIds;
 
   @override
   Widget build(BuildContext context) {
@@ -1840,6 +2137,43 @@ class _CompactEffectsTool extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return _CompactFaceFilterChip(
+                      palette: palette,
+                      label: context.l10n.editorFilterNone,
+                      icon: Icons.block_rounded,
+                      selected: session.arFilterId == null,
+                      onTap: () => onArFilterChanged(null),
+                    );
+                  }
+                  final filter = availableArFilters[index - 1];
+                  final isDownloading = downloadingArFilterIds.contains(
+                    filter.id,
+                  );
+                  final isCached = cachedArFilterIds.contains(filter.id);
+                  return _CompactFaceFilterChip(
+                    palette: palette,
+                    label: filter.label,
+                    icon: isDownloading
+                        ? Icons.hourglass_top_rounded
+                        : isCached
+                        ? _faceFilterIcon(filter.id)
+                        : Icons.download_rounded,
+                    selected: session.arFilterId == filter.id,
+                    onTap: () => onArFilterChanged(filter.id),
+                  );
+                },
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.sm),
+                itemCount: availableArFilters.length + 1,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             _CompactSlider(
               palette: palette,
               label: context.l10n.editorBrightness,
@@ -1888,6 +2222,73 @@ class _CompactEffectsTool extends StatelessWidget {
               max: 1,
               onChanged: (v) => onAdjustmentsChanged(
                 session.adjustments.copyWith(vignette: v),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _faceFilterIcon(String id) {
+    return switch (id) {
+      'crown' => Icons.workspace_premium_rounded,
+      'sunglasses' => Icons.visibility_rounded,
+      'sparkles' => Icons.auto_awesome_rounded,
+      'flower' => Icons.local_florist_rounded,
+      'pup' => Icons.pets_rounded,
+      _ => Icons.face_retouching_natural,
+    };
+  }
+}
+
+class _CompactFaceFilterChip extends StatelessWidget {
+  const _CompactFaceFilterChip({
+    required this.palette,
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final KidPalette palette;
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 7,
+        ),
+        decoration: BoxDecoration(
+          color: selected
+              ? palette.mediaSurfaceSelected
+              : palette.mediaSurfaceSubtle,
+          borderRadius: AppRadii.xlAll,
+          border: Border.all(
+            color: selected
+                ? palette.accentSecondaryVibrant
+                : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: palette.mediaInk, size: AppIconSize.xs),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              label,
+              style: TextStyle(
+                color: palette.mediaInk,
+                fontSize: AppTextSize.label,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],
@@ -3502,6 +3903,7 @@ class _PreviewPane extends StatelessWidget {
     required this.palette,
     required this.videoController,
     required this.session,
+    required this.previewPositionListenable,
     required this.videoAspectRatio,
     required this.selectedOverlayId,
     required this.isPlaying,
@@ -3510,11 +3912,13 @@ class _PreviewPane extends StatelessWidget {
     required this.onOverlayScaleStart,
     required this.onOverlayScaleUpdate,
     required this.onOverlayDeleted,
+    required this.loadArFilterAsset,
   });
 
   final KidPalette palette;
   final VideoController videoController;
   final EditorSession session;
+  final ValueListenable<Duration> previewPositionListenable;
   final double videoAspectRatio;
   final String? selectedOverlayId;
   final bool isPlaying;
@@ -3533,6 +3937,7 @@ class _PreviewPane extends StatelessWidget {
   )
   onOverlayScaleUpdate;
   final ValueChanged<String> onOverlayDeleted;
+  final ArFilterAssetLoader loadArFilterAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -3614,6 +4019,12 @@ class _PreviewPane extends StatelessWidget {
                             ),
                           ),
                         ),
+                      ArFilterTrackOverlay(
+                        filterId: session.arFilterId,
+                        trackPath: session.arTrackPath,
+                        positionListenable: previewPositionListenable,
+                        loadFilterAsset: loadArFilterAsset,
+                      ),
                       Stack(
                         children: [
                           for (final overlay in stickerOverlays)

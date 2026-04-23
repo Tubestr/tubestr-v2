@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:ffmpeg_kit_flutter_new_video/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_video/return_code.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -16,11 +17,22 @@ import '../approval/video_approval_service.dart';
 import '../media/local_media_library_service.dart';
 import '../media/thumbnail_service.dart';
 import '../media/video_probe_service.dart';
+import 'ar_face_track_service.dart';
+import 'ar_filter_catalog.dart';
 import 'editor_resource_catalog.dart';
 
 typedef ExecuteFfmpegWithArguments =
     Future<FfmpegExecutionResult> Function(List<String> arguments);
 typedef ProbeSourceMediaInfo = Future<SourceMediaInfo?> Function(String path);
+typedef BuildArFilterSequence =
+    Future<ArFilterSequence?> Function({
+      required EditorSession session,
+      required ui.Size renderSize,
+      required String stagingDir,
+      required AssetBundle assetBundle,
+      required ArFilterAssetLoader loadArFilterAsset,
+      EditorExportCancellationToken? cancellationToken,
+    });
 
 class EditorExportException implements Exception {
   const EditorExportException(this.message);
@@ -29,6 +41,29 @@ class EditorExportException implements Exception {
 
   @override
   String toString() => 'EditorExportException: $message';
+}
+
+class EditorExportCancelledException implements Exception {
+  const EditorExportCancelledException();
+
+  @override
+  String toString() => 'EditorExportCancelledException';
+}
+
+class EditorExportCancellationToken {
+  bool _isCancelled = false;
+
+  bool get isCancelled => _isCancelled;
+
+  void cancel() {
+    _isCancelled = true;
+  }
+
+  void throwIfCancelled() {
+    if (_isCancelled) {
+      throw const EditorExportCancelledException();
+    }
+  }
 }
 
 class EditorExportResult {
@@ -92,6 +127,8 @@ class EditorExportService {
     Uuid? uuid,
     ExecuteFfmpegWithArguments? executeFfmpeg,
     ProbeSourceMediaInfo? probeSourceMediaInfo,
+    BuildArFilterSequence? buildArFilterSequence,
+    ArFilterAssetLoader? loadArFilterAsset,
   }) : _database = database,
        _thumbnailService = thumbnailService,
        _videoApprovalService = videoApprovalService,
@@ -100,7 +137,10 @@ class EditorExportService {
        _uuid = uuid ?? const Uuid(),
        _executeFfmpeg = executeFfmpeg ?? _defaultExecuteFfmpeg,
        _probeSourceMediaInfo =
-           probeSourceMediaInfo ?? _defaultProbeSourceMediaInfo;
+           probeSourceMediaInfo ?? _defaultProbeSourceMediaInfo,
+       _loadArFilterAsset = loadArFilterAsset ?? ArFilterCatalog.load,
+       _buildArFilterSequence =
+           buildArFilterSequence ?? _defaultBuildArFilterSequence;
 
   final AppDatabase _database;
   final ThumbnailService _thumbnailService;
@@ -110,6 +150,8 @@ class EditorExportService {
   final Uuid _uuid;
   final ExecuteFfmpegWithArguments _executeFfmpeg;
   final ProbeSourceMediaInfo _probeSourceMediaInfo;
+  final ArFilterAssetLoader _loadArFilterAsset;
+  final BuildArFilterSequence _buildArFilterSequence;
 
   Future<EditorExportResult> export({
     required EditorSession session,
@@ -117,17 +159,23 @@ class EditorExportService {
     required String title,
     ui.Size? preferredDisplaySize,
     int? preferredRotationDegrees,
+    EditorExportCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final stagingDir = await _localMediaLibraryService
         .ensureEditorStagingDirectory();
+    await _localMediaLibraryService.cleanupEditorStagingDirectory();
+    cancellationToken?.throwIfCancelled();
 
     final outputPath = await _localMediaLibraryService.createManagedVideoPath(
       prefix: 'edit',
       extension: '.mp4',
     );
+    cancellationToken?.throwIfCancelled();
     final sourceMediaInfo =
         await _probeSourceMediaInfo(session.sourcePath) ??
         const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false);
+    cancellationToken?.throwIfCancelled();
     final effectiveSourceRotationDegrees =
         preferredRotationDegrees ?? sourceMediaInfo.rotationDegrees;
     final baseRenderSize = normalizeEditorRenderSize(
@@ -149,9 +197,11 @@ class EditorExportService {
     String? appliedOutputPath;
     String? warning;
     final diagnostics = <String>[];
+    final arSequenceCache = <String, ArFilterSequence?>{};
     var exported = false;
 
     for (var i = 0; i < attempts.length; i += 1) {
+      cancellationToken?.throwIfCancelled();
       final attempt = attempts[i];
       final attemptOutputPath = i == 0
           ? outputPath
@@ -174,6 +224,50 @@ class EditorExportService {
         attempt.renderScale,
         maxDimension: attempt.maxDimensionOverride,
       );
+      final requestedArFilterId = attempt.session.arFilterId;
+      final needsArFilter =
+          requestedArFilterId != null && requestedArFilterId.isNotEmpty;
+      ArFilterSequence? arFilterSequence;
+      try {
+        final arSequenceCacheKey = _arSequenceCacheKey(
+          session: attempt.session,
+          renderSize: renderSize,
+        );
+        if (arSequenceCache.containsKey(arSequenceCacheKey)) {
+          arFilterSequence = arSequenceCache[arSequenceCacheKey];
+        } else {
+          arFilterSequence = await _buildArFilterSequence(
+            session: attempt.session,
+            renderSize: renderSize,
+            stagingDir: stagingDir.path,
+            assetBundle: _assetBundle,
+            loadArFilterAsset: _loadArFilterAsset,
+            cancellationToken: cancellationToken,
+          );
+          arSequenceCache[arSequenceCacheKey] = arFilterSequence;
+        }
+        cancellationToken?.throwIfCancelled();
+      } catch (error) {
+        cancellationToken?.throwIfCancelled();
+        diagnostics.add(
+          'Attempt ${i + 1} (${attempt.label}) could not build face filter '
+          'sequence "$requestedArFilterId".\n$error',
+        );
+        _logArExport('sequence builder failed: $error');
+        if (needsArFilter) {
+          continue;
+        }
+      }
+      if (needsArFilter && arFilterSequence == null) {
+        diagnostics.add(
+          'Attempt ${i + 1} (${attempt.label}) skipped because face filter '
+          '"$requestedArFilterId" did not produce an overlay sequence.',
+        );
+        _logArExport(
+          'no sequence for "$requestedArFilterId" on attempt ${attempt.label}',
+        );
+        continue;
+      }
       final plan = await buildEditorExportPlan(
         session: attempt.session,
         outputPath: attemptOutputPath,
@@ -185,8 +279,25 @@ class EditorExportService {
         sourceEncodedSize: sourceMediaInfo.size,
         sourceRotationDegrees: effectiveSourceRotationDegrees,
         videoCodec: attempt.videoCodec,
+        arFilterPngPattern: arFilterSequence?.pattern,
+        arFilterFrameRate: arFilterSequence?.frameRate ?? 30,
+        arFilterOverlayOffset:
+            arFilterSequence?.overlayOffset ?? ui.Offset.zero,
+      );
+      cancellationToken?.throwIfCancelled();
+      final arExportLabel = arFilterSequence == null
+          ? 'none'
+          : '${arFilterSequence.frameRate}fps@'
+                '${arFilterSequence.overlayOffset.dx.toInt()},'
+                '${arFilterSequence.overlayOffset.dy.toInt()}';
+      _logArExport(
+        'running ffmpeg attempt ${attempt.label} '
+        'codec=${attempt.videoCodec} '
+        'render=${renderSize.width.toInt()}x${renderSize.height.toInt()} '
+        'ar=$arExportLabel',
       );
       final executionResult = await _executeFfmpeg(plan.arguments);
+      cancellationToken?.throwIfCancelled();
       appliedArguments = plan.arguments;
       if (executionResult.success) {
         exported = true;
@@ -210,6 +321,10 @@ class EditorExportService {
         'Args: ${plan.arguments.join(' ')}\n'
         'Logs:\n${executionResult.logs ?? '(no logs)'}',
       );
+      _logArExport(
+        'ffmpeg attempt ${attempt.label} failed: '
+        '${_summarizeLogs(executionResult.logs)}',
+      );
     }
 
     if (!exported || appliedArguments == null || appliedOutputPath == null) {
@@ -224,13 +339,15 @@ class EditorExportService {
         flush: true,
       );
       throw EditorExportException(
-        'FFmpeg export failed. Diagnostics saved to ${diagnosticsFile.path}',
+        'Editor export failed. Diagnostics saved to ${diagnosticsFile.path}',
       );
     }
 
+    cancellationToken?.throwIfCancelled();
     final thumbnailPath = await _thumbnailService.createVideoThumbnail(
       videoPath: appliedOutputPath,
     );
+    cancellationToken?.throwIfCancelled();
     final exportedVideoId = _uuid.v4();
     final exportAspectRatio = baseRenderSize.width / baseRenderSize.height;
     await _database.saveLocalVideo(
@@ -240,11 +357,18 @@ class EditorExportService {
       thumbPath: thumbnailPath ?? '',
       title: title,
       durationSeconds: session.trimRange.duration.inMilliseconds / 1000,
-      tags: const ['edited', 'remix'],
+      tags: [
+        'edited',
+        'remix',
+        if (session.arFilterId != null)
+          ArFilterCatalog.tagFor(session.arFilterId!),
+      ],
       approvalStatus: 'pending',
       aspectRatio: exportAspectRatio,
     );
+    cancellationToken?.throwIfCancelled();
     await _videoApprovalService.scanAndClassifyVideo(videoId: exportedVideoId);
+    cancellationToken?.throwIfCancelled();
 
     return EditorExportResult(
       videoId: exportedVideoId,
@@ -264,6 +388,21 @@ void _logProbe({
   String? extra,
 }) {
   // Hook retained for local diagnostics when needed.
+}
+
+String _summarizeLogs(String? logs) {
+  if (logs == null || logs.trim().isEmpty) {
+    return '(no logs)';
+  }
+  final lines = logs
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList(growable: false);
+  if (lines.length <= 12) {
+    return lines.join(' | ');
+  }
+  return lines.skip(lines.length - 12).join(' | ');
 }
 
 class _ExportAttempt {
@@ -292,6 +431,9 @@ Future<EditorExportPlan> buildEditorExportPlan({
   required ui.Size renderSize,
   String videoCodec = 'libx264',
   String? stagedOverlayImagePath,
+  String? arFilterPngPattern,
+  int arFilterFrameRate = 30,
+  ui.Offset arFilterOverlayOffset = ui.Offset.zero,
   bool sourceHasAudio = false,
   ui.Size? sourceEncodedSize,
   int sourceRotationDegrees = 0,
@@ -325,6 +467,19 @@ Future<EditorExportPlan> buildEditorExportPlan({
     arguments.addAll(['-stream_loop', '-1', '-i', stagedAudioPath]);
   }
 
+  if (arFilterPngPattern != null) {
+    arguments.addAll([
+      '-framerate',
+      arFilterFrameRate.toString(),
+      '-start_number',
+      '0',
+      '-t',
+      trimDurationSeconds,
+      '-i',
+      arFilterPngPattern,
+    ]);
+  }
+
   if (stagedOverlayImagePath != null) {
     arguments.addAll(['-i', stagedOverlayImagePath]);
   }
@@ -339,7 +494,9 @@ Future<EditorExportPlan> buildEditorExportPlan({
     sourceRotationDegrees: sourceRotationDegrees,
   );
   final needsFilterComplex =
-      audioSelection != null || stagedOverlayImagePath != null;
+      audioSelection != null ||
+      arFilterPngPattern != null ||
+      stagedOverlayImagePath != null;
   if (videoFilter != null && !needsFilterComplex) {
     arguments.addAll(['-vf', videoFilter]);
   }
@@ -353,9 +510,24 @@ Future<EditorExportPlan> buildEditorExportPlan({
       videoOutputMap = '[vfiltered]';
     }
 
-    final overlayInputIndex = stagedOverlayImagePath == null
+    final arInputIndex = arFilterPngPattern == null
         ? null
         : (audioSelection != null ? 2 : 1);
+    if (arInputIndex != null) {
+      final baseVideoRef = videoOutputMap == '0:v:0' ? '[0:v]' : videoOutputMap;
+      final arOverlayX = arFilterOverlayOffset.dx.round();
+      final arOverlayY = arFilterOverlayOffset.dy.round();
+      filterComplexParts.add(
+        '$baseVideoRef[$arInputIndex:v]overlay=$arOverlayX:$arOverlayY:format=auto[var]',
+      );
+      videoOutputMap = '[var]';
+    }
+
+    final overlayInputIndex = stagedOverlayImagePath == null
+        ? null
+        : 1 +
+              (audioSelection != null ? 1 : 0) +
+              (arFilterPngPattern != null ? 1 : 0);
     if (overlayInputIndex != null) {
       final baseVideoRef = videoOutputMap == '0:v:0' ? '[0:v]' : videoOutputMap;
       filterComplexParts.add(
@@ -419,6 +591,8 @@ Future<EditorExportPlan> buildEditorExportPlan({
 
       if (sourceHasAudio) {
         arguments.addAll(['-map', '0:a?', '-shortest']);
+      } else if (arFilterPngPattern != null) {
+        arguments.add('-shortest');
       }
     }
   } else if (sourceHasAudio) {
@@ -470,28 +644,109 @@ int _editorVideoMaxrateKbps(Duration duration) {
 
 List<_ExportAttempt> _buildExportAttempts(EditorSession session) {
   return <_ExportAttempt>[
-    _ExportAttempt(label: 'full', session: session, videoCodec: 'libx264'),
+    _ExportAttempt(label: 'compat_full', session: session, videoCodec: 'mpeg4'),
     _ExportAttempt(
-      label: 'smaller_full',
+      label: 'compat_smaller',
       session: session,
-      videoCodec: 'libx264',
+      videoCodec: 'mpeg4',
       renderScale: 0.8,
     ),
     _ExportAttempt(
-      label: 'safe_res',
-      session: session,
-      videoCodec: 'libx264',
-      maxDimensionOverride: 1280,
-      warning: 'Saved remix at a smaller size for this device.',
-    ),
-    _ExportAttempt(
-      label: 'safe_codec',
+      label: 'compat_safe_res',
       session: session,
       videoCodec: 'mpeg4',
       maxDimensionOverride: 1280,
-      warning: 'Saved remix with a compatibility export path on this device.',
+      warning: 'Saved remix at a smaller size for this device.',
     ),
   ];
+}
+
+String _arSequenceCacheKey({
+  required EditorSession session,
+  required ui.Size renderSize,
+}) {
+  return [
+    session.arFilterId ?? '',
+    session.arTrackPath ?? '',
+    session.sourcePath,
+    session.trimRange.start.inMilliseconds,
+    session.trimRange.duration.inMilliseconds,
+    renderSize.width.round(),
+    renderSize.height.round(),
+  ].join('|');
+}
+
+Future<ArFilterSequence?> _defaultBuildArFilterSequence({
+  required EditorSession session,
+  required ui.Size renderSize,
+  required String stagingDir,
+  required AssetBundle assetBundle,
+  required ArFilterAssetLoader loadArFilterAsset,
+  EditorExportCancellationToken? cancellationToken,
+}) async {
+  cancellationToken?.throwIfCancelled();
+  final filterId = session.arFilterId;
+  if (filterId == null || filterId.isEmpty) {
+    return null;
+  }
+  final outputDir = p.join(
+    stagingDir,
+    'ar_filter_${DateTime.now().millisecondsSinceEpoch}',
+  );
+  _logArExport('requested filter "$filterId"');
+  final sequenceWatch = Stopwatch()..start();
+  final tracker = ArFaceTrackService(loadFilterAsset: loadArFilterAsset);
+  final trackPath = session.arTrackPath;
+  if (trackPath != null && trackPath.isNotEmpty) {
+    final sequence = await tracker.buildFilterSequenceFromTrackFile(
+      trackPath: trackPath,
+      trimStart: session.trimRange.start,
+      duration: session.trimRange.duration,
+      filterId: filterId,
+      outputDir: outputDir,
+      renderSize: renderSize,
+      assetBundle: assetBundle,
+      isCancelled: () => cancellationToken?.isCancelled ?? false,
+    );
+    cancellationToken?.throwIfCancelled();
+    if (sequence != null) {
+      sequenceWatch.stop();
+      _logArExport(
+        'generated sidecar sequence ${sequence.pattern} '
+        'offset=${sequence.overlayOffset.dx.toInt()},${sequence.overlayOffset.dy.toInt()} '
+        'in ${sequenceWatch.elapsedMilliseconds}ms',
+      );
+      return sequence;
+    }
+    _logArExport('sidecar sequence unavailable; falling back');
+  }
+  final sequence = await tracker.buildFilterSequence(
+    videoPath: session.sourcePath,
+    trimStart: session.trimRange.start,
+    duration: session.trimRange.duration,
+    filterId: filterId,
+    outputDir: outputDir,
+    renderSize: renderSize,
+    assetBundle: assetBundle,
+    isCancelled: () => cancellationToken?.isCancelled ?? false,
+  );
+  cancellationToken?.throwIfCancelled();
+  sequenceWatch.stop();
+  _logArExport(
+    sequence == null
+        ? 'no sequence generated for "$filterId"'
+        : 'generated sequence ${sequence.pattern} '
+              'offset=${sequence.overlayOffset.dx.toInt()},${sequence.overlayOffset.dy.toInt()} '
+              'in ${sequenceWatch.elapsedMilliseconds}ms',
+  );
+  return sequence;
+}
+
+void _logArExport(String message) {
+  if (!kDebugMode) {
+    return;
+  }
+  debugPrint('AR export: $message');
 }
 
 ui.Size normalizeEditorRenderSize(ui.Size input, {double maxDimension = 1920}) {

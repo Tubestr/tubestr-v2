@@ -1400,6 +1400,48 @@ abstract class AppLocalizations {
   /// **'We couldn\'t finish saving that remix yet. Try again in a moment.'**
   String get editorExportSaveFailed;
 
+  /// No description provided for @editorExportTimeoutFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That export took too long, so we stopped it. Your edit choices are still here.'**
+  String get editorExportTimeoutFailed;
+
+  /// No description provided for @editorExportInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish exporting before leaving this screen.'**
+  String get editorExportInProgress;
+
+  /// No description provided for @editorExportProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving remix'**
+  String get editorExportProgressTitle;
+
+  /// No description provided for @editorExportProgressArTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying face filter'**
+  String get editorExportProgressArTitle;
+
+  /// No description provided for @editorExportProgressDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this screen open while Tubestr saves your remix.'**
+  String get editorExportProgressDetail;
+
+  /// No description provided for @editorExportProgressArDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Face filters can take a little longer to bake into the video.'**
+  String get editorExportProgressArDetail;
+
+  /// No description provided for @editorExportProgressLongDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Still working. Larger clips and face filters can take another moment.'**
+  String get editorExportProgressLongDetail;
+
   /// No description provided for @editorShareNeedsReview.
   ///
   /// In en, this message translates to:

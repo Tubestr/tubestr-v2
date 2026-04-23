@@ -12,6 +12,7 @@ import '../../domain/models/offline_action.dart';
 import '../../domain/models/parent_identity.dart';
 import '../approval/video_approval_service.dart';
 import '../blossom/blossom_client.dart';
+import '../editor/ar_filter_catalog.dart';
 import '../mdk/mdk_service.dart';
 import '../nostr/nostr_service.dart';
 import '../offline/offline_action_store.dart';
@@ -374,6 +375,7 @@ class VideoShareCoordinator {
         'This video still needs parent approval before it can be shared.',
       );
     }
+    _throwIfUnbakedArCapture(localVideo);
 
     final videoFile = File(localVideo.filePath);
     if (!videoFile.existsSync()) {
@@ -816,6 +818,7 @@ class VideoShareCoordinator {
         'This video still needs parent approval before it can be shared.',
       );
     }
+    _throwIfUnbakedArCapture(localVideo);
 
     final queuedGroupIds = <String>[];
     for (final group in groups) {
@@ -837,6 +840,17 @@ class VideoShareCoordinator {
       eventIds: const <String>[],
       errors: const <String>[],
     );
+  }
+
+  void _throwIfUnbakedArCapture(LocalVideo localVideo) {
+    final hasFilter = ArFilterCatalog.idFromTags(localVideo.tags) != null;
+    final hasCaptureTrack =
+        ArFilterCatalog.trackPathFromTags(localVideo.tags) != null;
+    if (hasFilter && hasCaptureTrack) {
+      throw StateError(
+        'Export this AR-filtered video before sharing so the filter is baked in.',
+      );
+    }
   }
 
   Future<BlossomUploadAuth> _createBlossomUploadAuth({

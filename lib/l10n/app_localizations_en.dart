@@ -737,6 +737,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t finish saving that remix yet. Try again in a moment.';
 
   @override
+  String get editorExportTimeoutFailed =>
+      'That export took too long, so we stopped it. Your edit choices are still here.';
+
+  @override
+  String get editorExportInProgress =>
+      'Finish exporting before leaving this screen.';
+
+  @override
+  String get editorExportProgressTitle => 'Saving remix';
+
+  @override
+  String get editorExportProgressArTitle => 'Applying face filter';
+
+  @override
+  String get editorExportProgressDetail =>
+      'Keep this screen open while Tubestr saves your remix.';
+
+  @override
+  String get editorExportProgressArDetail =>
+      'Face filters can take a little longer to bake into the video.';
+
+  @override
+  String get editorExportProgressLongDetail =>
+      'Still working. Larger clips and face filters can take another moment.';
+
+  @override
   String get editorShareNeedsReview =>
       'This remix still needs a parent review before it can be shared.';
 
