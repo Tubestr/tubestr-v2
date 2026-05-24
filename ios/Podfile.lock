@@ -217,27 +217,27 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/wakelock_plus/ios"
 
 SPEC CHECKSUMS:
-  app_links: 6d01271b3907b0ee7325c5297c75d697c4226c4d
-  audio_session: 19e9480dbdd4e5f6c4543826b2e8b0e4ab6145fe
-  camera_avfoundation: 769d252259fa21e39ada7399c9dc9c0921af8165
-  ffmpeg_kit_flutter_new_video: 7df9b30a8a77587a897445c16800b7dc5e4aff03
+  app_links: a754cbec3c255bd4bbb4d236ecc06f28cd9a7ce8
+  audio_session: 9bb7f6c970f21241b19f5a3658097ae459681ba0
+  camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
+  ffmpeg_kit_flutter_new_video: 6b16e7148c28802497cd13a7ea97a875302fb34f
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_secure_storage_darwin: 557817588b80e60213cbecb573c45c76b788018d
-  google_mlkit_barcode_scanning: 558187bc222df9e86110a2dad3c61695b4a3ac99
-  google_mlkit_commons: 1e6ef6605d7281f35baf2b355e6049b9984fd624
-  google_mlkit_face_detection: ceddb8d65f594b9ff8379efc16ab2c4efa801349
-  google_mlkit_selfie_segmentation: e1c74c1433e36a23ca6799d24fa66e31a38d0068
+  flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
+  google_mlkit_barcode_scanning: 12d8422d8f7b00726dedf9cac00188a2b98750c2
+  google_mlkit_commons: a5e4ffae5bc59ea4c7b9025dc72cb6cb79dc1166
+  google_mlkit_face_detection: ee4b72cfae062b4c972204be955d83055a4bfd36
+  google_mlkit_selfie_segmentation: 0317616b7e460f242bd13a805b70f4e0ba636336
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleMLKit: b1eee21a41c57704fe72483b15c85cb2c0cd7444
   GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
-  in_app_purchase_storekit: 2342c0a5da86593124d08dd13d920f39a52b273a
-  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
-  just_audio: a42c63806f16995daf5b219ae1d679deb76e6a79
+  in_app_purchase_storekit: 22cca7d08eebca9babdf4d07d0baccb73325d3c8
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
-  media_kit_libs_ios_video: a5fe24bc7875ccd6378a0978c13185e1344651c1
-  media_kit_video: 5da63f157170e5bf303bf85453b7ef6971218a2e
+  media_kit_libs_ios_video: 5a18affdb97d1f5d466dc79988b13eff6c5e2854
+  media_kit_video: 1746e198cb697d1ffb734b1d05ec429d1fcd1474
   MLImage: 0de5c6c2bf9e93b80ef752e2797f0836f03b58c0
   MLKitBarcodeScanning: 39de223e7b1b8a8fbf10816a536dd292d8a39343
   MLKitCommon: 47d47b50a031d00db62f1b0efe5a1d8b09a3b2e6
@@ -247,13 +247,13 @@ SPEC CHECKSUMS:
   MLKitVision: 39a5a812db83c4a0794445088e567f3631c11961
   MLKitXenoCommon: 1a4268c1222a6043047af5bb9435028206c63287
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
-  package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
+  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  rust_lib_mytube: 7f4b3e43ef02e90ed80d6ad1c261085d1efce7b7
-  share_plus: 8b6f8b3447e494cca5317c8c3073de39b3600d1f
-  url_launcher_ios: bb13df5870e8c4234ca12609d04010a21be43dfa
-  video_thumbnail: c4e2a3c539e247d4de13cd545344fd2d26ffafd1
-  wakelock_plus: 76957ab028e12bfa4e66813c99e46637f367fc7e
+  rust_lib_mytube: 81424e398684cfc86f6186386250def71b99b16b
+  share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
+  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
+  video_thumbnail: b637e0ad5f588ca9945f6e2c927f73a69a661140
+  wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
 PODFILE CHECKSUM: bd29822c3d5baf6b44b726f00ea3293a19339ef2
 
