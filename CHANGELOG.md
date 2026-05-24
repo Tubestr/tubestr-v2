@@ -2,6 +2,9 @@
 
 ## 1.0.4 - 2026-04-15
 
+- (Build 33) Added playback speed control inside the editor Effects tool — pick 0.5×, 1×, 1.5×, or 2×; preview scrubs at the selected rate and the exported video carries the same speed for both video and audio.
+- (Build 33) Added drawing tools to the editor — pencil, marker, and eraser with a shared six-color palette, 2–24 px width, undo, and clear. Eraser only affects your strokes; the underlying video is left untouched. Drawings burn into the exported MP4 above stickers and text.
+- (Build 33) Internal: refactored the ~4,100-line editor page into eleven focused widget files and added a widget-level test harness (58 passing tests) so future editor work has a safety net.
 - Added Light, Dark, and System appearance modes in the profile/theme menu.
 - Added dark variants for every child theme so Campfire, Treehouse, Blanket Fort, and Starlight adapt consistently.
 - Fixed dark-mode onboarding text so headings like "Welcome to Tubestr" inherit the correct themed text color.
