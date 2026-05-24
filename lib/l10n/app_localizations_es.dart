@@ -676,6 +676,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get editorToolText => 'Texto';
 
   @override
+  String get editorToolDraw => 'Dibujar';
+
+  @override
   String get editorActionKeepEditing => 'Seguir editando luego';
 
   @override
@@ -698,6 +701,24 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get editorTapText => 'Toca un texto existente o agrega uno nuevo.';
+
+  @override
+  String get editorDrawToolPencil => 'Lápiz';
+
+  @override
+  String get editorDrawToolMarker => 'Marcador';
+
+  @override
+  String get editorDrawToolEraser => 'Borrador';
+
+  @override
+  String get editorDrawWidthLabel => 'Grosor';
+
+  @override
+  String get editorDrawUndo => 'Deshacer trazo';
+
+  @override
+  String get editorDrawClear => 'Borrar dibujo';
 
   @override
   String get editorStickerPhotoTitle => 'Toma una foto para crear un sticker';
@@ -1857,6 +1878,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get editorBrightness => 'Brillo';
+
+  @override
+  String get editorSpeedLabel => 'Velocidad';
 
   @override
   String get editorContrast => 'Contraste';

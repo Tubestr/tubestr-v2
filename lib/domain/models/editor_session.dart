@@ -2,9 +2,11 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 
-enum EditorTool { trim, effects, overlays, audio, text }
+enum EditorTool { trim, effects, overlays, audio, text, draw }
 
 enum EditorOverlayType { sticker, text }
+
+enum EditorDrawTool { pencil, marker, eraser }
 
 @immutable
 class StickerTransform {
@@ -124,6 +126,39 @@ class EditorAudioSelection {
 }
 
 @immutable
+class EditorStroke {
+  const EditorStroke({
+    required this.id,
+    required this.tool,
+    required this.colorValue,
+    required this.width,
+    required this.points,
+  });
+
+  final String id;
+  final EditorDrawTool tool;
+  final int colorValue;
+  final double width;
+  final List<Offset> points;
+
+  EditorStroke copyWith({
+    String? id,
+    EditorDrawTool? tool,
+    int? colorValue,
+    double? width,
+    List<Offset>? points,
+  }) {
+    return EditorStroke(
+      id: id ?? this.id,
+      tool: tool ?? this.tool,
+      colorValue: colorValue ?? this.colorValue,
+      width: width ?? this.width,
+      points: points ?? this.points,
+    );
+  }
+}
+
+@immutable
 class EditorAdjustments {
   const EditorAdjustments({
     this.brightness = 0,
@@ -164,8 +199,10 @@ class EditorSession {
     required this.videoDuration,
     required this.trimRange,
     this.filterPresetId = 'none',
+    this.playbackSpeed = 1.0,
     this.adjustments = const EditorAdjustments(),
     this.overlays = const <EditorOverlayItem>[],
+    this.strokes = const <EditorStroke>[],
     this.audioSelection,
   });
 
@@ -174,9 +211,15 @@ class EditorSession {
   final Duration videoDuration;
   final EditorTrimRange trimRange;
   final String filterPresetId;
+  final double playbackSpeed;
   final EditorAdjustments adjustments;
   final List<EditorOverlayItem> overlays;
+  final List<EditorStroke> strokes;
   final EditorAudioSelection? audioSelection;
+
+  static double clampPlaybackSpeed(double value) {
+    return value.clamp(0.25, 4.0).toDouble();
+  }
 
   EditorSession copyWith({
     String? videoId,
@@ -184,8 +227,10 @@ class EditorSession {
     Duration? videoDuration,
     EditorTrimRange? trimRange,
     String? filterPresetId,
+    double? playbackSpeed,
     EditorAdjustments? adjustments,
     List<EditorOverlayItem>? overlays,
+    List<EditorStroke>? strokes,
     EditorAudioSelection? audioSelection,
     bool clearAudioSelection = false,
   }) {
@@ -195,8 +240,10 @@ class EditorSession {
       videoDuration: videoDuration ?? this.videoDuration,
       trimRange: trimRange ?? this.trimRange,
       filterPresetId: filterPresetId ?? this.filterPresetId,
+      playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       adjustments: adjustments ?? this.adjustments,
       overlays: overlays ?? this.overlays,
+      strokes: strokes ?? this.strokes,
       audioSelection: clearAudioSelection
           ? null
           : (audioSelection ?? this.audioSelection),

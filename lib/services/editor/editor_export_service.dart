@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/storage/app_database.dart';
 import '../../domain/models/editor_resources.dart';
 import '../../domain/models/editor_session.dart';
+import '../../features/editor/presentation/widgets/editor_drawing_canvas.dart';
 import '../approval/video_approval_service.dart';
 import '../media/local_media_library_service.dart';
 import '../media/thumbnail_service.dart';
@@ -174,19 +175,32 @@ class EditorExportService {
         attempt.renderScale,
         maxDimension: attempt.maxDimensionOverride,
       );
-      final plan = await buildEditorExportPlan(
+      final stagedDrawingImagePath = await _stageDrawingImage(
         session: attempt.session,
-        outputPath: attemptOutputPath,
         stagingDir: stagingDir.path,
-        assetBundle: _assetBundle,
-        renderSize: renderSize,
-        stagedOverlayImagePath: stagedOverlayImagePath,
-        sourceHasAudio: sourceMediaInfo.hasAudio,
-        sourceEncodedSize: sourceMediaInfo.size,
-        sourceRotationDegrees: effectiveSourceRotationDegrees,
-        videoCodec: attempt.videoCodec,
+        videoSize: renderSize,
       );
-      final executionResult = await _executeFfmpeg(plan.arguments);
+      late final EditorExportPlan plan;
+      late final FfmpegExecutionResult executionResult;
+      try {
+        plan = await buildEditorExportPlan(
+          session: attempt.session,
+          outputPath: attemptOutputPath,
+          stagingDir: stagingDir.path,
+          assetBundle: _assetBundle,
+          renderSize: renderSize,
+          stagedOverlayImagePath: stagedOverlayImagePath,
+          stagedDrawingImagePath: stagedDrawingImagePath,
+          sourceHasAudio: sourceMediaInfo.hasAudio,
+          sourceEncodedSize: sourceMediaInfo.size,
+          sourceRotationDegrees: effectiveSourceRotationDegrees,
+          videoCodec: attempt.videoCodec,
+        );
+        executionResult = await _executeFfmpeg(plan.arguments);
+      } finally {
+        await _deleteTempFile(stagedOverlayImagePath);
+        await _deleteTempFile(stagedDrawingImagePath);
+      }
       appliedArguments = plan.arguments;
       if (executionResult.success) {
         exported = true;
@@ -233,13 +247,17 @@ class EditorExportService {
     );
     final exportedVideoId = _uuid.v4();
     final exportAspectRatio = baseRenderSize.width / baseRenderSize.height;
+    final exportDurationSeconds =
+        session.trimRange.duration.inMilliseconds /
+        1000 /
+        EditorSession.clampPlaybackSpeed(session.playbackSpeed);
     await _database.saveLocalVideo(
       videoId: exportedVideoId,
       profileId: profileId,
       filePath: appliedOutputPath,
       thumbPath: thumbnailPath ?? '',
       title: title,
-      durationSeconds: session.trimRange.duration.inMilliseconds / 1000,
+      durationSeconds: exportDurationSeconds,
       tags: const ['edited', 'remix'],
       approvalStatus: 'pending',
       aspectRatio: exportAspectRatio,
@@ -292,6 +310,7 @@ Future<EditorExportPlan> buildEditorExportPlan({
   required ui.Size renderSize,
   String videoCodec = 'libx264',
   String? stagedOverlayImagePath,
+  String? stagedDrawingImagePath,
   bool sourceHasAudio = false,
   ui.Size? sourceEncodedSize,
   int sourceRotationDegrees = 0,
@@ -301,6 +320,8 @@ Future<EditorExportPlan> buildEditorExportPlan({
   );
   final audioSelection = session.audioSelection;
   final trimDurationSeconds = _secondsString(session.trimRange.duration);
+  final playbackSpeed = EditorSession.clampPlaybackSpeed(session.playbackSpeed);
+  final hasSpeedChange = playbackSpeed != 1.0;
 
   final arguments = <String>[
     '-y',
@@ -329,6 +350,10 @@ Future<EditorExportPlan> buildEditorExportPlan({
     arguments.addAll(['-i', stagedOverlayImagePath]);
   }
 
+  if (stagedDrawingImagePath != null) {
+    arguments.addAll(['-i', stagedDrawingImagePath]);
+  }
+
   final videoFilter = await _buildVideoFilterGraph(
     session: session,
     filterPreset: filterPreset,
@@ -339,7 +364,10 @@ Future<EditorExportPlan> buildEditorExportPlan({
     sourceRotationDegrees: sourceRotationDegrees,
   );
   final needsFilterComplex =
-      audioSelection != null || stagedOverlayImagePath != null;
+      audioSelection != null ||
+      stagedOverlayImagePath != null ||
+      stagedDrawingImagePath != null ||
+      (sourceHasAudio && hasSpeedChange);
   if (videoFilter != null && !needsFilterComplex) {
     arguments.addAll(['-vf', videoFilter]);
   }
@@ -353,13 +381,24 @@ Future<EditorExportPlan> buildEditorExportPlan({
       videoOutputMap = '[vfiltered]';
     }
 
-    final overlayInputIndex = stagedOverlayImagePath == null
-        ? null
-        : (audioSelection != null ? 2 : 1);
-    if (overlayInputIndex != null) {
+    var nextInputIndex = audioSelection != null ? 2 : 1;
+    if (stagedOverlayImagePath != null) {
+      final overlayInputIndex = nextInputIndex;
+      nextInputIndex += 1;
+      final baseVideoRef = videoOutputMap == '0:v:0' ? '[0:v]' : videoOutputMap;
+      final overlayOutputMap = stagedDrawingImagePath == null
+          ? '[vout]'
+          : '[voverlay]';
+      filterComplexParts.add(
+        '$baseVideoRef[$overlayInputIndex:v]overlay=0:0:format=auto$overlayOutputMap',
+      );
+      videoOutputMap = overlayOutputMap;
+    }
+    if (stagedDrawingImagePath != null) {
+      final drawingInputIndex = nextInputIndex;
       final baseVideoRef = videoOutputMap == '0:v:0' ? '[0:v]' : videoOutputMap;
       filterComplexParts.add(
-        '$baseVideoRef[$overlayInputIndex:v]overlay=0:0:format=auto[vout]',
+        '$baseVideoRef[$drawingInputIndex:v]overlay=0:0:format=auto[vout]',
       );
       videoOutputMap = '[vout]';
     }
@@ -400,6 +439,16 @@ Future<EditorExportPlan> buildEditorExportPlan({
         audioOutputMap = '[music]';
       }
 
+      if (hasSpeedChange) {
+        final speedAdjustedAudioMap = audioOutputMap == '[aout]'
+            ? '[aspeed]'
+            : '[aout]';
+        filterComplexParts.add(
+          '$audioOutputMap${_buildAtempoFilterChain(playbackSpeed)}$speedAdjustedAudioMap',
+        );
+        audioOutputMap = speedAdjustedAudioMap;
+      }
+
       arguments.addAll([
         '-filter_complex',
         filterComplexParts.join(';'),
@@ -410,6 +459,13 @@ Future<EditorExportPlan> buildEditorExportPlan({
         '-shortest',
       ]);
     } else {
+      if (sourceHasAudio && hasSpeedChange) {
+        filterComplexParts.add(
+          '[0:a]${_buildAtempoFilterChain(playbackSpeed)}[aout]',
+        );
+        audioOutputMap = '[aout]';
+      }
+
       arguments.addAll([
         '-filter_complex',
         filterComplexParts.join(';'),
@@ -418,7 +474,7 @@ Future<EditorExportPlan> buildEditorExportPlan({
       ]);
 
       if (sourceHasAudio) {
-        arguments.addAll(['-map', '0:a?', '-shortest']);
+        arguments.addAll(['-map', audioOutputMap ?? '0:a?', '-shortest']);
       }
     }
   } else if (sourceHasAudio) {
@@ -635,6 +691,37 @@ Future<String?> _stageOverlayImage({
   return overlayFile.path;
 }
 
+Future<String?> _stageDrawingImage({
+  required EditorSession session,
+  required String stagingDir,
+  required ui.Size videoSize,
+}) async {
+  if (session.strokes.isEmpty) {
+    return null;
+  }
+
+  final pngBytes = await renderEditorDrawingPng(
+    strokes: session.strokes,
+    size: Size(videoSize.width, videoSize.height),
+  );
+  if (pngBytes == null) {
+    return null;
+  }
+  final drawingFile = File(
+    p.join(stagingDir, 'drawing_${DateTime.now().millisecondsSinceEpoch}.png'),
+  );
+  await drawingFile.writeAsBytes(pngBytes, flush: true);
+  return drawingFile.path;
+}
+
+Future<void> _deleteTempFile(String? path) async {
+  if (path == null) return;
+  final file = File(path);
+  if (await file.exists()) {
+    await file.delete();
+  }
+}
+
 Future<String?> _buildVideoFilterGraph({
   required EditorSession session,
   required EditorFilterPreset? filterPreset,
@@ -704,12 +791,34 @@ Future<String?> _buildVideoFilterGraph({
     filters.add('vignette=angle=$angle');
   }
 
+  final playbackSpeed = EditorSession.clampPlaybackSpeed(session.playbackSpeed);
+  if (playbackSpeed != 1.0) {
+    filters.add('setpts=PTS/${_formatSpeedValue(playbackSpeed)}');
+  }
+
   if (filters.isEmpty) {
     return null;
   }
 
   return filters.join(',');
 }
+
+String _buildAtempoFilterChain(double speed) {
+  final filters = <String>[];
+  var remaining = EditorSession.clampPlaybackSpeed(speed);
+  while (remaining > 2.0) {
+    filters.add('atempo=2.0');
+    remaining /= 2.0;
+  }
+  while (remaining < 0.5) {
+    filters.add('atempo=0.5');
+    remaining /= 0.5;
+  }
+  filters.add('atempo=${_formatSpeedValue(remaining)}');
+  return filters.join(',');
+}
+
+String _formatSpeedValue(double speed) => speed.toString();
 
 Future<String> _stageAssetFile({
   required AssetBundle assetBundle,

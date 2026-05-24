@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'dart:ui';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -16,24 +14,30 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/theme_descriptor.dart';
-import '../domain/editor_source.dart';
 import '../../../domain/models/content_scan_summary.dart';
 import '../../../domain/models/editor_resources.dart';
-import '../../../services/editor/editor_audio_library_service.dart';
 import '../../../domain/models/editor_session.dart';
+import '../../../l10n/l10n.dart';
+import '../../../services/editor/editor_audio_library_service.dart';
 import '../../../services/editor/editor_audio_preview_service.dart';
 import '../../../services/editor/editor_export_service.dart';
 import '../../../services/editor/editor_resource_catalog.dart';
 import '../../../services/editor/editor_sticker_library.dart';
 import '../../../services/media/video_probe_service.dart';
 import '../../../shared_ui/components/kid_scaffold.dart';
-import '../../../shared_ui/components/media_thumbnail_frame.dart';
 import '../../../shared_ui/motion/app_motion.dart';
 import '../../player/presentation/player_page.dart';
-import '../domain/editor_preview_style.dart';
+import '../domain/editor_source.dart';
 import '../domain/editor_trim_utils.dart';
 import 'selfie_sticker_capture_page.dart';
-import '../../../l10n/l10n.dart';
+import 'widgets/editor_active_tool_overlay.dart';
+import 'widgets/editor_drawing_canvas.dart';
+import 'widgets/editor_minimal_header.dart';
+import 'widgets/editor_preview_pane.dart';
+import 'widgets/editor_side_toolbar.dart';
+import 'widgets/editor_text_constants.dart';
+import 'widgets/editor_timeline_bar.dart';
+import 'widgets/tools/editor_drawing_tool.dart';
 
 class EditorDetailPage extends ConsumerStatefulWidget {
   const EditorDetailPage({super.key, required this.source});
@@ -50,17 +54,6 @@ class EditorDetailPage extends ConsumerStatefulWidget {
 
 class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     with TickerProviderStateMixin {
-  static const _textColors = <Color>[
-    Color(0xFFFFFFFF),
-    Color(0xFFFFD54F),
-    Color(0xFFFF8A80),
-    Color(0xFF80D8FF),
-    Color(0xFFA7FFEB),
-    Color(0xFFE1BEE7),
-  ];
-
-  static final _fontFamilies = <String>['Fredoka', 'Baloo', 'Bubblegum Sans'];
-
   late final Player _player;
   late final VideoController _videoController;
   late final EditorAudioPreviewService _audioPreviewService;
@@ -82,6 +75,9 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
   Duration _previewPosition = Duration.zero;
   bool _previewPlaying = false;
   EditorTool? _activeTool;
+  EditorDrawTool _activeDrawTool = EditorDrawTool.pencil;
+  int _drawColorValue = const Color(0xFFFFFFFF).toARGB32();
+  double _drawWidth = 6;
   bool _isExporting = false;
   bool _loopSeekInFlight = false;
   List<EditorStickerAsset> _userStickers = const [];
@@ -236,7 +232,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                 Positioned.fill(
                   child: GestureDetector(
                     onTap: _dismissToolOverlay,
-                    child: _PreviewPane(
+                    child: PreviewPane(
                       palette: palette,
                       videoController: _videoController,
                       session: _session,
@@ -252,6 +248,15 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                         _handleStickerScaleUpdate(details, size, overlay);
                       },
                       onOverlayDeleted: _removeOverlay,
+                      drawingCanvas: _activeTool == EditorTool.draw
+                          ? EditorDrawingCanvas(
+                              strokes: _session.strokes,
+                              activeTool: _activeDrawTool,
+                              colorValue: _drawColorValue,
+                              width: _drawWidth,
+                              onStrokeCompleted: _addStroke,
+                            )
+                          : null,
                     ),
                   ),
                 ),
@@ -264,7 +269,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: timelineMaxWidth),
-                      child: _TimelineBar(
+                      child: TimelineBar(
                         palette: palette,
                         thumbPath: widget.source.thumbPath,
                         session: _session,
@@ -281,7 +286,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                   right: sidebarRight,
                   top: toolbarTop,
                   bottom: toolbarBottom,
-                  child: _SideToolbar(
+                  child: SideToolbar(
                     palette: palette,
                     activeTool: _activeTool,
                     onToolTap: _setActiveTool,
@@ -303,7 +308,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                           position: _overlaySlide,
                           child: FadeTransition(
                             opacity: _overlayFade,
-                            child: _ActiveToolOverlay(
+                            child: ActiveToolOverlay(
                               palette: palette,
                               activeTool: _activeTool!,
                               session: _session,
@@ -322,6 +327,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                                   );
                                 });
                               },
+                              onPlaybackSpeedChanged: _updatePlaybackSpeed,
                               onStickerSelected: _selectSticker,
                               onOpenSelfieStickerCapture:
                                   _openSelfieStickerCapture,
@@ -338,6 +344,14 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                               selectedOverlayId: _selectedOverlayId,
                               onAddTextOverlay: _addTextOverlay,
                               onTextChanged: _updateTextOverlay,
+                              activeDrawTool: _activeDrawTool,
+                              drawColorValue: _drawColorValue,
+                              drawWidth: _drawWidth,
+                              onDrawToolChanged: _setDrawTool,
+                              onDrawColorChanged: _setDrawColor,
+                              onDrawWidthChanged: _setDrawWidth,
+                              onDrawUndo: _undoStroke,
+                              onDrawClear: _clearStrokes,
                             ),
                           ),
                         ),
@@ -350,7 +364,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
                   top: edgeInset,
                   left: edgeInset,
                   right: edgeInset,
-                  child: _MinimalHeader(
+                  child: MinimalHeader(
                     palette: palette,
                     isExporting: _isExporting,
                     onExport: _exportEdit,
@@ -390,6 +404,18 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     await _player.seek(_session.trimRange.start);
     if (!mounted) return;
     setState(() => _previewPosition = _session.trimRange.start);
+  }
+
+  Future<void> _applyPlaybackSpeed() async {
+    await _player.setRate(_session.playbackSpeed);
+  }
+
+  void _updatePlaybackSpeed(double speed) {
+    final clampedSpeed = EditorSession.clampPlaybackSpeed(speed);
+    setState(() {
+      _session = _session.copyWith(playbackSpeed: clampedSpeed);
+    });
+    unawaited(_applyPlaybackSpeed());
   }
 
   void _handlePreviewPosition(Duration position) {
@@ -449,6 +475,40 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
         _selectedOverlayId = null;
       }
     });
+  }
+
+  void _addStroke(EditorStroke stroke) {
+    setState(() {
+      _session = _session.copyWith(strokes: [..._session.strokes, stroke]);
+    });
+  }
+
+  void _undoStroke() {
+    if (_session.strokes.isEmpty) return;
+    setState(() {
+      _session = _session.copyWith(
+        strokes: _session.strokes.take(_session.strokes.length - 1).toList(),
+      );
+    });
+  }
+
+  void _clearStrokes() {
+    if (_session.strokes.isEmpty) return;
+    setState(() {
+      _session = _session.copyWith(strokes: const <EditorStroke>[]);
+    });
+  }
+
+  void _setDrawTool(EditorDrawTool tool) {
+    setState(() => _activeDrawTool = tool);
+  }
+
+  void _setDrawColor(int colorValue) {
+    setState(() => _drawColorValue = colorValue);
+  }
+
+  void _setDrawWidth(double width) {
+    setState(() => _drawWidth = width.clamp(2, 24));
   }
 
   Future<void> _selectMusicTrack(EditorMusicTrackAsset track) async {
@@ -593,6 +653,7 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
     } finally {
       if (mounted) {
         await _player.open(Media(widget.source.filePath), play: false);
+        await _applyPlaybackSpeed();
         await _seekPreviewToTrimStart();
       }
       if (mounted) {
@@ -890,8 +951,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       id: 'text:${DateTime.now().microsecondsSinceEpoch}',
       type: EditorOverlayType.text,
       text: '',
-      fontFamily: _EditorDetailPageState._fontFamilies.first,
-      textColorValue: _EditorDetailPageState._textColors.first.toARGB32(),
+      fontFamily: editorTextToolFontFamilies.first,
+      textColorValue: editorTextToolColors.first.toARGB32(),
       textSize: 44,
       transform: const StickerTransform(position: Offset(0.5, 0.5)),
     );
@@ -978,7 +1039,8 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
       setState(() => _probeDisplayAspectRatio = probe.displayAspectRatio);
     }
     if (!mounted) return;
-    _player.open(Media(widget.source.filePath));
+    await _player.open(Media(widget.source.filePath));
+    await _applyPlaybackSpeed();
   }
 
   double _resolvedVideoAspectRatio() {
@@ -1070,2857 +1132,141 @@ class _EditorDetailPageState extends ConsumerState<EditorDetailPage>
 
 // ── Minimal Header ──────────────────────────────────────────────────────
 
-class _MinimalHeader extends StatelessWidget {
-  const _MinimalHeader({
-    required this.palette,
-    required this.isExporting,
-    required this.onExport,
-  });
-
-  final KidPalette palette;
-  final bool isExporting;
-  final VoidCallback onExport;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _FrostedCircleButton(
-          palette: palette,
-          onTap: () => Navigator.of(context).pop(),
-          child: Icon(
-            Icons.arrow_back_rounded,
-            color: palette.mediaInk,
-            size: AppIconSize.xl,
-          ),
-        ),
-        const Spacer(),
-        _FrostedPillButton(
-          palette: palette,
-          onTap: isExporting ? null : onExport,
-          accentGradient: LinearGradient(
-            colors: [
-              palette.accent.withValues(alpha: 0.7),
-              palette.accentSecondary.withValues(alpha: 0.7),
-            ],
-          ),
-          icon: isExporting
-              ? SizedBox(
-                  width: AppIconSize.md,
-                  height: AppIconSize.md,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(palette.mediaInk),
-                  ),
-                )
-              : Icon(
-                  Icons.file_upload_outlined,
-                  color: palette.mediaInk,
-                  size: AppIconSize.lg,
-                ),
-          label: isExporting
-              ? context.l10n.editorActionExporting
-              : context.l10n.editorActionExport,
-        ),
-      ],
-    );
-  }
+@visibleForTesting
+Widget buildEditorDetailPageSideToolbarForTest({
+  required KidPalette palette,
+  required EditorTool? activeTool,
+  required ValueChanged<EditorTool?> onToolTap,
+  bool isTablet = false,
+  bool isCompact = false,
+}) {
+  return SideToolbar(
+    palette: palette,
+    activeTool: activeTool,
+    onToolTap: onToolTap,
+    isTablet: isTablet,
+    isCompact: isCompact,
+  );
 }
 
-class _FrostedCircleButton extends StatelessWidget {
-  const _FrostedCircleButton({
-    required this.palette,
-    required this.child,
-    this.onTap,
-  });
-
-  final KidPalette palette;
-  final Widget child;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: AppRadii.xxlAll,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: palette.mediaSurface,
-              shape: BoxShape.circle,
-              border: Border.all(color: palette.mediaBorder),
-            ),
-            child: Center(child: child),
-          ),
-        ),
-      ),
-    );
-  }
+@visibleForTesting
+Widget buildEditorDetailPageTimelineBarForTest({
+  required KidPalette palette,
+  required String? thumbPath,
+  required EditorSession session,
+  required bool isTrimActive,
+  required Duration previewPosition,
+  required ValueChanged<RangeValues> onTrimChanged,
+}) {
+  return TimelineBar(
+    palette: palette,
+    thumbPath: thumbPath,
+    session: session,
+    isTrimActive: isTrimActive,
+    previewPosition: previewPosition,
+    onTrimChanged: onTrimChanged,
+  );
 }
 
-class _FrostedPillButton extends StatelessWidget {
-  const _FrostedPillButton({
-    required this.palette,
-    required this.icon,
-    required this.label,
-    this.onTap,
-    this.accentGradient,
-  });
-
-  final KidPalette palette;
-  final Widget icon;
-  final String label;
-  final VoidCallback? onTap;
-  final Gradient? accentGradient;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: AppRadii.xxlAll,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-            decoration: BoxDecoration(
-              gradient: accentGradient,
-              color: accentGradient == null ? palette.mediaSurface : null,
-              borderRadius: AppRadii.xxlAll,
-              border: Border.all(color: palette.mediaBorder),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                icon,
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: palette.mediaInk,
-                    fontWeight: FontWeight.w700,
-                    fontSize: AppTextSize.body,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Side Toolbar ────────────────────────────────────────────────────────
-
-class _SideToolbar extends StatelessWidget {
-  const _SideToolbar({
-    required this.palette,
-    required this.activeTool,
-    required this.onToolTap,
-    this.isTablet = false,
-    this.isCompact = false,
-  });
-
-  final KidPalette palette;
-  final EditorTool? activeTool;
-  final ValueChanged<EditorTool?> onToolTap;
-  final bool isTablet;
-  final bool isCompact;
-
-  static const _tools = EditorTool.values;
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = isCompact ? 2.0 : (isTablet ? 10.0 : 6.0);
-    final toolbar = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < _tools.length; i++) ...[
-          if (i > 0) SizedBox(height: spacing),
-          _SideToolButton(
-            palette: palette,
-            tool: _tools[i],
-            isActive: activeTool == _tools[i],
-            onTap: () => onToolTap(_tools[i]),
-            isTablet: isTablet,
-            isCompact: isCompact,
-          ),
-        ],
-      ],
-    );
-
-    if (!isCompact) {
-      return Center(child: toolbar);
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final minHeight = constraints.hasBoundedHeight
-            ? constraints.maxHeight
-            : 0.0;
-        return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: minHeight),
-            child: Center(child: toolbar),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SideToolButton extends StatelessWidget {
-  const _SideToolButton({
-    required this.palette,
-    required this.tool,
-    required this.isActive,
-    required this.onTap,
-    this.isTablet = false,
-    this.isCompact = false,
-  });
-
-  final KidPalette palette;
-  final EditorTool tool;
-  final bool isActive;
-  final VoidCallback onTap;
-  final bool isTablet;
-  final bool isCompact;
-
-  @override
-  Widget build(BuildContext context) {
-    final btnSize = isCompact ? 44.0 : (isTablet ? 60.0 : 52.0);
-    final iconSize = isCompact ? 22.0 : (isTablet ? 28.0 : 24.0);
-    final labelSize = isTablet ? 11.0 : 10.0;
-    final label = _labelFor(tool, context);
-
-    return Tooltip(
-      message: label,
-      child: Semantics(
-        button: true,
-        label: label,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedScale(
-                scale: isActive ? 1.1 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(btnSize / 2),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      width: btnSize,
-                      height: btnSize,
-                      decoration: BoxDecoration(
-                        gradient: isActive
-                            ? LinearGradient(
-                                colors: [
-                                  palette.accent,
-                                  palette.accentSecondary,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : null,
-                        color: isActive ? null : palette.mediaSurface,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isActive
-                              ? palette.mediaBorderStrong
-                              : palette.mediaBorder,
-                        ),
-                        boxShadow: isActive
-                            ? [
-                                BoxShadow(
-                                  color: palette.accent.withValues(alpha: 0.4),
-                                  blurRadius: 12,
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Icon(
-                        _iconFor(tool),
-                        color: palette.mediaInk,
-                        size: iconSize,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (!isCompact) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isActive ? palette.mediaInk : palette.mediaMutedInk,
-                    fontSize: labelSize,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    shadows: [Shadow(blurRadius: 6, color: palette.mediaScrim)],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  static IconData _iconFor(EditorTool tool) {
-    return switch (tool) {
-      EditorTool.trim => Icons.content_cut_rounded,
-      EditorTool.effects => Icons.auto_awesome_rounded,
-      EditorTool.overlays => Icons.face_retouching_natural,
-      EditorTool.audio => Icons.music_note_rounded,
-      EditorTool.text => Icons.text_fields_rounded,
-    };
-  }
-
-  static String _labelFor(EditorTool tool, BuildContext context) {
-    return switch (tool) {
-      EditorTool.trim => context.l10n.editorToolTrim,
-      EditorTool.effects => context.l10n.editorToolEffects,
-      EditorTool.overlays => context.l10n.editorToolStickers,
-      EditorTool.audio => context.l10n.editorToolAudio,
-      EditorTool.text => context.l10n.editorToolText,
-    };
-  }
-}
-
-// ── Timeline Bar ────────────────────────────────────────────────────────
-
-class _TimelineBar extends StatelessWidget {
-  const _TimelineBar({
-    required this.palette,
-    required this.thumbPath,
-    required this.session,
-    required this.isTrimActive,
-    required this.previewPosition,
-    required this.onTrimChanged,
-  });
-
-  final KidPalette palette;
-  final String? thumbPath;
-  final EditorSession session;
-  final bool isTrimActive;
-  final Duration previewPosition;
-  final ValueChanged<RangeValues> onTrimChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final normalizedTrim = normalizeEditorTrim(
-      rawVideoDuration: session.videoDuration,
-      rawTrimRange: session.trimRange,
-    );
-    final progressFraction = session.videoDuration.inMilliseconds > 0
-        ? (previewPosition.inMilliseconds /
-                  session.videoDuration.inMilliseconds)
-              .clamp(0.0, 1.0)
-        : 0.0;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      height: isTrimActive ? 96 : 54,
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadii.lg),
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: palette.mediaSurface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppRadii.lg),
-              ),
-              border: Border(top: BorderSide(color: palette.mediaBorder)),
-            ),
-            child: Column(
-              children: [
-                if (isTrimActive) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          _formatDuration(normalizedTrim.trimRange.start),
-                          style: TextStyle(
-                            color: palette.mediaMutedInk,
-                            fontSize: AppTextSize.caption,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.xs,
-                          ),
-                          decoration: BoxDecoration(
-                            color: palette.accent.withValues(alpha: 0.3),
-                            borderRadius: AppRadii.mdAll,
-                          ),
-                          child: Text(
-                            context.l10n.editorTrimKeepDuration(
-                              _formatDuration(
-                                normalizedTrim.trimRange.duration,
-                              ),
-                            ),
-                            style: TextStyle(
-                              color: palette.accentSecondary,
-                              fontSize: AppTextSize.caption,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          _formatDuration(normalizedTrim.trimRange.end),
-                          style: TextStyle(
-                            color: palette.mediaMutedInk,
-                            fontSize: AppTextSize.caption,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderThemeData(
-                        rangeThumbShape: const RoundRangeSliderThumbShape(
-                          enabledThumbRadius: 8,
-                        ),
-                        activeTrackColor: palette.accent,
-                        inactiveTrackColor: palette.mediaSurfaceSubtle,
-                        thumbColor: palette.mediaInk,
-                        overlayColor: palette.accent.withValues(alpha: 0.2),
-                      ),
-                      child: RangeSlider(
-                        values: normalizedTrim.sliderValues,
-                        min: 0,
-                        max: 1,
-                        onChanged: onTrimChanged,
-                      ),
-                    ),
-                  ),
-                ],
-                if (!isTrimActive)
-                  Expanded(
-                    child: _TimelineStripContent(
-                      thumbPath: thumbPath,
-                      palette: palette,
-                      progressFraction: progressFraction,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
-}
-
-class _TimelineStripContent extends StatelessWidget {
-  const _TimelineStripContent({
-    required this.thumbPath,
-    required this.palette,
-    required this.progressFraction,
-  });
-
-  final String? thumbPath;
-  final KidPalette palette;
-  final double progressFraction;
-
-  @override
-  Widget build(BuildContext context) {
-    final thumbFile = thumbPath == null || thumbPath!.isEmpty
-        ? null
-        : File(thumbPath!);
-    final hasThumb = thumbFile?.existsSync() == true;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.sm,
-              ),
-              child: Row(
-                children: List.generate(8, (index) {
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: index == 7 ? 0 : AppSpacing.xs,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: AppRadii.xsAll,
-                        child: SizedBox(
-                          height: 36,
-                          child: hasThumb
-                              ? MediaThumbnailFrame(
-                                  file: thumbFile!,
-                                  borderRadius: AppRadii.xsAll,
-                                  background: LinearGradient(
-                                    colors: [
-                                      palette.mediaSurfaceStrong,
-                                      palette.mediaSurface,
-                                    ],
-                                  ),
-                                  padding: const EdgeInsets.all(AppSpacing.xs),
-                                )
-                              : DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        palette.accent.withValues(alpha: 0.25),
-                                        palette.accentSecondary.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  child: const SizedBox.expand(),
-                                ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-            Positioned(
-              left: 8 + (progressFraction * (constraints.maxWidth - 16)),
-              top: 4,
-              bottom: 4,
-              child: Container(
-                width: 2.5,
-                decoration: BoxDecoration(
-                  color: palette.mediaInk,
-                  borderRadius: AppRadii.pillAll,
-                  boxShadow: [
-                    BoxShadow(color: palette.mediaScrim, blurRadius: 4),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-// ── Active Tool Overlay ─────────────────────────────────────────────────
-
-class _ActiveToolOverlay extends StatelessWidget {
-  const _ActiveToolOverlay({
-    required this.palette,
-    required this.activeTool,
-    required this.session,
-    required this.onFilterChanged,
-    required this.onAdjustmentsChanged,
-    required this.onStickerSelected,
-    required this.onOpenSelfieStickerCapture,
-    required this.userStickers,
-    required this.onDeleteUserSticker,
-    required this.onMusicSelected,
-    required this.onMusicRemoved,
-    required this.onMusicVolumeChanged,
-    required this.onMusicPreviewToggled,
-    required this.previewingTrackId,
-    required this.cachedAudioTrackIds,
-    required this.downloadingAudioTrackIds,
-    required this.selectedOverlayId,
-    required this.onAddTextOverlay,
-    required this.onTextChanged,
-    this.isTablet = false,
-  });
-
-  final KidPalette palette;
-  final EditorTool activeTool;
-  final EditorSession session;
-  final ValueChanged<String> onFilterChanged;
-  final ValueChanged<EditorAdjustments> onAdjustmentsChanged;
-  final void Function(String stickerId, String assetPath) onStickerSelected;
-  final Future<void> Function() onOpenSelfieStickerCapture;
-  final List<EditorStickerAsset> userStickers;
-  final Future<void> Function(EditorStickerAsset sticker) onDeleteUserSticker;
-  final Future<void> Function(EditorMusicTrackAsset track) onMusicSelected;
-  final VoidCallback onMusicRemoved;
-  final ValueChanged<double> onMusicVolumeChanged;
-  final Future<void> Function(EditorMusicTrackAsset track)
-  onMusicPreviewToggled;
-  final String? previewingTrackId;
-  final Set<String> cachedAudioTrackIds;
-  final Set<String> downloadingAudioTrackIds;
-  final String? selectedOverlayId;
-  final VoidCallback onAddTextOverlay;
-  final void Function({
+@visibleForTesting
+Widget buildEditorDetailPageActiveToolOverlayForTest({
+  required KidPalette palette,
+  required EditorTool activeTool,
+  required EditorSession session,
+  required ValueChanged<String> onFilterChanged,
+  required ValueChanged<EditorAdjustments> onAdjustmentsChanged,
+  ValueChanged<double>? onPlaybackSpeedChanged,
+  required void Function(String stickerId, String assetPath) onStickerSelected,
+  required Future<void> Function() onOpenSelfieStickerCapture,
+  required List<EditorStickerAsset> userStickers,
+  required Future<void> Function(EditorStickerAsset sticker)
+  onDeleteUserSticker,
+  required Future<void> Function(EditorMusicTrackAsset track) onMusicSelected,
+  required VoidCallback onMusicRemoved,
+  required ValueChanged<double> onMusicVolumeChanged,
+  required Future<void> Function(EditorMusicTrackAsset track)
+  onMusicPreviewToggled,
+  required String? previewingTrackId,
+  required Set<String> cachedAudioTrackIds,
+  required Set<String> downloadingAudioTrackIds,
+  required String? selectedOverlayId,
+  required VoidCallback onAddTextOverlay,
+  required void Function({
     required String overlayId,
     String? text,
     String? fontFamily,
     Color? color,
     double? textSize,
   })
-  onTextChanged;
-  final bool isTablet;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: AppRadii.xlAll,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight:
-                activeTool == EditorTool.overlays ||
-                    activeTool == EditorTool.audio
-                ? (isTablet ? 360 : 310)
-                : (isTablet ? 260 : 210),
-          ),
-          decoration: BoxDecoration(
-            color: palette.mediaSurfaceStrong,
-            borderRadius: AppRadii.xlAll,
-            border: Border.all(color: palette.mediaBorder),
-          ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _buildToolContent(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolContent() {
-    return switch (activeTool) {
-      EditorTool.trim => const SizedBox.shrink(),
-      EditorTool.effects => _CompactEffectsTool(
-        key: const ValueKey('effects'),
-        palette: palette,
-        session: session,
-        onFilterChanged: onFilterChanged,
-        onAdjustmentsChanged: onAdjustmentsChanged,
-      ),
-      EditorTool.overlays => _CompactOverlayTool(
-        key: const ValueKey('overlays'),
-        palette: palette,
-        session: session,
-        onStickerSelected: onStickerSelected,
-        onOpenSelfieStickerCapture: onOpenSelfieStickerCapture,
-        userStickers: userStickers,
-        onDeleteUserSticker: onDeleteUserSticker,
-      ),
-      EditorTool.audio => _CompactAudioTool(
-        key: const ValueKey('audio'),
-        palette: palette,
-        session: session,
-        onMusicSelected: onMusicSelected,
-        onMusicRemoved: onMusicRemoved,
-        onMusicVolumeChanged: onMusicVolumeChanged,
-        onMusicPreviewToggled: onMusicPreviewToggled,
-        previewingTrackId: previewingTrackId,
-        cachedTrackIds: cachedAudioTrackIds,
-        downloadingTrackIds: downloadingAudioTrackIds,
-      ),
-      EditorTool.text => _CompactTextTool(
-        key: const ValueKey('text'),
-        palette: palette,
-        session: session,
-        selectedOverlayId: selectedOverlayId,
-        onAddTextOverlay: onAddTextOverlay,
-        onTextChanged: onTextChanged,
-      ),
-    };
-  }
-}
-
-// ── Compact Effects Tool ────────────────────────────────────────────────
-
-class _CompactEffectsTool extends StatelessWidget {
-  const _CompactEffectsTool({
-    super.key,
-    required this.palette,
-    required this.session,
-    required this.onFilterChanged,
-    required this.onAdjustmentsChanged,
-  });
-
-  final KidPalette palette;
-  final EditorSession session;
-  final ValueChanged<String> onFilterChanged;
-  final ValueChanged<EditorAdjustments> onAdjustmentsChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) {
-                  final preset = EditorResourceCatalog.filterPresets[index];
-                  final selected = session.filterPresetId == preset.id;
-                  return GestureDetector(
-                    onTap: () => onFilterChanged(preset.id),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: selected
-                            ? LinearGradient(
-                                colors: [
-                                  palette.accent,
-                                  palette.accentSecondary,
-                                ],
-                              )
-                            : null,
-                        color: selected ? null : palette.mediaSurfaceSubtle,
-                        borderRadius: AppRadii.xlAll,
-                      ),
-                      child: Text(
-                        _localizedFilterPresetLabel(preset.id, context),
-                        style: TextStyle(
-                          color: palette.mediaInk,
-                          fontSize: AppTextSize.label,
-                          fontWeight: selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: AppSpacing.sm),
-                itemCount: EditorResourceCatalog.filterPresets.length,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _CompactSlider(
-              palette: palette,
-              label: context.l10n.editorBrightness,
-              value: session.adjustments.brightness,
-              min: -1,
-              max: 1,
-              onChanged: (v) => onAdjustmentsChanged(
-                session.adjustments.copyWith(brightness: v),
-              ),
-            ),
-            _CompactSlider(
-              palette: palette,
-              label: context.l10n.editorContrast,
-              value: session.adjustments.contrast,
-              min: 0.5,
-              max: 1.8,
-              onChanged: (v) => onAdjustmentsChanged(
-                session.adjustments.copyWith(contrast: v),
-              ),
-            ),
-            _CompactSlider(
-              palette: palette,
-              label: context.l10n.editorSaturation,
-              value: session.adjustments.saturation,
-              min: 0,
-              max: 2,
-              onChanged: (v) => onAdjustmentsChanged(
-                session.adjustments.copyWith(saturation: v),
-              ),
-            ),
-            _CompactSlider(
-              palette: palette,
-              label: context.l10n.editorSharpness,
-              value: session.adjustments.sharpness,
-              min: 0,
-              max: 1,
-              onChanged: (v) => onAdjustmentsChanged(
-                session.adjustments.copyWith(sharpness: v),
-              ),
-            ),
-            _CompactSlider(
-              palette: palette,
-              label: context.l10n.editorVignette,
-              value: session.adjustments.vignette,
-              min: 0,
-              max: 1,
-              onChanged: (v) => onAdjustmentsChanged(
-                session.adjustments.copyWith(vignette: v),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CompactSlider extends StatelessWidget {
-  const _CompactSlider({
-    required this.palette,
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-  });
-
-  final KidPalette palette;
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 28,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 72,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: palette.mediaMutedInk,
-                fontSize: AppTextSize.label,
-              ),
-            ),
-          ),
-          Expanded(
-            child: SliderTheme(
-              data: SliderThemeData(
-                trackHeight: 2,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                activeTrackColor: palette.mediaMutedInk,
-                inactiveTrackColor: palette.mediaSurfaceSubtle,
-                thumbColor: palette.mediaInk,
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-              ),
-              child: Slider(
-                value: value.clamp(min, max),
-                min: min,
-                max: max,
-                onChanged: onChanged,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 36,
-            child: Text(
-              value.toStringAsFixed(1),
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: palette.mediaSubtleInk,
-                fontSize: AppTextSize.caption,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Compact Overlay (Stickers) Tool ─────────────────────────────────────
-
-class _CompactOverlayTool extends StatefulWidget {
-  const _CompactOverlayTool({
-    super.key,
-    required this.palette,
-    required this.session,
-    required this.onStickerSelected,
-    required this.onOpenSelfieStickerCapture,
-    required this.userStickers,
-    required this.onDeleteUserSticker,
-  });
-
-  final KidPalette palette;
-  final EditorSession session;
-  final void Function(String stickerId, String assetPath) onStickerSelected;
-  final Future<void> Function() onOpenSelfieStickerCapture;
-  final List<EditorStickerAsset> userStickers;
-  final Future<void> Function(EditorStickerAsset sticker) onDeleteUserSticker;
-
-  @override
-  State<_CompactOverlayTool> createState() => _CompactOverlayToolState();
-}
-
-class _CompactOverlayToolState extends State<_CompactOverlayTool> {
-  final TextEditingController _searchController = TextEditingController();
-  String _query = '';
-  String _categoryId = _StickerCategory.all.id;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final stickerItems = [
-      for (final sticker in widget.userStickers)
-        _StickerPickerItem(sticker: sticker, isUserSticker: true),
-      for (final sticker in EditorResourceCatalog.builtInStickerAssets)
-        _StickerPickerItem(sticker: sticker, isUserSticker: false),
-    ];
-    final categories = _StickerCategory.visibleFor(
-      hasUserStickers: widget.userStickers.isNotEmpty,
-    );
-    final selectedCategory = categories.firstWhere(
-      (category) => category.id == _categoryId,
-      orElse: () => _StickerCategory.all,
-    );
-    final normalizedQuery = _query.trim().toLowerCase();
-    final filteredStickers = stickerItems
-        .where((item) {
-          if (!selectedCategory.matches(item)) return false;
-          if (normalizedQuery.isEmpty) return true;
-          final label = item.sticker.label.toLowerCase();
-          final id = item.sticker.id.toLowerCase().replaceAll('_', ' ');
-          return label.contains(normalizedQuery) ||
-              id.contains(normalizedQuery);
-        })
-        .toList(growable: false);
-    final visibleItems = [
-      _StickerPickerEntry.selfie,
-      for (final item in filteredStickers) _StickerPickerEntry.sticker(item),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.max,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _StickerToolHeader(
-            palette: widget.palette,
-            controller: _searchController,
-            onQueryChanged: (value) => setState(() => _query = value),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 34,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final isSelected = category.id == selectedCategory.id;
-                return _StickerCategoryChip(
-                  palette: widget.palette,
-                  label: category.localizedLabel(context),
-                  isSelected: isSelected,
-                  onTap: () => setState(() => _categoryId = category.id),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Expanded(
-            child: visibleItems.length == 1
-                ? _StickerEmptyState(palette: widget.palette, query: _query)
-                : GridView.builder(
-                    padding: EdgeInsets.zero,
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 64,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                        ),
-                    itemCount: visibleItems.length,
-                    itemBuilder: (context, index) {
-                      final entry = visibleItems[index];
-                      if (entry.isSelfie) {
-                        return _StickerTile(
-                          palette: widget.palette,
-                          onTap: widget.onOpenSelfieStickerCapture,
-                          child: Icon(
-                            Icons.photo_camera_front_rounded,
-                            color: widget.palette.accentSecondary,
-                            size: AppIconSize.xl,
-                          ),
-                        );
-                      }
-
-                      final item = entry.item!;
-                      final sticker = item.sticker;
-                      final isBundled = sticker.assetPath.startsWith('assets/');
-                      return _StickerTile(
-                        palette: widget.palette,
-                        onTap: () => widget.onStickerSelected(
-                          sticker.id,
-                          sticker.assetPath,
-                        ),
-                        onLongPress: item.isUserSticker
-                            ? () => widget.onDeleteUserSticker(sticker)
-                            : null,
-                        child: isBundled
-                            ? Image.asset(
-                                sticker.assetPath,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) =>
-                                    _StickerLoadErrorIcon(
-                                      palette: widget.palette,
-                                    ),
-                              )
-                            : Image.file(
-                                File(sticker.assetPath),
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) =>
-                                    _StickerLoadErrorIcon(
-                                      palette: widget.palette,
-                                    ),
-                              ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StickerToolHeader extends StatelessWidget {
-  const _StickerToolHeader({
-    required this.palette,
-    required this.controller,
-    required this.onQueryChanged,
-  });
-
-  final KidPalette palette;
-  final TextEditingController controller;
-  final ValueChanged<String> onQueryChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 38,
-      child: TextField(
-        controller: controller,
-        onChanged: onQueryChanged,
-        textInputAction: TextInputAction.search,
-        style: TextStyle(
-          color: palette.mediaInk,
-          fontSize: AppTextSize.body,
-          fontWeight: FontWeight.w600,
-        ),
-        decoration: InputDecoration(
-          hintText: context.l10n.editorSearchStickers,
-          hintStyle: TextStyle(
-            color: palette.mediaSubtleInk,
-            fontSize: AppTextSize.body,
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: palette.mediaSubtleInk,
-            size: AppIconSize.lg,
-          ),
-          suffixIcon: controller.text.isEmpty
-              ? null
-              : IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    Icons.close_rounded,
-                    color: palette.mediaMutedInk,
-                    size: AppIconSize.md,
-                  ),
-                  onPressed: () {
-                    controller.clear();
-                    onQueryChanged('');
-                  },
-                ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          filled: true,
-          fillColor: palette.mediaSurfaceSubtle,
-          border: OutlineInputBorder(
-            borderRadius: AppRadii.smAll,
-            borderSide: BorderSide(color: palette.mediaBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: AppRadii.smAll,
-            borderSide: BorderSide(color: palette.mediaBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: AppRadii.smAll,
-            borderSide: BorderSide(color: palette.mediaBorderStrong),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StickerCategoryChip extends StatelessWidget {
-  const _StickerCategoryChip({
-    required this.palette,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final KidPalette palette;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? palette.accent.withValues(alpha: 0.28)
-              : palette.mediaSurfaceSubtle,
-          borderRadius: AppRadii.smAll,
-          border: Border.all(
-            color: isSelected
-                ? palette.accentSecondary.withValues(alpha: 0.55)
-                : palette.mediaBorder,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? palette.mediaInk : palette.mediaMutedInk,
-            fontSize: AppTextSize.label,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StickerTile extends StatelessWidget {
-  const _StickerTile({
-    required this.palette,
-    required this.onTap,
-    required this.child,
-    this.onLongPress,
-  });
-
-  final KidPalette palette;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        decoration: BoxDecoration(
-          color: palette.mediaSurfaceSubtle,
-          borderRadius: AppRadii.smAll,
-          border: Border.all(color: palette.mediaBorder),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _StickerLoadErrorIcon extends StatelessWidget {
-  const _StickerLoadErrorIcon({required this.palette});
-
-  final KidPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return Icon(
-      Icons.image_not_supported_outlined,
-      color: palette.mediaSubtleInk,
-      size: AppIconSize.xl,
-    );
-  }
-}
-
-class _StickerEmptyState extends StatelessWidget {
-  const _StickerEmptyState({required this.palette, required this.query});
-
-  final KidPalette palette;
-  final String query;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        query.trim().isEmpty
-            ? context.l10n.editorNoStickersHereYet
-            : context.l10n.editorNoMatchingStickers,
-        style: TextStyle(
-          color: palette.mediaSubtleInk,
-          fontSize: AppTextSize.label,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _StickerPickerItem {
-  const _StickerPickerItem({
-    required this.sticker,
-    required this.isUserSticker,
-  });
-
-  final EditorStickerAsset sticker;
-  final bool isUserSticker;
-}
-
-class _StickerPickerEntry {
-  const _StickerPickerEntry._({required this.isSelfie, this.item});
-
-  const _StickerPickerEntry.sticker(_StickerPickerItem item)
-    : this._(isSelfie: false, item: item);
-
-  static const selfie = _StickerPickerEntry._(isSelfie: true);
-
-  final bool isSelfie;
-  final _StickerPickerItem? item;
-}
-
-class _StickerCategory {
-  const _StickerCategory({
-    required this.id,
-    required this.label,
-    required this.matches,
-  });
-
-  final String id;
-  final String label;
-  final bool Function(_StickerPickerItem item) matches;
-
-  static const all = _StickerCategory(
-    id: 'all',
-    label: 'All',
-    matches: _matchAll,
+  onTextChanged,
+  EditorDrawTool activeDrawTool = EditorDrawTool.pencil,
+  int drawColorValue = 0xFFFFFFFF,
+  double drawWidth = 6,
+  ValueChanged<EditorDrawTool>? onDrawToolChanged,
+  ValueChanged<int>? onDrawColorChanged,
+  ValueChanged<double>? onDrawWidthChanged,
+  VoidCallback? onDrawUndo,
+  VoidCallback? onDrawClear,
+  bool isTablet = false,
+}) {
+  return ActiveToolOverlay(
+    palette: palette,
+    activeTool: activeTool,
+    session: session,
+    onFilterChanged: onFilterChanged,
+    onAdjustmentsChanged: onAdjustmentsChanged,
+    onPlaybackSpeedChanged: onPlaybackSpeedChanged ?? (_) {},
+    onStickerSelected: onStickerSelected,
+    onOpenSelfieStickerCapture: onOpenSelfieStickerCapture,
+    userStickers: userStickers,
+    onDeleteUserSticker: onDeleteUserSticker,
+    onMusicSelected: onMusicSelected,
+    onMusicRemoved: onMusicRemoved,
+    onMusicVolumeChanged: onMusicVolumeChanged,
+    onMusicPreviewToggled: onMusicPreviewToggled,
+    previewingTrackId: previewingTrackId,
+    cachedAudioTrackIds: cachedAudioTrackIds,
+    downloadingAudioTrackIds: downloadingAudioTrackIds,
+    selectedOverlayId: selectedOverlayId,
+    onAddTextOverlay: onAddTextOverlay,
+    onTextChanged: onTextChanged,
+    activeDrawTool: activeDrawTool,
+    drawColorValue: drawColorValue,
+    drawWidth: drawWidth,
+    onDrawToolChanged: onDrawToolChanged ?? (_) {},
+    onDrawColorChanged: onDrawColorChanged ?? (_) {},
+    onDrawWidthChanged: onDrawWidthChanged ?? (_) {},
+    onDrawUndo: onDrawUndo ?? () {},
+    onDrawClear: onDrawClear ?? () {},
+    isTablet: isTablet,
   );
+}
 
-  static const _user = _StickerCategory(
-    id: 'yours',
-    label: 'Yours',
-    matches: _matchUser,
+@visibleForTesting
+Widget buildEditorDrawingToolForTest({
+  required KidPalette palette,
+  required EditorDrawTool activeDrawTool,
+  required int drawColorValue,
+  required double drawWidth,
+  required bool canUndo,
+  required bool canClear,
+  required ValueChanged<EditorDrawTool> onDrawToolChanged,
+  required ValueChanged<int> onDrawColorChanged,
+  required ValueChanged<double> onDrawWidthChanged,
+  required VoidCallback onDrawUndo,
+  required VoidCallback onDrawClear,
+}) {
+  return CompactDrawingTool(
+    palette: palette,
+    activeTool: activeDrawTool,
+    colorValue: drawColorValue,
+    width: drawWidth,
+    canUndo: canUndo,
+    canClear: canClear,
+    onToolChanged: onDrawToolChanged,
+    onColorChanged: onDrawColorChanged,
+    onWidthChanged: onDrawWidthChanged,
+    onUndo: onDrawUndo,
+    onClear: onDrawClear,
   );
-
-  static const _originals = _StickerCategory(
-    id: 'originals',
-    label: 'Originals',
-    matches: _matchOriginal,
-  );
-
-  static const _faces = _StickerCategory(
-    id: 'faces',
-    label: 'Faces',
-    matches: _matchFaces,
-  );
-
-  static const _hearts = _StickerCategory(
-    id: 'hearts',
-    label: 'Hearts',
-    matches: _matchHearts,
-  );
-
-  static const _party = _StickerCategory(
-    id: 'party',
-    label: 'Party',
-    matches: _matchParty,
-  );
-
-  static const _animals = _StickerCategory(
-    id: 'animals',
-    label: 'Animals',
-    matches: _matchAnimals,
-  );
-
-  static const _food = _StickerCategory(
-    id: 'food',
-    label: 'Food',
-    matches: _matchFood,
-  );
-
-  static const _sports = _StickerCategory(
-    id: 'sports',
-    label: 'Sports',
-    matches: _matchSports,
-  );
-
-  static const _objects = _StickerCategory(
-    id: 'objects',
-    label: 'Objects',
-    matches: _matchObjects,
-  );
-
-  static const _travel = _StickerCategory(
-    id: 'travel',
-    label: 'Travel',
-    matches: _matchTravel,
-  );
-
-  static List<_StickerCategory> visibleFor({required bool hasUserStickers}) {
-    return [
-      all,
-      if (hasUserStickers) _user,
-      _originals,
-      _faces,
-      _hearts,
-      _party,
-      _animals,
-      _food,
-      _sports,
-      _objects,
-      _travel,
-    ];
-  }
-
-  String localizedLabel(BuildContext context) => switch (id) {
-    'all' => context.l10n.editorCategoryAll,
-    'yours' => context.l10n.editorCategoryYours,
-    'originals' => context.l10n.editorCategoryOriginals,
-    'faces' => context.l10n.editorCategoryFaces,
-    'hearts' => context.l10n.editorCategoryHearts,
-    'party' => context.l10n.editorCategoryParty,
-    'animals' => context.l10n.editorCategoryAnimals,
-    'food' => context.l10n.editorCategoryFood,
-    'sports' => context.l10n.editorCategorySports,
-    'objects' => context.l10n.editorCategoryObjects,
-    'travel' => context.l10n.editorCategoryTravel,
-    _ => label,
-  };
-}
-
-bool _matchAll(_StickerPickerItem item) => true;
-
-bool _matchUser(_StickerPickerItem item) => item.isUserSticker;
-
-bool _matchOriginal(_StickerPickerItem item) {
-  return !item.isUserSticker && !item.sticker.id.startsWith('fluent_emoji_');
-}
-
-bool _matchFaces(_StickerPickerItem item) {
-  final label = item.sticker.label.toLowerCase();
-  return label.contains('face') ||
-      label.contains('alien') ||
-      label.contains('clown') ||
-      label.contains('ghost') ||
-      label.contains('robot');
-}
-
-bool _matchHearts(_StickerPickerItem item) {
-  final label = item.sticker.label.toLowerCase();
-  return label.contains('heart');
-}
-
-bool _matchParty(_StickerPickerItem item) {
-  return _labelMatchesAny(item, const {
-    'party',
-    'confetti',
-    'balloon',
-    'gift',
-    'birthday',
-    'sparkle',
-    'star',
-    'rainbow',
-    'fire',
-    'hundred',
-    'collision',
-    'dizzy',
-    'trophy',
-    'medal',
-  });
-}
-
-bool _matchAnimals(_StickerPickerItem item) {
-  return _labelMatchesAny(item, const {
-    'dog',
-    'cat',
-    'mouse',
-    'hamster',
-    'rabbit',
-    'fox',
-    'bear',
-    'panda',
-    'koala',
-    'tiger',
-    'lion',
-    'cow',
-    'pig',
-    'frog',
-    'monkey',
-    'chicken',
-    'penguin',
-    'bird',
-    'unicorn',
-    'butterfly',
-    'beetle',
-    'turtle',
-    'octopus',
-    'dolphin',
-    'whale',
-    'fish',
-    'shark',
-    'snail',
-  });
-}
-
-bool _matchFood(_StickerPickerItem item) {
-  return _labelMatchesAny(item, const {
-    'pizza',
-    'hamburger',
-    'fries',
-    'hot dog',
-    'taco',
-    'burrito',
-    'popcorn',
-    'doughnut',
-    'cookie',
-    'candy',
-    'lollipop',
-    'ice cream',
-    'cupcake',
-    'watermelon',
-    'strawberry',
-    'banana',
-    'apple',
-    'grapes',
-    'cherries',
-  });
-}
-
-bool _matchSports(_StickerPickerItem item) {
-  return _labelMatchesAny(item, const {
-    'soccer',
-    'basketball',
-    'baseball',
-    'softball',
-    'tennis',
-    'volleyball',
-    'disc',
-    'kite',
-    'yo-yo',
-  });
-}
-
-bool _matchObjects(_StickerPickerItem item) {
-  return _labelMatchesAny(item, const {
-    'game',
-    'joystick',
-    'palette',
-    'music',
-    'microphone',
-    'headphone',
-    'guitar',
-    'drum',
-    'trumpet',
-    'violin',
-    'camera',
-    'movie',
-    'clapper',
-    'television',
-    'laptop',
-    'bulb',
-    'magnet',
-    'gem',
-    'crown',
-    'ring',
-    'sunglasses',
-    'wand',
-  });
-}
-
-bool _matchTravel(_StickerPickerItem item) {
-  return _labelMatchesAny(item, const {
-    'rocket',
-    'saucer',
-    'airplane',
-    'bicycle',
-    'skate',
-  });
-}
-
-bool _labelMatchesAny(_StickerPickerItem item, Set<String> terms) {
-  final label = item.sticker.label.toLowerCase();
-  return terms.any(label.contains);
-}
-
-// ── Compact Audio Tool ──────────────────────────────────────────────────
-
-class _CompactAudioTool extends StatefulWidget {
-  const _CompactAudioTool({
-    super.key,
-    required this.palette,
-    required this.session,
-    required this.onMusicSelected,
-    required this.onMusicRemoved,
-    required this.onMusicVolumeChanged,
-    required this.onMusicPreviewToggled,
-    required this.previewingTrackId,
-    required this.cachedTrackIds,
-    required this.downloadingTrackIds,
-  });
-
-  final KidPalette palette;
-  final EditorSession session;
-  final Future<void> Function(EditorMusicTrackAsset track) onMusicSelected;
-  final VoidCallback onMusicRemoved;
-  final ValueChanged<double> onMusicVolumeChanged;
-  final Future<void> Function(EditorMusicTrackAsset track)
-  onMusicPreviewToggled;
-  final String? previewingTrackId;
-  final Set<String> cachedTrackIds;
-  final Set<String> downloadingTrackIds;
-
-  @override
-  State<_CompactAudioTool> createState() => _CompactAudioToolState();
-}
-
-class _CompactAudioToolState extends State<_CompactAudioTool> {
-  final TextEditingController _searchController = TextEditingController();
-  String _query = '';
-  String _categoryId = _AudioCategory.all.id;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final selection = widget.session.audioSelection;
-    final categories = _AudioCategory.visibleFor(
-      tracks: EditorResourceCatalog.builtInMusicTracks,
-      cachedTrackIds: widget.cachedTrackIds,
-    );
-    final selectedCategory = categories.firstWhere(
-      (category) => category.id == _categoryId,
-      orElse: () => _AudioCategory.all,
-    );
-    final normalizedQuery = _query.trim().toLowerCase();
-    final tracks = EditorResourceCatalog.builtInMusicTracks
-        .where((track) {
-          if (!selectedCategory.matches(track, widget.cachedTrackIds)) {
-            return false;
-          }
-          if (normalizedQuery.isEmpty) {
-            return true;
-          }
-          final searchable = [
-            track.label,
-            track.creator ?? '',
-            track.id.replaceAll('_', ' '),
-            ...track.categories,
-          ].join(' ').toLowerCase();
-          return searchable.contains(normalizedQuery);
-        })
-        .toList(growable: false);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.max,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _AudioToolHeader(
-            palette: widget.palette,
-            controller: _searchController,
-            onQueryChanged: (value) => setState(() => _query = value),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 34,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final isSelected = category.id == selectedCategory.id;
-                return _StickerCategoryChip(
-                  palette: widget.palette,
-                  label: category.localizedLabel(context),
-                  isSelected: isSelected,
-                  onTap: () => setState(() => _categoryId = category.id),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Expanded(
-            child: tracks.isEmpty
-                ? _AudioEmptyState(palette: widget.palette, query: _query)
-                : ListView.separated(
-                    padding: EdgeInsets.zero,
-                    itemCount: tracks.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      final track = tracks[index];
-                      return _AudioTrackRow(
-                        palette: widget.palette,
-                        track: track,
-                        isSelected: selection?.trackId == track.id,
-                        isPreviewing: widget.previewingTrackId == track.id,
-                        isCached: widget.cachedTrackIds.contains(track.id),
-                        isDownloading: widget.downloadingTrackIds.contains(
-                          track.id,
-                        ),
-                        onSelected: () =>
-                            unawaited(widget.onMusicSelected(track)),
-                        onPreview: () =>
-                            unawaited(widget.onMusicPreviewToggled(track)),
-                      );
-                    },
-                  ),
-          ),
-          if (selection != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Icon(
-                  Icons.volume_up_rounded,
-                  color: widget.palette.mediaSubtleInk,
-                  size: AppIconSize.md,
-                ),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderThemeData(
-                      trackHeight: 2,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 6,
-                      ),
-                      activeTrackColor: widget.palette.accentSecondary,
-                      inactiveTrackColor: widget.palette.mediaSurfaceSubtle,
-                      thumbColor: widget.palette.mediaInk,
-                      overlayShape: const RoundSliderOverlayShape(
-                        overlayRadius: 12,
-                      ),
-                    ),
-                    child: Slider(
-                      value: selection.volume,
-                      onChanged: widget.onMusicVolumeChanged,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: widget.onMusicRemoved,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: widget.palette.mediaSurfaceSubtle,
-                      borderRadius: AppRadii.smAll,
-                    ),
-                    child: Text(
-                      context.l10n.actionRemove,
-                      style: TextStyle(
-                        color: widget.palette.mediaMutedInk,
-                        fontSize: AppTextSize.label,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _AudioToolHeader extends StatelessWidget {
-  const _AudioToolHeader({
-    required this.palette,
-    required this.controller,
-    required this.onQueryChanged,
-  });
-
-  final KidPalette palette;
-  final TextEditingController controller;
-  final ValueChanged<String> onQueryChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 38,
-      child: TextField(
-        controller: controller,
-        onChanged: onQueryChanged,
-        textInputAction: TextInputAction.search,
-        style: TextStyle(
-          color: palette.mediaInk,
-          fontSize: AppTextSize.body,
-          fontWeight: FontWeight.w600,
-        ),
-        decoration: InputDecoration(
-          hintText: context.l10n.editorSearchMusic,
-          hintStyle: TextStyle(
-            color: palette.mediaSubtleInk,
-            fontSize: AppTextSize.body,
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: palette.mediaSubtleInk,
-            size: AppIconSize.lg,
-          ),
-          suffixIcon: controller.text.isEmpty
-              ? null
-              : IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    Icons.close_rounded,
-                    color: palette.mediaMutedInk,
-                    size: AppIconSize.md,
-                  ),
-                  onPressed: () {
-                    controller.clear();
-                    onQueryChanged('');
-                  },
-                ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          filled: true,
-          fillColor: palette.mediaSurfaceSubtle,
-          border: OutlineInputBorder(
-            borderRadius: AppRadii.smAll,
-            borderSide: BorderSide(color: palette.mediaBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: AppRadii.smAll,
-            borderSide: BorderSide(color: palette.mediaBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: AppRadii.smAll,
-            borderSide: BorderSide(color: palette.mediaBorderStrong),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AudioTrackRow extends StatelessWidget {
-  const _AudioTrackRow({
-    required this.palette,
-    required this.track,
-    required this.isSelected,
-    required this.isPreviewing,
-    required this.isCached,
-    required this.isDownloading,
-    required this.onSelected,
-    required this.onPreview,
-  });
-
-  final KidPalette palette;
-  final EditorMusicTrackAsset track;
-  final bool isSelected;
-  final bool isPreviewing;
-  final bool isCached;
-  final bool isDownloading;
-  final VoidCallback onSelected;
-  final VoidCallback onPreview;
-
-  @override
-  Widget build(BuildContext context) {
-    final creator = track.creator;
-    final status = track.isBlossomBacked && !isCached
-        ? context.l10n.editorMusicDownload
-        : (track.license ?? context.l10n.editorMusicReady);
-
-    return GestureDetector(
-      onTap: isDownloading ? null : onSelected,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        constraints: const BoxConstraints(minHeight: 56),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  colors: [palette.accent, palette.accentSecondary],
-                )
-              : null,
-          color: isSelected ? null : palette.mediaSurfaceSubtle,
-          borderRadius: AppRadii.smAll,
-          border: Border.all(
-            color: isSelected ? palette.mediaBorderStrong : palette.mediaBorder,
-          ),
-        ),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: isDownloading ? null : onPreview,
-              child: Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: palette.mediaSurface,
-                  borderRadius: AppRadii.smAll,
-                ),
-                child: isDownloading
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: palette.mediaInk,
-                        ),
-                      )
-                    : Icon(
-                        isPreviewing
-                            ? Icons.stop_rounded
-                            : Icons.play_arrow_rounded,
-                        color: palette.mediaInk,
-                        size: AppIconSize.lg,
-                      ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: palette.mediaInk,
-                      fontSize: AppTextSize.label,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (creator != null && creator.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      creator,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.mediaMutedInk,
-                        fontSize: AppTextSize.caption,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Container(
-              constraints: const BoxConstraints(maxWidth: 86),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: palette.mediaSurface,
-                borderRadius: AppRadii.smAll,
-              ),
-              child: Text(
-                isDownloading ? context.l10n.editorMusicLoading : status,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: palette.mediaMutedInk,
-                  fontSize: AppTextSize.micro,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: AppSpacing.xs),
-              Icon(
-                Icons.check_rounded,
-                color: palette.mediaInk,
-                size: AppIconSize.sm,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AudioEmptyState extends StatelessWidget {
-  const _AudioEmptyState({required this.palette, required this.query});
-
-  final KidPalette palette;
-  final String query;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        query.trim().isEmpty
-            ? context.l10n.editorNoMusicHereYet
-            : context.l10n.editorNoMatchingMusic,
-        style: TextStyle(
-          color: palette.mediaSubtleInk,
-          fontSize: AppTextSize.label,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _AudioCategory {
-  const _AudioCategory({
-    required this.id,
-    required this.label,
-    required this.matches,
-  });
-
-  final String id;
-  final String label;
-  final bool Function(EditorMusicTrackAsset track, Set<String> cachedTrackIds)
-  matches;
-
-  static const all = _AudioCategory(
-    id: 'all',
-    label: 'All',
-    matches: _matchAllAudio,
-  );
-
-  static const downloaded = _AudioCategory(
-    id: 'downloaded',
-    label: 'Ready',
-    matches: _matchDownloadedAudio,
-  );
-
-  static const happy = _AudioCategory(
-    id: 'happy',
-    label: 'Happy',
-    matches: _matchHappyAudio,
-  );
-
-  static const energy = _AudioCategory(
-    id: 'energy',
-    label: 'Energy',
-    matches: _matchEnergyAudio,
-  );
-
-  static const chill = _AudioCategory(
-    id: 'chill',
-    label: 'Chill',
-    matches: _matchChillAudio,
-  );
-
-  static const chiptune = _AudioCategory(
-    id: 'chiptune',
-    label: 'Chiptune',
-    matches: _matchChiptuneAudio,
-  );
-
-  static const dramatic = _AudioCategory(
-    id: 'dramatic',
-    label: 'Dramatic',
-    matches: _matchDramaticAudio,
-  );
-
-  static const loops = _AudioCategory(
-    id: 'loops',
-    label: 'Loops',
-    matches: _matchLoopsAudio,
-  );
-
-  static List<_AudioCategory> visibleFor({
-    required List<EditorMusicTrackAsset> tracks,
-    required Set<String> cachedTrackIds,
-  }) {
-    final base = <_AudioCategory>[
-      all,
-      downloaded,
-      happy,
-      energy,
-      chill,
-      chiptune,
-      dramatic,
-      loops,
-    ];
-    return base
-        .where(
-          (category) =>
-              category == all ||
-              tracks.any((track) => category.matches(track, cachedTrackIds)),
-        )
-        .toList(growable: false);
-  }
-
-  String localizedLabel(BuildContext context) => switch (id) {
-    'all' => context.l10n.editorCategoryAll,
-    'downloaded' => context.l10n.editorMusicReady,
-    'happy' => context.l10n.editorMusicHappy,
-    'energy' => context.l10n.editorMusicEnergy,
-    'chill' => context.l10n.editorMusicChill,
-    'chiptune' => context.l10n.editorMusicChiptune,
-    'dramatic' => context.l10n.editorMusicDramatic,
-    'loops' => context.l10n.editorMusicLoops,
-    _ => label,
-  };
-}
-
-String _localizedFilterPresetLabel(String presetId, BuildContext context) =>
-    switch (presetId) {
-      'none' => context.l10n.editorFilterNone,
-      'vivid' => context.l10n.editorFilterVivid,
-      'matte' => context.l10n.editorFilterMatte,
-      'fade' => context.l10n.editorFilterFade,
-      'warm' => context.l10n.editorFilterWarm,
-      'cool' => context.l10n.editorFilterCool,
-      'noir' => context.l10n.editorFilterNoir,
-      _ => presetId,
-    };
-
-bool _matchAllAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
-  return true;
-}
-
-bool _matchDownloadedAudio(
-  EditorMusicTrackAsset track,
-  Set<String> cachedTrackIds,
-) {
-  return cachedTrackIds.contains(track.id);
-}
-
-bool _matchHappyAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
-  return track.categories.contains('happy');
-}
-
-bool _matchEnergyAudio(
-  EditorMusicTrackAsset track,
-  Set<String> cachedTrackIds,
-) {
-  return track.categories.contains('energy');
-}
-
-bool _matchChillAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
-  return track.categories.contains('chill');
-}
-
-bool _matchChiptuneAudio(
-  EditorMusicTrackAsset track,
-  Set<String> cachedTrackIds,
-) {
-  return track.categories.contains('chiptune');
-}
-
-bool _matchDramaticAudio(
-  EditorMusicTrackAsset track,
-  Set<String> cachedTrackIds,
-) {
-  return track.categories.contains('dramatic');
-}
-
-bool _matchLoopsAudio(EditorMusicTrackAsset track, Set<String> cachedTrackIds) {
-  return track.categories.contains('loops');
-}
-
-// ── Compact Text Tool ───────────────────────────────────────────────────
-
-class _CompactTextTool extends StatefulWidget {
-  const _CompactTextTool({
-    super.key,
-    required this.palette,
-    required this.session,
-    required this.selectedOverlayId,
-    required this.onAddTextOverlay,
-    required this.onTextChanged,
-  });
-
-  final KidPalette palette;
-  final EditorSession session;
-  final String? selectedOverlayId;
-  final VoidCallback onAddTextOverlay;
-  final void Function({
-    required String overlayId,
-    String? text,
-    String? fontFamily,
-    Color? color,
-    double? textSize,
-  })
-  onTextChanged;
-
-  @override
-  State<_CompactTextTool> createState() => _CompactTextToolState();
-}
-
-class _CompactTextToolState extends State<_CompactTextTool> {
-  final TextEditingController _controller = TextEditingController();
-  String? _syncedOverlayId;
-
-  EditorOverlayItem? get _selectedText {
-    final id = widget.selectedOverlayId;
-    if (id == null) return null;
-    return widget.session.overlays
-        .where((item) => item.id == id && item.type == EditorOverlayType.text)
-        .firstOrNull;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _syncController(_selectedText);
-  }
-
-  @override
-  void didUpdateWidget(covariant _CompactTextTool oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncController(_selectedText);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _syncController(EditorOverlayItem? overlay) {
-    if (overlay == null) {
-      if (_syncedOverlayId != null) {
-        _controller.text = '';
-        _syncedOverlayId = null;
-      }
-      return;
-    }
-    final incoming = overlay.text ?? '';
-    if (_syncedOverlayId != overlay.id || _controller.text != incoming) {
-      _controller.value = TextEditingValue(
-        text: incoming,
-        selection: TextSelection.collapsed(offset: incoming.length),
-      );
-      _syncedOverlayId = overlay.id;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = _selectedText;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: selected == null
-                      ? Text(
-                          context.l10n.editorTapText,
-                          style: TextStyle(
-                            color: widget.palette.mediaMutedInk,
-                            fontSize: AppTextSize.label,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        )
-                      : TextField(
-                          controller: _controller,
-                          style: TextStyle(
-                            color: widget.palette.mediaInk,
-                            fontSize: AppTextSize.body,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: context.l10n.editorTypeSomething,
-                            hintStyle: TextStyle(
-                              color: widget.palette.mediaSubtleInk,
-                            ),
-                            filled: true,
-                            fillColor: widget.palette.mediaSurfaceSubtle,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.lg,
-                              vertical: AppSpacing.md,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: AppRadii.lgAll,
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                          onChanged: (value) => widget.onTextChanged(
-                            overlayId: selected.id,
-                            text: value,
-                          ),
-                        ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _AddTextButton(
-                  palette: widget.palette,
-                  onTap: widget.onAddTextOverlay,
-                ),
-              ],
-            ),
-            if (selected != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final family
-                        in _EditorDetailPageState._fontFamilies) ...[
-                      GestureDetector(
-                        onTap: () => widget.onTextChanged(
-                          overlayId: selected.id,
-                          fontFamily: family,
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.sm,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: selected.fontFamily == family
-                                ? LinearGradient(
-                                    colors: [
-                                      widget.palette.accent,
-                                      widget.palette.accentSecondary,
-                                    ],
-                                  )
-                                : null,
-                            color: selected.fontFamily == family
-                                ? null
-                                : widget.palette.mediaSurfaceSubtle,
-                            borderRadius: AppRadii.mdAll,
-                          ),
-                          child: Text(
-                            'Aa',
-                            style: TextStyle(
-                              fontFamily: family,
-                              color: widget.palette.mediaInk,
-                              fontSize: AppTextSize.label,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                    ],
-                    const SizedBox(width: AppSpacing.xs),
-                    for (final color in _EditorDetailPageState._textColors) ...[
-                      GestureDetector(
-                        onTap: () => widget.onTextChanged(
-                          overlayId: selected.id,
-                          color: color,
-                        ),
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: selected.textColorValue == color.toARGB32()
-                                  ? widget.palette.mediaInk
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Text(
-                    'Size',
-                    style: TextStyle(
-                      color: widget.palette.mediaSubtleInk,
-                      fontSize: AppTextSize.caption,
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderThemeData(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                        activeTrackColor: widget.palette.mediaMutedInk,
-                        inactiveTrackColor: widget.palette.mediaSurfaceSubtle,
-                        thumbColor: widget.palette.mediaInk,
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 10,
-                        ),
-                      ),
-                      child: Slider(
-                        value: selected.textSize.clamp(24, 96),
-                        min: 24,
-                        max: 96,
-                        onChanged: (value) => widget.onTextChanged(
-                          overlayId: selected.id,
-                          textSize: value,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AddTextButton extends StatelessWidget {
-  const _AddTextButton({required this.palette, required this.onTap});
-
-  final KidPalette palette;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [palette.accent, palette.accentSecondary],
-          ),
-          borderRadius: AppRadii.mdAll,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.add_rounded,
-              color: palette.onAccent,
-              size: AppIconSize.md,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              context.l10n.editorAddText,
-              style: TextStyle(
-                color: palette.onAccent,
-                fontSize: AppTextSize.label,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Preview Pane ────────────────────────────────────────────────────────
-
-class _PreviewPane extends StatelessWidget {
-  const _PreviewPane({
-    required this.palette,
-    required this.videoController,
-    required this.session,
-    required this.videoAspectRatio,
-    required this.selectedOverlayId,
-    required this.isPlaying,
-    required this.onTogglePlayback,
-    required this.onOverlaySelected,
-    required this.onOverlayScaleStart,
-    required this.onOverlayScaleUpdate,
-    required this.onOverlayDeleted,
-  });
-
-  final KidPalette palette;
-  final VideoController videoController;
-  final EditorSession session;
-  final double videoAspectRatio;
-  final String? selectedOverlayId;
-  final bool isPlaying;
-  final Future<void> Function() onTogglePlayback;
-  final ValueChanged<String?> onOverlaySelected;
-  final void Function(
-    ScaleStartDetails details,
-    Size previewSize,
-    EditorOverlayItem overlay,
-  )
-  onOverlayScaleStart;
-  final void Function(
-    ScaleUpdateDetails details,
-    Size previewSize,
-    EditorOverlayItem overlay,
-  )
-  onOverlayScaleUpdate;
-  final ValueChanged<String> onOverlayDeleted;
-
-  @override
-  Widget build(BuildContext context) {
-    final previewFile = File(session.sourcePath);
-    final hasPreviewFile = previewFile.existsSync();
-    final textOverlays = session.overlays
-        .where((overlay) => overlay.type == EditorOverlayType.text)
-        .toList(growable: false);
-    final stickerOverlays = session.overlays
-        .where((overlay) => overlay.type == EditorOverlayType.sticker)
-        .toList(growable: false);
-    final previewStyle = buildEditorPreviewStyle(session);
-
-    return ColoredBox(
-      color: Colors.black,
-      child: LayoutBuilder(
-        builder: (context, viewport) {
-          final previewSize = _fitSizeWithin(
-            viewport.biggest,
-            videoAspectRatio,
-          );
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      palette.accent.withValues(alpha: 0.15),
-                      Colors.black,
-                    ],
-                    radius: 1.2,
-                  ),
-                ),
-              ),
-              Center(
-                child: SizedBox(
-                  width: previewSize.width,
-                  height: previewSize.height,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (hasPreviewFile)
-                        ColorFiltered(
-                          colorFilter: ColorFilter.matrix(
-                            previewStyle.colorMatrix,
-                          ),
-                          child: Video(controller: videoController),
-                        )
-                      else
-                        const ColoredBox(color: Colors.black12),
-                      if (previewStyle.tintColor case final tint?)
-                        IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: tint.withValues(
-                                alpha: previewStyle.tintOpacity,
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (previewStyle.vignetteStrength > 0)
-                        IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.transparent,
-                                  Colors.black.withValues(
-                                    alpha: 0.28 * previewStyle.vignetteStrength,
-                                  ),
-                                ],
-                                stops: const [0.1, 0.64, 1],
-                                radius:
-                                    0.96 +
-                                    (previewStyle.vignetteStrength * 0.2),
-                              ),
-                            ),
-                          ),
-                        ),
-                      Stack(
-                        children: [
-                          for (final overlay in stickerOverlays)
-                            _StickerOverlay(
-                              overlay: overlay,
-                              previewSize: previewSize,
-                              selected: overlay.id == selectedOverlayId,
-                              onTap: () => onOverlaySelected(overlay.id),
-                              onScaleStart: (details) {
-                                onOverlaySelected(overlay.id);
-                                onOverlayScaleStart(
-                                  details,
-                                  previewSize,
-                                  overlay,
-                                );
-                              },
-                              onScaleUpdate: (details) {
-                                onOverlayScaleUpdate(
-                                  details,
-                                  previewSize,
-                                  overlay,
-                                );
-                              },
-                              onDelete: () => onOverlayDeleted(overlay.id),
-                            ),
-                          for (final overlay in textOverlays)
-                            _TextOverlay(
-                              overlay: overlay,
-                              previewSize: previewSize,
-                              selected: overlay.id == selectedOverlayId,
-                              onTap: () => onOverlaySelected(overlay.id),
-                              onScaleStart: (details) {
-                                onOverlaySelected(overlay.id);
-                                onOverlayScaleStart(
-                                  details,
-                                  previewSize,
-                                  overlay,
-                                );
-                              },
-                              onScaleUpdate: (details) {
-                                onOverlayScaleUpdate(
-                                  details,
-                                  previewSize,
-                                  overlay,
-                                );
-                              },
-                              onDelete: () => onOverlayDeleted(overlay.id),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Center(
-                child: GestureDetector(
-                  onTap: () => unawaited(onTogglePlayback()),
-                  child: AnimatedOpacity(
-                    opacity: isPlaying ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow_rounded,
-                        size: AppIconSize.empty,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-Size _fitSizeWithin(Size viewport, double aspectRatio) {
-  if (viewport.width <= 0 || viewport.height <= 0 || aspectRatio <= 0) {
-    return viewport;
-  }
-  final viewportAspect = viewport.width / viewport.height;
-  if (viewportAspect > aspectRatio) {
-    final height = viewport.height;
-    return ui.Size(height * aspectRatio, height);
-  }
-  final width = viewport.width;
-  return ui.Size(width, width / aspectRatio);
-}
-
-// ── Sticker Overlay ─────────────────────────────────────────────────────
-
-class _StickerOverlay extends StatelessWidget {
-  const _StickerOverlay({
-    required this.overlay,
-    required this.previewSize,
-    required this.selected,
-    required this.onTap,
-    required this.onScaleStart,
-    required this.onScaleUpdate,
-    required this.onDelete,
-  });
-
-  final EditorOverlayItem overlay;
-  final Size previewSize;
-  final bool selected;
-  final VoidCallback onTap;
-  final GestureScaleStartCallback onScaleStart;
-  final GestureScaleUpdateCallback onScaleUpdate;
-  final VoidCallback onDelete;
-
-  static const _touchPadding = 24.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final transform = overlay.transform;
-    final stickerSize = 92 * transform.scale;
-    final stickerPath = overlay.stickerAssetPath!;
-    final isBundledAsset = stickerPath.startsWith('assets/');
-    return Positioned(
-      left:
-          (transform.position.dx * previewSize.width) -
-          (stickerSize / 2) -
-          _touchPadding,
-      top:
-          (transform.position.dy * previewSize.height) -
-          (stickerSize / 2) -
-          _touchPadding,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        onScaleStart: onScaleStart,
-        onScaleUpdate: onScaleUpdate,
-        child: Padding(
-          padding: const EdgeInsets.all(_touchPadding),
-          child: Transform.rotate(
-            angle: transform.rotationDegrees * math.pi / 180,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: stickerSize,
-                  height: stickerSize,
-                  decoration: BoxDecoration(
-                    borderRadius: AppRadii.xlAll,
-                    border: selected
-                        ? Border.all(color: Colors.white, width: 2)
-                        : null,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 16,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: AppRadii.xlAll,
-                    child: isBundledAsset
-                        ? Image.asset(stickerPath, fit: BoxFit.contain)
-                        : Image.file(File(stickerPath), fit: BoxFit.contain),
-                  ),
-                ),
-                if (selected)
-                  Positioned(
-                    top: -10,
-                    right: -10,
-                    child: _OverlayDeleteBadge(onTap: onDelete),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Text Overlay ────────────────────────────────────────────────────────
-
-class _TextOverlay extends StatelessWidget {
-  const _TextOverlay({
-    required this.overlay,
-    required this.previewSize,
-    required this.selected,
-    required this.onTap,
-    required this.onScaleStart,
-    required this.onScaleUpdate,
-    required this.onDelete,
-  });
-
-  final EditorOverlayItem overlay;
-  final Size previewSize;
-  final bool selected;
-  final VoidCallback onTap;
-  final GestureScaleStartCallback onScaleStart;
-  final GestureScaleUpdateCallback onScaleUpdate;
-  final VoidCallback onDelete;
-
-  static const _touchPadding = 24.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = overlay.text;
-    if (text == null || text.trim().isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final transform = overlay.transform;
-    return Positioned(
-      left: transform.position.dx * previewSize.width,
-      top: transform.position.dy * previewSize.height,
-      child: FractionalTranslation(
-        translation: const Offset(-0.5, -0.5),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          onScaleStart: onScaleStart,
-          onScaleUpdate: onScaleUpdate,
-          child: Padding(
-            padding: const EdgeInsets.all(_touchPadding),
-            child: Transform.rotate(
-              angle: transform.rotationDegrees * math.pi / 180,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                      vertical: AppSpacing.md,
-                    ),
-                    decoration: selected
-                        ? BoxDecoration(
-                            borderRadius: AppRadii.lgAll,
-                            border: Border.all(color: Colors.white, width: 2),
-                          )
-                        : null,
-                    child: Text(
-                      text,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: overlay.fontFamily,
-                        fontSize: overlay.textSize * transform.scale,
-                        fontWeight: FontWeight.w800,
-                        color: overlay.textColorValue == null
-                            ? Colors.white
-                            : Color(overlay.textColorValue!),
-                        shadows: const [
-                          Shadow(
-                            blurRadius: 12,
-                            color: Colors.black54,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (selected)
-                    Positioned(
-                      top: -10,
-                      right: -10,
-                      child: _OverlayDeleteBadge(onTap: onDelete),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Overlay Delete Badge ────────────────────────────────────────────────
-
-class _OverlayDeleteBadge extends StatelessWidget {
-  const _OverlayDeleteBadge({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        width: 26,
-        height: 26,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.75),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 1.5),
-        ),
-        child: const Icon(
-          Icons.close_rounded,
-          size: AppIconSize.sm,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
 }

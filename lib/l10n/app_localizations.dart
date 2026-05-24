@@ -1292,6 +1292,12 @@ abstract class AppLocalizations {
   /// **'Text'**
   String get editorToolText;
 
+  /// No description provided for @editorToolDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get editorToolDraw;
+
   /// No description provided for @editorActionKeepEditing.
   ///
   /// In en, this message translates to:
@@ -1339,6 +1345,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap existing text or add a new one.'**
   String get editorTapText;
+
+  /// No description provided for @editorDrawToolPencil.
+  ///
+  /// In en, this message translates to:
+  /// **'Pencil'**
+  String get editorDrawToolPencil;
+
+  /// No description provided for @editorDrawToolMarker.
+  ///
+  /// In en, this message translates to:
+  /// **'Marker'**
+  String get editorDrawToolMarker;
+
+  /// No description provided for @editorDrawToolEraser.
+  ///
+  /// In en, this message translates to:
+  /// **'Eraser'**
+  String get editorDrawToolEraser;
+
+  /// No description provided for @editorDrawWidthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Width'**
+  String get editorDrawWidthLabel;
+
+  /// No description provided for @editorDrawUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo stroke'**
+  String get editorDrawUndo;
+
+  /// No description provided for @editorDrawClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear drawing'**
+  String get editorDrawClear;
 
   /// No description provided for @editorStickerPhotoTitle.
   ///
@@ -3151,6 +3193,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Brightness'**
   String get editorBrightness;
+
+  /// No description provided for @editorSpeedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get editorSpeedLabel;
 
   /// No description provided for @editorContrast.
   ///

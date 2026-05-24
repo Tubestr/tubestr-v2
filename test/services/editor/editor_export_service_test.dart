@@ -212,6 +212,69 @@ void main() {
   );
 
   test(
+    'buildEditorExportPlan leaves neutral playback speed unfiltered',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+          playbackSpeed: 1.0,
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        sourceHasAudio: true,
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+      );
+
+      expect(plan.arguments.join(' '), isNot(contains('setpts=')));
+      expect(plan.arguments.join(' '), isNot(contains('atempo=')));
+    },
+  );
+
+  for (final entry in <(double, String, String)>[
+    (2.0, 'setpts=PTS/2.0', 'atempo=2.0'),
+    (0.5, 'setpts=PTS/0.5', 'atempo=0.5'),
+    (4.0, 'setpts=PTS/4.0', 'atempo=2.0,atempo=2.0'),
+    (0.25, 'setpts=PTS/0.25', 'atempo=0.5,atempo=0.5'),
+  ]) {
+    test(
+      'buildEditorExportPlan applies ${entry.$1}x playback speed filters',
+      () async {
+        final plan = await buildEditorExportPlan(
+          session: EditorSession(
+            videoId: 'video-1',
+            sourcePath: '/tmp/input.mp4',
+            videoDuration: const Duration(seconds: 10),
+            trimRange: const EditorTrimRange(
+              start: Duration.zero,
+              end: Duration(seconds: 10),
+            ),
+            playbackSpeed: entry.$1,
+          ),
+          outputPath: '/tmp/output.mp4',
+          stagingDir: '/tmp/editor-staging',
+          assetBundle: _FakeAssetBundle(),
+          sourceHasAudio: true,
+          renderSize: const ui.Size(720, 1280),
+          sourceRotationDegrees: 0,
+        );
+
+        final filterComplex =
+            plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+        expect(filterComplex, contains(entry.$2));
+        expect(filterComplex, contains('[0:a]${entry.$3}[aout]'));
+      },
+    );
+  }
+
+  test(
     'buildEditorExportPlan adds overlay compositing when a staged overlay exists',
     () async {
       final plan = await buildEditorExportPlan(
@@ -240,6 +303,83 @@ void main() {
         contains('[1:v]'),
       );
       expect(plan.arguments, containsAllInOrder(['-map', '[vout]']));
+    },
+  );
+
+  test(
+    'buildEditorExportPlan omits drawing input when strokes are empty',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+      );
+
+      expect(plan.arguments.where((value) => value == '-i'), hasLength(1));
+      expect(plan.arguments.join(' '), isNot(contains('overlay=0:0')));
+    },
+  );
+
+  test(
+    'buildEditorExportPlan adds drawing input after existing overlays',
+    () async {
+      final plan = await buildEditorExportPlan(
+        session: const EditorSession(
+          videoId: 'video-1',
+          sourcePath: '/tmp/input.mp4',
+          videoDuration: Duration(seconds: 10),
+          trimRange: EditorTrimRange(
+            start: Duration.zero,
+            end: Duration(seconds: 10),
+          ),
+          strokes: [
+            EditorStroke(
+              id: 'stroke-1',
+              tool: EditorDrawTool.pencil,
+              colorValue: 0xffffffff,
+              width: 6,
+              points: [Offset(0.1, 0.1), Offset(0.9, 0.9)],
+            ),
+          ],
+        ),
+        outputPath: '/tmp/output.mp4',
+        stagingDir: '/tmp/editor-staging',
+        assetBundle: _FakeAssetBundle(),
+        stagedOverlayImagePath: '/tmp/overlay.png',
+        stagedDrawingImagePath: '/tmp/drawing.png',
+        renderSize: const ui.Size(720, 1280),
+        sourceRotationDegrees: 0,
+      );
+
+      expect(
+        plan.arguments,
+        containsAllInOrder([
+          '-i',
+          '/tmp/input.mp4',
+          '-i',
+          '/tmp/overlay.png',
+          '-i',
+          '/tmp/drawing.png',
+        ]),
+      );
+      final filterComplex =
+          plan.arguments[plan.arguments.indexOf('-filter_complex') + 1];
+      expect(filterComplex, contains('[1:v]overlay=0:0:format=auto[voverlay]'));
+      expect(
+        filterComplex,
+        contains('[voverlay][2:v]overlay=0:0:format=auto[vout]'),
+      );
     },
   );
 
@@ -572,4 +712,75 @@ void main() {
       expect(saved?.filePath, result.outputPath);
     },
   );
+
+  test('EditorExportService deletes staged drawing PNG after export', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.upsertProfile(
+      id: 'profile-1',
+      name: 'Emma',
+      theme: 'campfire',
+      avatarAsset: 'assets/avatar.png',
+    );
+
+    final tempRoot = await Directory.systemTemp.createTemp(
+      'editor-drawing-export-test',
+    );
+    addTearDown(() async {
+      if (tempRoot.existsSync()) {
+        await tempRoot.delete(recursive: true);
+      }
+    });
+    final documentsDir = Directory('${tempRoot.path}/documents')
+      ..createSync(recursive: true);
+    final supportDir = Directory('${tempRoot.path}/support')
+      ..createSync(recursive: true);
+    final mediaLibrary = LocalMediaLibraryService(
+      documentsDirectoryProvider: () async => documentsDir,
+      supportDirectoryProvider: () async => supportDir,
+    );
+    String? stagedDrawingPath;
+    final service = EditorExportService(
+      database: database,
+      thumbnailService: _FakeThumbnailService(),
+      videoApprovalService: _FakeVideoApprovalService(database: database),
+      localMediaLibraryService: mediaLibrary,
+      assetBundle: _FakeAssetBundle(),
+      executeFfmpeg: (arguments) async {
+        stagedDrawingPath = arguments.firstWhere(
+          (argument) => argument.contains('/drawing_'),
+        );
+        expect(File(stagedDrawingPath!).existsSync(), isTrue);
+        return const FfmpegExecutionResult(success: true);
+      },
+      probeSourceMediaInfo: (path) async =>
+          const SourceMediaInfo(size: ui.Size(720, 1280), hasAudio: false),
+    );
+
+    await service.export(
+      session: const EditorSession(
+        videoId: 'video-1',
+        sourcePath: '/tmp/input.mp4',
+        videoDuration: Duration(seconds: 10),
+        trimRange: EditorTrimRange(
+          start: Duration.zero,
+          end: Duration(seconds: 10),
+        ),
+        strokes: [
+          EditorStroke(
+            id: 'stroke-1',
+            tool: EditorDrawTool.marker,
+            colorValue: 0xffff0000,
+            width: 12,
+            points: [Offset(0.1, 0.1), Offset(0.9, 0.9)],
+          ),
+        ],
+      ),
+      profileId: 'profile-1',
+      title: 'Remix',
+    );
+
+    expect(stagedDrawingPath, isNotNull);
+    expect(File(stagedDrawingPath!).existsSync(), isFalse);
+  });
 }
